@@ -1,6 +1,19 @@
 @import "tailwindcss";
 @import "@repo/tailwind-config";
 
+/* Global font utility classes */
+.font-satoshi {
+  font-family: var(--font-satoshi), "Satoshi", "General Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.font-intert {
+  font-family: var(--font-inter-tight), "Inter Tight", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.font-mono {
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
@@ -24,3 +37,4 @@ body {
     )
     rgb(var(--background-start-rgb));
 }
+
