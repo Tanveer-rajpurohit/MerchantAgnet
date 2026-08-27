@@ -51,10 +51,7 @@ export default function LoginPage() {
             showPasswordToggle
             required
             rightLabel={
-              <Link
-                href="/forgot-password"
-                className="text-brand hover:text-brand-subtle transition-colors"
-              >
+              <Link href="/forgot-password" className="link-brand text-sm">
                 Forgot password?
               </Link>
             }
@@ -76,7 +73,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full bg-accent text-bg hover:opacity-90 transition-opacity font-medium rounded-xl py-2.5 px-4 font-intert"
+            className="btn-brand-solid w-full shadow-xs font-medium rounded-xl py-3 px-4 font-intert flex items-center justify-center"
           >
             Sign In
           </button>
@@ -130,10 +127,7 @@ export default function LoginPage() {
 
         <div className="mt-8 text-center text-sm font-intert text-secondary">
           Don&apos;t have an account?{" "}
-          <Link
-            href="/register"
-            className="text-brand hover:text-brand-subtle font-medium transition-colors"
-          >
+          <Link href="/register" className="link-brand font-medium">
             Create one free
           </Link>
         </div>

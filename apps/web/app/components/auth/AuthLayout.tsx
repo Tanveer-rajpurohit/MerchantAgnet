@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import { ArrowLeft, Check } from "lucide-react";
 
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -8,9 +9,15 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
         <div className="flex items-center justify-between mb-12">
           <Link
             href="/"
-            className="inline-flex items-center text-sm font-medium text-muted hover:text-primary transition-colors font-intert"
+            className="inline-flex items-center gap-2.5 text-sm font-medium text-secondary hover:text-primary transition-colors font-intert group"
           >
-            <span className="mr-2">←</span> Back to home
+            <div className="w-8 h-8 rounded-lg border border-border bg-surface flex items-center justify-center group-hover:border-brand/40 group-hover:bg-surface-muted transition-colors">
+              <ArrowLeft
+                size={15}
+                className="text-secondary group-hover:text-primary transition-colors"
+              />
+            </div>
+            <span>Back to home</span>
           </Link>
           <div className="lg:hidden text-xl font-instrument font-bold text-primary">
             MerchantAgent
@@ -37,20 +44,8 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
 
           <div className="space-y-8 max-w-lg">
             <div className="flex gap-4">
-              <div className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-bg"
-                >
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
+              <div className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-brand flex items-center justify-center">
+                <Check size={12} strokeWidth={3} className="text-white" />
               </div>
               <div>
                 <h3 className="font-medium text-primary font-intert mb-1">
@@ -63,20 +58,8 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex gap-4">
-              <div className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-bg"
-                >
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
+              <div className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-brand flex items-center justify-center">
+                <Check size={12} strokeWidth={3} className="text-white" />
               </div>
               <div>
                 <h3 className="font-medium text-primary font-intert mb-1">
@@ -90,20 +73,8 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex gap-4">
-              <div className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-bg"
-                >
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
+              <div className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-brand flex items-center justify-center">
+                <Check size={12} strokeWidth={3} className="text-white" />
               </div>
               <div>
                 <h3 className="font-medium text-primary font-intert mb-1">

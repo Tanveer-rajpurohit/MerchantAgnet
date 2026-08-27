@@ -39,7 +39,7 @@ export default function Navbar() {
     <header className="fixed top-0 left-0 right-0 z-40 pointer-events-none">
       <div className="mx-auto px-4 sm:px-6">
         <nav
-          className="pointer-events-auto mx-auto flex items-center justify-between rounded-full border transition-[max-width,margin,padding,box-shadow,border-color,background-color,backdrop-filter] duration-200 ease-out"
+          className="pointer-events-auto mx-auto flex items-center justify-between rounded-2xl border transition-[max-width,margin,padding,box-shadow,border-color,background-color,backdrop-filter] duration-200 ease-out"
           style={{
             maxWidth: `min(calc(100vw - 2rem), ${navMaxWidth}px)`,
             marginTop: `${navMarginTop}px`,
@@ -91,7 +91,7 @@ export default function Navbar() {
             <ThemeToggle inline />
             <Link
               href="/login"
-              className="px-3.5 py-1.5 bg-accent text-bg shadow-xs overflow-hidden rounded-full flex justify-center items-center text-xs md:text-[13px] font-medium font-intert hover:opacity-90 active:scale-95 transition-all"
+              className="px-4 py-1.5 bg-brand text-white shadow-xs rounded-xl flex justify-center items-center text-xs md:text-[13px] font-medium font-intert hover:opacity-90 active:scale-95 transition-all"
             >
               Launch App
             </Link>

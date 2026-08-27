@@ -28,34 +28,34 @@ export default function PricingSection() {
   return (
     <section id="pricing" className="w-full border-b border-border">
       <div className="w-full max-w-6xl mx-auto">
-        <div className="py-12 sm:py-16 px-4 sm:px-6 flex flex-col items-center text-center border-b border-border">
+        <div className="pt-14 sm:pt-18 pb-10 sm:pb-12 px-4 sm:px-6 flex flex-col items-center text-center border-b border-border">
           <Badge icon={<CreditCard size={12} />} text="Plans & Pricing" />
-          <div className="text-primary text-3xl md:text-5xl font-normal font-instrument tracking-tight mt-3 mb-2">
+          <div className="text-primary text-3xl sm:text-4xl md:text-5xl font-normal font-instrument tracking-tight mt-3 mb-2.5">
             Choose the perfect plan for your business
           </div>
-          <div className="text-muted text-base font-intert max-w-lg">
+          <div className="text-muted text-sm sm:text-base font-intert max-w-xl mb-7">
             Scale your merchant operations with transparent pricing that grows
-            with you.
+            with your business.
           </div>
-        </div>
 
-        <div className="py-5 px-4 sm:px-6 flex justify-center border-b border-border">
-          <div className="p-1 bg-surface border border-border rounded-full flex items-center">
+          <div className="p-1 bg-surface border border-border rounded-xl flex items-center shadow-xs">
             <button
+              type="button"
               onClick={() => setBillingPeriod("annually")}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium font-intert transition-colors ${
+              className={`px-4 py-1.5 rounded-lg text-xs font-medium font-intert transition-all ${
                 billingPeriod === "annually"
-                  ? "bg-accent text-bg"
+                  ? "btn-brand-solid shadow-xs"
                   : "text-muted hover:text-primary"
               }`}
             >
               Annually (Save 20%)
             </button>
             <button
+              type="button"
               onClick={() => setBillingPeriod("monthly")}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium font-intert transition-colors ${
+              className={`px-4 py-1.5 rounded-lg text-xs font-medium font-intert transition-all ${
                 billingPeriod === "monthly"
-                  ? "bg-accent text-bg"
+                  ? "btn-brand-solid shadow-xs"
                   : "text-muted hover:text-primary"
               }`}
             >
@@ -85,7 +85,7 @@ export default function PricingSection() {
               </div>
               <Link
                 href="/register"
-                className="w-full py-2.5 rounded-lg border border-border bg-surface text-primary text-xs font-medium font-intert flex items-center justify-center hover:border-brand/40 transition-colors"
+                className="w-full py-2.5 rounded-xl border border-border bg-surface text-primary text-xs font-medium font-intert flex items-center justify-center hover:border-brand/40 transition-colors"
               >
                 Start for free
               </Link>
@@ -110,7 +110,7 @@ export default function PricingSection() {
               <div>
                 <div className="text-lg font-semibold font-intert text-primary flex items-center justify-between">
                   <span>Professional</span>
-                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-brand/10 text-brand">
+                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-md bg-brand text-white">
                     Popular
                   </span>
                 </div>
@@ -128,7 +128,7 @@ export default function PricingSection() {
               </div>
               <Link
                 href="/register"
-                className="w-full py-2.5 rounded-lg bg-accent text-bg text-xs font-medium font-intert flex items-center justify-center hover:opacity-90 transition-opacity"
+                className="btn-brand-solid w-full py-2.5 rounded-xl text-xs font-medium font-intert flex items-center justify-center shadow-xs"
               >
                 Get started
               </Link>
@@ -169,7 +169,7 @@ export default function PricingSection() {
               </div>
               <Link
                 href="/register"
-                className="w-full py-2.5 rounded-lg border border-border bg-surface text-primary text-xs font-medium font-intert flex items-center justify-center hover:border-brand/40 transition-colors"
+                className="w-full py-2.5 rounded-xl border border-border bg-surface text-primary text-xs font-medium font-intert flex items-center justify-center hover:border-brand/40 transition-colors"
               >
                 Contact sales
               </Link>

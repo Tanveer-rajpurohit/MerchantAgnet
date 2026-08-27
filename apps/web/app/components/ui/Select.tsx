@@ -39,7 +39,7 @@ export function Select({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between bg-surface border rounded-xl px-4 py-2.5 text-sm font-intert transition-all focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand ${
+        className={`w-full flex items-center justify-between bg-surface border rounded-xl px-4 py-2.5 text-sm font-intert transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
           isOpen ? "border-brand ring-2 ring-brand" : "border-border"
         } ${value ? "text-primary" : "text-muted"}`}
       >

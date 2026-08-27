@@ -14,7 +14,11 @@
   --color-border-subtle: var(--border-subtle);
   --color-accent: var(--accent);
   --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --color-brand-hover: var(--brand-hover);
   --color-brand-subtle: var(--brand-subtle);
+  --color-loader-track: var(--loader-track);
+  --color-loader-fill: var(--loader-fill);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);

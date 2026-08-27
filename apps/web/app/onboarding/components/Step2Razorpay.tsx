@@ -116,7 +116,11 @@ export function Step2Razorpay({
             type="button"
             onClick={handleConnect}
             disabled={!keys.keyId.trim() || !keys.keySecret.trim()}
-            className="w-full py-2.5 rounded-xl bg-accent text-bg font-medium font-intert text-sm hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            className={`w-full py-3 rounded-xl font-medium font-intert text-sm transition-all ${
+              keys.keyId.trim() && keys.keySecret.trim()
+                ? "btn-brand-solid shadow-xs cursor-pointer"
+                : "bg-surface-muted text-muted border border-border cursor-not-allowed opacity-90"
+            }`}
           >
             Connect Razorpay Test Account
           </button>

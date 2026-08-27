@@ -27,9 +27,10 @@
   --border: #E6E5E3;
   --border-subtle: #EFEEEC;
   --accent: #0A0A0A;
-  --brand: #FF5A1F;
-  --brand-2: #FFB627;
-  --brand-subtle: rgba(255, 90, 31, 0.09);
+  --brand: #E97451;
+  --brand-2: #F28C28;
+  --brand-hover: #D27D2D;
+  --brand-subtle: rgba(233, 116, 81, 0.1);
   --brand-gradient: linear-gradient(135deg, var(--brand), var(--brand-2));
   --success: #16A34A;
   --warning: #D97706;
@@ -48,9 +49,10 @@
   --border: #262625;
   --border-subtle: #1D1D1C;
   --accent: #FAFAF9;
-  --brand: #FF7A3D;
-  --brand-2: #FFC24D;
-  --brand-subtle: rgba(255, 122, 61, 0.16);
+  --brand: #EE7F5E;
+  --brand-2: #F59E42;
+  --brand-hover: #E97451;
+  --brand-subtle: rgba(238, 127, 94, 0.18);
   --brand-gradient: linear-gradient(135deg, var(--brand), var(--brand-2));
   --success: #22C55E;
   --warning: #F59E0B;
@@ -81,6 +83,29 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+.btn-brand-solid {
+  background-color: var(--brand);
+  color: #ffffff;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.btn-brand-solid:hover {
+  background-color: var(--brand-hover);
+}
+
+.btn-brand-solid:active {
+  transform: scale(0.97);
+}
+
+.link-brand {
+  color: var(--brand);
+  transition: color 0.15s ease;
+}
+
+.link-brand:hover {
+  color: var(--brand-hover);
 }
 
 html.lenis, html.lenis body {

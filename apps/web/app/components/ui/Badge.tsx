@@ -9,7 +9,13 @@ interface BadgeProps {
 
 export default function Badge({ icon, text }: BadgeProps) {
   return (
-    <div className="px-3.5 py-1.5 bg-surface shadow-[0px_0px_0px_4px_var(--brand-subtle)] overflow-hidden rounded-full flex justify-start items-center gap-2 border border-border shadow-xs">
+    <div
+      className="px-3.5 py-1.5 bg-surface overflow-hidden rounded-full flex justify-start items-center gap-2 border border-border"
+      style={{
+        boxShadow:
+          "0px 0px 0px 4px var(--brand-subtle), 0px 1px 2px rgba(0, 0, 0, 0.04)",
+      }}
+    >
       <div className="w-3.5 h-3.5 relative overflow-hidden flex items-center justify-center text-primary">
         {icon}
       </div>

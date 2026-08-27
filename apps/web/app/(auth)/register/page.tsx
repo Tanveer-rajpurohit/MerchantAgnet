@@ -154,17 +154,11 @@ export default function RegisterPage() {
             <div className="ml-2 text-sm text-secondary font-intert leading-tight">
               <label htmlFor="terms">
                 By creating an account, you agree to our{" "}
-                <Link
-                  href="/terms"
-                  className="text-brand hover:text-brand-subtle transition-colors"
-                >
+                <Link href="/terms" className="link-brand">
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link
-                  href="/privacy"
-                  className="text-brand hover:text-brand-subtle transition-colors"
-                >
+                <Link href="/privacy" className="link-brand">
                   Privacy Policy
                 </Link>
                 .
@@ -174,7 +168,7 @@ export default function RegisterPage() {
 
           <button
             type="submit"
-            className="w-full bg-accent text-bg hover:opacity-90 transition-opacity font-medium rounded-xl py-2.5 px-4 font-intert"
+            className="btn-brand-solid w-full shadow-xs font-medium rounded-xl py-3 px-4 font-intert flex items-center justify-center"
           >
             Create Account
           </button>
@@ -182,10 +176,7 @@ export default function RegisterPage() {
 
         <div className="mt-8 text-center text-sm font-intert text-secondary">
           Already have an account?{" "}
-          <Link
-            href="/login"
-            className="text-brand hover:text-brand-subtle font-medium transition-colors"
-          >
+          <Link href="/login" className="link-brand font-medium">
             Sign in
           </Link>
         </div>

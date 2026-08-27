@@ -201,7 +201,7 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={handleFinish}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-accent text-bg text-sm font-medium font-intert hover:opacity-90 transition-opacity"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand text-white text-sm font-medium font-intert shadow-xs hover:opacity-90 active:scale-95 transition-all"
                 >
                   Your AI Agent is ready <Sparkles size={14} />
                 </button>
@@ -210,7 +210,11 @@ export default function OnboardingPage() {
                   type="button"
                   onClick={handleNext}
                   disabled={!canProceed()}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-accent text-bg text-sm font-medium font-intert hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                  className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium font-intert transition-all ${
+                    canProceed()
+                      ? "btn-brand-solid shadow-xs cursor-pointer"
+                      : "bg-surface-muted text-muted border border-border cursor-not-allowed opacity-90"
+                  }`}
                 >
                   Continue <ArrowRight size={14} />
                 </button>

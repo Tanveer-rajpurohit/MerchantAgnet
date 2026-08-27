@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 
 interface LoadingScreenProps {
-  onLoadComplete: () => void;
+  onLoadComplete?: () => void;
 }
 
 const GREETINGS = [
@@ -26,6 +26,10 @@ const STEP_DURATION = 0.2;
 const REPEAT_COUNT = GREETINGS.length - 1;
 const TOTAL_DURATION = STEP_DURATION * (REPEAT_COUNT + 1);
 const BAR_GHOST_OPACITY = 0.2;
+const EXIT_DURATION = 0.6;
+const HERO_REVEAL_LEAD = 0.45;
+
+export const HERO_REVEAL_EVENT = "mag:hero-reveal";
 
 export default function LoadingScreen({ onLoadComplete }: LoadingScreenProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -38,12 +42,7 @@ export default function LoadingScreen({ onLoadComplete }: LoadingScreenProps) {
 
       const tl = gsap.timeline({
         onComplete: () => {
-          gsap.to(containerRef.current, {
-            y: "-100%",
-            duration: 0.8,
-            ease: "power3.inOut",
-            onComplete: onLoadComplete,
-          });
+          onLoadComplete?.();
         },
       });
 
@@ -75,6 +74,32 @@ export default function LoadingScreen({ onLoadComplete }: LoadingScreenProps) {
           0,
         );
       }
+
+      tl.to(
+        containerRef.current,
+        {
+          yPercent: -100,
+          duration: EXIT_DURATION,
+          ease: "power3.inOut",
+        },
+        TOTAL_DURATION,
+      );
+
+      tl.call(
+        () => {
+          window.dispatchEvent(new Event(HERO_REVEAL_EVENT));
+        },
+        [],
+        TOTAL_DURATION + EXIT_DURATION - HERO_REVEAL_LEAD,
+      );
+
+      tl.set(
+        containerRef.current,
+        {
+          display: "none",
+        },
+        TOTAL_DURATION + EXIT_DURATION,
+      );
     }, containerRef);
 
     return () => ctx.revert();

@@ -156,7 +156,7 @@ export function Step1BusinessProfile({
                   onClick={() => setProfile({ ...profile, language: lang })}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-medium font-intert transition-all ${
                     profile.language === lang
-                      ? "bg-accent text-bg"
+                      ? "btn-brand-solid shadow-xs"
                       : "bg-surface border border-border text-secondary hover:border-brand/40"
                   }`}
                 >

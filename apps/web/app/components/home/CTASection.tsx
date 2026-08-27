@@ -14,7 +14,7 @@ export default function CTASection() {
         </div>
         <Link
           href="/register"
-          className="h-11 px-10 bg-accent text-bg rounded-full flex justify-center items-center ring-1 ring-offset-2 ring-offset-bg ring-brand/30 hover:ring-brand/50 text-sm font-medium font-intert hover:opacity-90 active:scale-95 transition-all"
+          className="btn-brand-solid h-12 px-10 rounded-xl shadow-xs flex justify-center items-center text-sm font-medium font-intert active:scale-95 transition-all"
         >
           Get started free
         </Link>
