@@ -9,7 +9,7 @@ import {
   Package,
   CreditCard,
   Wallet,
-  ScrollText,
+  Banknote,
   SlidersHorizontal,
   Plus,
   ChevronsLeft,
@@ -30,7 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/products", label: "Products", icon: Package },
   { href: "/payment-links", label: "Payment Links", icon: CreditCard },
   { href: "/expenses", label: "Expenses", icon: Wallet },
-  { href: "/audit-log", label: "Audit Log", icon: ScrollText },
+  { href: "/payouts", label: "Payouts", icon: Banknote },
   { href: "/settings", label: "Settings", icon: SlidersHorizontal },
 ];
 
