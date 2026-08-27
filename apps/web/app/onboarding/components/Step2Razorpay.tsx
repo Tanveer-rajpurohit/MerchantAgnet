@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ExternalLink } from "lucide-react";
-import { RazorpayKeys } from "../types";
+import { RazorpayKeys } from "../../types/onboarding";
 
 export function Step2Razorpay({
   keys,
@@ -77,11 +77,16 @@ export function Step2Razorpay({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-primary font-intert">
+            <label
+              htmlFor="razorpayKeyId"
+              className="text-sm font-medium text-primary font-intert"
+            >
               Key ID
             </label>
             <input
+              id="razorpayKeyId"
               type="text"
+              autoComplete="off"
               placeholder="rzp_test_..."
               value={keys.keyId}
               onChange={(e) => setKeys({ ...keys, keyId: e.target.value })}
@@ -90,11 +95,16 @@ export function Step2Razorpay({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-primary font-intert">
+            <label
+              htmlFor="razorpayKeySecret"
+              className="text-sm font-medium text-primary font-intert"
+            >
               Key Secret
             </label>
             <input
+              id="razorpayKeySecret"
               type="password"
+              autoComplete="off"
               placeholder="Enter your key secret"
               value={keys.keySecret}
               onChange={(e) => setKeys({ ...keys, keySecret: e.target.value })}

@@ -9,15 +9,20 @@ import { Step2Razorpay } from "./components/Step2Razorpay";
 import { Step3Expenses } from "./components/Step3Expenses";
 import { Step4Products } from "./components/Step4Products";
 import { Step5Goals } from "./components/Step5Goals";
-import { BusinessProfile, RazorpayKeys, ExpenseRow, ProductRow } from "./types";
+import {
+  BusinessProfile,
+  RazorpayKeys,
+  ExpenseRow,
+  ProductRow,
+} from "../types/onboarding";
 
 const TOTAL_STEPS = 5;
+
+const generateId = () => Math.random().toString(36).slice(2, 9);
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
-
-  const generateId = () => Math.random().toString(36).slice(2, 9);
 
   const [profile, setProfile] = useState<BusinessProfile>({
     businessName: "",

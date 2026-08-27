@@ -1,7 +1,9 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import { ExpenseRow } from "../types";
+import { ExpenseRow } from "../../types/onboarding";
+
+const generateId = () => Math.random().toString(36).slice(2, 9);
 
 export function Step3Expenses({
   expenses,
@@ -10,8 +12,6 @@ export function Step3Expenses({
   expenses: ExpenseRow[];
   setExpenses: (e: ExpenseRow[]) => void;
 }) {
-  const generateId = () => Math.random().toString(36).slice(2, 9);
-
   const addRow = () => {
     setExpenses([
       ...expenses,

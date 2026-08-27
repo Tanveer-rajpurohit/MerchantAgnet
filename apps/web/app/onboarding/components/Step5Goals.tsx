@@ -85,11 +85,17 @@ export function Step5Goals({
       </div>
 
       <div className="space-y-3 pt-2">
-        <label className="text-sm font-medium text-primary font-intert">
+        <label
+          htmlFor="additionalDetails"
+          className="text-sm font-medium text-primary font-intert"
+        >
           Additional Details{" "}
-          <span className="text-muted font-normal">(optional, max 2000 chars)</span>
+          <span className="text-muted font-normal">
+            (optional, max 2000 chars)
+          </span>
         </label>
         <textarea
+          id="additionalDetails"
           placeholder="Any other rules or details the AI should keep in mind about how you run your store..."
           maxLength={2000}
           rows={5}

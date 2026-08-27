@@ -1,7 +1,9 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import { ProductRow } from "../types";
+import { ProductRow } from "../../types/onboarding";
+
+const generateId = () => Math.random().toString(36).slice(2, 9);
 
 export function Step4Products({
   products,
@@ -14,8 +16,6 @@ export function Step4Products({
   skipInventory: boolean;
   setSkipInventory: (v: boolean) => void;
 }) {
-  const generateId = () => Math.random().toString(36).slice(2, 9);
-
   const addRow = () => {
     setProducts([
       ...products,

@@ -1,6 +1,6 @@
 "use client";
 
-import { BusinessProfile } from "../types";
+import { BusinessProfile } from "../../types/onboarding";
 import { Select } from "../../components/ui/Select";
 
 const BUSINESS_TYPES = [
@@ -37,10 +37,14 @@ export function Step1BusinessProfile({
 
       <div className="space-y-4">
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-primary font-intert">
+          <label
+            htmlFor="businessName"
+            className="text-sm font-medium text-primary font-intert"
+          >
             Business Name <span className="text-brand">*</span>
           </label>
           <input
+            id="businessName"
             type="text"
             placeholder="Sharma Kirana Store"
             value={profile.businessName}
@@ -59,19 +63,21 @@ export function Step1BusinessProfile({
             <Select
               options={BUSINESS_TYPES}
               value={profile.businessType}
-              onChange={(val) =>
-                setProfile({ ...profile, businessType: val })
-              }
+              onChange={(val) => setProfile({ ...profile, businessType: val })}
               placeholder="Select business type"
             />
           </div>
 
           {profile.businessType === "Other" && (
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-primary font-intert">
+              <label
+                htmlFor="businessTypeOther"
+                className="text-sm font-medium text-primary font-intert"
+              >
                 Specify Business Type <span className="text-brand">*</span>
               </label>
               <input
+                id="businessTypeOther"
                 type="text"
                 placeholder="e.g. Wholesale"
                 value={profile.businessTypeOther}
@@ -85,11 +91,17 @@ export function Step1BusinessProfile({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-primary font-intert">
+          <label
+            htmlFor="businessDescription"
+            className="text-sm font-medium text-primary font-intert"
+          >
             Brief description about business{" "}
-            <span className="text-muted font-normal">(optional, max 500 chars)</span>
+            <span className="text-muted font-normal">
+              (optional, max 500 chars)
+            </span>
           </label>
           <textarea
+            id="businessDescription"
             placeholder="Describe what you sell and who your customers are..."
             maxLength={500}
             rows={3}
@@ -116,10 +128,14 @@ export function Step1BusinessProfile({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-primary font-intert">
+            <label
+              htmlFor="city"
+              className="text-sm font-medium text-primary font-intert"
+            >
               City / Area <span className="text-brand">*</span>
             </label>
             <input
+              id="city"
               type="text"
               placeholder="Indiranagar, Bengaluru"
               value={profile.city}
@@ -152,11 +168,15 @@ export function Step1BusinessProfile({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-primary font-intert">
+          <label
+            htmlFor="ownerName"
+            className="text-sm font-medium text-primary font-intert"
+          >
             Owner Name{" "}
             <span className="text-muted font-normal">(optional)</span>
           </label>
           <input
+            id="ownerName"
             type="text"
             placeholder="Used in greetings"
             value={profile.ownerName}

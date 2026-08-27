@@ -58,7 +58,7 @@ export default function TestimonialsSection() {
     }, 300);
   };
 
-  const current = testimonials[activeTestimonial];
+  const current = testimonials[activeTestimonial] as Testimonial;
 
   return (
     <section className="w-full border-b border-border bg-surface/50">
