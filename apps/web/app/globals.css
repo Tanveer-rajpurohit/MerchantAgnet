@@ -16,9 +16,9 @@
 
 :root {
   /* Light */
-  --bg: #FFFFFF;
+  --bg: #F1F2F6;
   --surface: #F8F8F8;
-  --text-primary: #111111;
+  --text-primary: #141414;
   --text-secondary: #444444;
   --text-muted: #888888;
   --border: #E5E5E5;
