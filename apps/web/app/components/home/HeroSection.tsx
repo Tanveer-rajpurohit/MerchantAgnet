@@ -98,7 +98,7 @@ export default function HeroSection() {
 
         <div className="flex items-center justify-center mb-10 sm:mb-14">
           <Link
-            href="/merchant"
+            href="/chat"
             className="btn-brand-solid h-11 sm:h-12 px-8 sm:px-10 py-2.5 rounded-xl shadow-xs flex justify-center items-center active:scale-95 text-sm sm:text-[15px] font-medium font-intert"
           >
             Meet your assistant
@@ -108,12 +108,6 @@ export default function HeroSection() {
         <div className="w-full max-w-6xl mx-auto">
           <div className="relative w-full aspect-video rounded-2xl border border-border bg-surface overflow-hidden group cursor-pointer">
             <div className="absolute inset-0 bg-surface-muted flex flex-col items-center justify-center gap-4 transition-opacity group-hover:opacity-90">
-              {/* <div
-                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full text-white flex items-center justify-center group-hover:scale-105 transition-transform"
-                style={{ background: "var(--brand-gradient)" }}
-              >
-                <Play size={28} className="ml-1" />
-              </div> */}
               <span className="text-sm sm:text-base font-medium font-intert text-muted">
                 Watch Demo
               </span>

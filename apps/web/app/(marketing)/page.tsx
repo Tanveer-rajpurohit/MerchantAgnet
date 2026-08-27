@@ -1,6 +1,6 @@
-import LoadingScreen from "./components/LoadingScreen";
-import Navbar from "./components/Navbar";
-import { LandingPage } from "./components/home";
+import LoadingScreen from "../components/LoadingScreen";
+import Navbar from "../components/Navbar";
+import { LandingPage } from "../components/home";
 
 export default function Page() {
   return (

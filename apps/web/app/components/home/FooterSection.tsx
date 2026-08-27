@@ -97,7 +97,7 @@ export default function FooterSection() {
               </div>
               <div>
                 <Link
-                  href="/merchant"
+                  href="/chat"
                   className="hover:text-primary transition-colors"
                 >
                   Launch Dashboard
