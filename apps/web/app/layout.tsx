@@ -2,6 +2,8 @@ import "@repo/ui/styles.css";
 import "./globals.css";
 import type { Metadata } from "next";
 import { satoshi, interTight, fontMono } from "./fonts";
+import ThemeProvider from "./components/ThemeProvider";
+import ThemeToggle from "./components/ThemeToggle";
 
 export const metadata: Metadata = {
   title: {
@@ -52,9 +54,16 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${satoshi.variable} ${interTight.variable} ${fontMono.variable}`}
     >
-      <body className="font-satoshi antialiased">{children}</body>
+      <body className="font-satoshi antialiased">
+        <ThemeProvider>
+          <ThemeToggle />
+          {children}
+        </ThemeProvider>
+      </body>
     </html>
   );
 }
+

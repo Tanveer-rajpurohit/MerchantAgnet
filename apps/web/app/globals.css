@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "@repo/tailwind-config";
 
-/* Global font utility classes */
 .font-satoshi {
   font-family: var(--font-satoshi), "Satoshi", "General Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
@@ -15,7 +14,6 @@
 }
 
 :root {
-  /* Light */
   --bg: #F1F2F6;
   --surface: #F8F8F8;
   --text-primary: #141414;
@@ -24,12 +22,11 @@
   --border: #E5E5E5;
   --accent: #0A0A0A;
   --success: #059669;
-  --warning: #D97706;   /* pending approval, low stock */
-  --danger: #DC2626;    /* failed link, blocked action */
+  --warning: #D97706;
+  --danger: #DC2626;
 }
 
 .dark {
-  /* Dark */
   --bg: #0A0A0A;
   --surface: #141414;
   --text-primary: #F5F5F5;
@@ -40,6 +37,18 @@
   --success: #10B981;
   --warning: #F59E0B;
   --danger: #EF4444;
+}
+
+body,
+div,
+header,
+nav,
+main,
+footer,
+section,
+button,
+aside {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
 body {
