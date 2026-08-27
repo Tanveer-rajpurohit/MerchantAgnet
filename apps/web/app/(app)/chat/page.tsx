@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { ThinkingOrb } from "thinking-orbs";
 import {
   ChatInput,
   ChatSuggestions,
@@ -273,7 +274,7 @@ export default function ChatPage() {
 
       setIsTyping(false);
       startStream(assistantMsg, setMessages);
-    }, 700);
+    }, 120);
   };
 
   const handleSelectSuggestion = (prompt: string) => {
@@ -320,34 +321,15 @@ export default function ChatPage() {
               ))}
 
               {isTyping && (
-                <div className="my-6">
-                  <ChatMessageItem
-                    message={{
-                      id: "typing-indicator",
-                      role: "assistant",
-                      content: "",
-                      thinking: {
-                        durationSeconds: 3,
-                        summary:
-                          "Understanding your request and preparing the best action...",
-                        steps: [
-                          {
-                            id: "step-live-1",
-                            label: "Reading your message...",
-                            detail: "Understanding what you need",
-                            status: "in_progress",
-                          },
-                          {
-                            id: "step-live-2",
-                            label: "Preparing your store action...",
-                            detail: "Loading your store data",
-                            status: "pending",
-                          },
-                        ],
-                      },
-                    }}
-                    isStreaming
-                  />
+                <div className="w-full my-6 font-intert animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                      <ThinkingOrb state="working" size={20} />
+                    </div>
+                    <span className="text-sm font-semibold text-primary font-intert">
+                      MerchantAgent
+                    </span>
+                  </div>
                 </div>
               )}
 

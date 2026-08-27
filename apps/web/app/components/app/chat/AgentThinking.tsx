@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Timer } from "lucide-react";
-import { ThinkingOrb } from "thinking-orbs";
 
 export interface AgentStep {
   id: string;
@@ -38,12 +37,6 @@ export function AgentThinking({
           onClick={() => setExpanded(!expanded)}
           className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-primary transition-colors py-0.5 cursor-pointer w-fit"
         >
-          {isThinking && (
-            <div className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
-              <ThinkingOrb state="working" size={20} />
-            </div>
-          )}
-
           <span>
             {isThinking ? "Thinking..." : `Thought for ${durationSeconds}s`}
           </span>

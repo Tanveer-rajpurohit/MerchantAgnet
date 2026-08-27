@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { ThinkingOrb } from "thinking-orbs";
 import {
   ChatInput,
   ChatMessageItem,
@@ -167,7 +168,7 @@ export default function ChatSessionPage({
 
       setIsTyping(false);
       startStream(assistantMsg, setMessages);
-    }, 600);
+    }, 120);
   };
 
   return (
@@ -194,26 +195,15 @@ export default function ChatSessionPage({
           ))}
 
           {isTyping && (
-            <div className="my-6">
-              <ChatMessageItem
-                message={{
-                  id: "typing-indicator-session",
-                  role: "assistant",
-                  content: "",
-                  thinking: {
-                    durationSeconds: 1,
-                    summary: "Working on your request...",
-                    steps: [
-                      {
-                        id: "step-session-live",
-                        label: "Processing your store action...",
-                        status: "in_progress",
-                      },
-                    ],
-                  },
-                }}
-                isStreaming
-              />
+            <div className="w-full my-6 font-intert animate-in fade-in duration-200">
+              <div className="flex items-center gap-2.5">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                  <ThinkingOrb state="working" size={20} />
+                </div>
+                <span className="text-sm font-semibold text-primary font-intert">
+                  MerchantAgent
+                </span>
+              </div>
             </div>
           )}
 
