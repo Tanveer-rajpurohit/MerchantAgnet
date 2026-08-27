@@ -18,37 +18,69 @@
 }
 
 :root {
-  --bg: #F7F5F3;
-  --surface: #FFFFFF;
-  --surface-muted: #F0EEEB;
-  --text-primary: #37322F;
-  --text-secondary: #49423D;
-  --text-muted: #605A57;
-  --border: #E0DEDB;
-  --border-subtle: #EDEBE8;
-  --accent: #37322F;
-  --brand: #5A8196;
-  --brand-subtle: rgba(90, 129, 150, 0.12);
-  --success: #059669;
+  --bg: #FFFFFF;
+  --surface: #FAFAFA;
+  --surface-muted: #F1F1F0;
+  --text-primary: #0A0A0A;
+  --text-secondary: #48474A;
+  --text-muted: #8A8887;
+  --border: #E6E5E3;
+  --border-subtle: #EFEEEC;
+  --accent: #0A0A0A;
+  --brand: #FF5A1F;
+  --brand-2: #FFB627;
+  --brand-subtle: rgba(255, 90, 31, 0.09);
+  --brand-gradient: linear-gradient(135deg, var(--brand), var(--brand-2));
+  --success: #16A34A;
   --warning: #D97706;
   --danger: #DC2626;
+  --loader-track: #ECECEB;
+  --loader-fill: #C7C6C4;
 }
 
 .dark {
-  --bg: #121110;
-  --surface: #1C1A18;
-  --surface-muted: #242220;
-  --text-primary: #F7F5F3;
-  --text-secondary: #D4D0CC;
-  --text-muted: #9E9893;
-  --border: #2E2B28;
-  --border-subtle: #22201E;
-  --accent: #F7F5F3;
-  --brand: #729DB3;
-  --brand-subtle: rgba(114, 157, 179, 0.15);
-  --success: #10B981;
+  --bg: #0A0A0A;
+  --surface: #141414;
+  --surface-muted: #1C1C1B;
+  --text-primary: #FAFAF9;
+  --text-secondary: #B5B3B0;
+  --text-muted: #706E6C;
+  --border: #262625;
+  --border-subtle: #1D1D1C;
+  --accent: #FAFAF9;
+  --brand: #FF7A3D;
+  --brand-2: #FFC24D;
+  --brand-subtle: rgba(255, 122, 61, 0.16);
+  --brand-gradient: linear-gradient(135deg, var(--brand), var(--brand-2));
+  --success: #22C55E;
   --warning: #F59E0B;
   --danger: #EF4444;
+  --loader-track: #1E1E1D;
+  --loader-fill: #3A3A38;
+}
+
+.brand-glow {
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+}
+
+.brand-glow::before {
+  content: "";
+  position: absolute;
+  inset: -8% 0 auto 0;
+  width: 100%;
+  height: 460px;
+  background: radial-gradient(65% 60% at 50% 0%, var(--brand-subtle), transparent 72%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.text-gradient-brand {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 html.lenis, html.lenis body {
@@ -78,14 +110,19 @@ aside {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
+html,
+body {
+  overflow-x: clip;
+}
+
 body {
   background-color: var(--bg);
   color: var(--text-primary);
 }
 
 .hide-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .hide-scrollbar::-webkit-scrollbar {

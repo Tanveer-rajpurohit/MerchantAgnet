@@ -82,10 +82,14 @@ export default function LoadingScreen({ onLoadComplete }: LoadingScreenProps) {
 
   return (
     <div ref={containerRef} className="fixed inset-0 z-50 bg-bg">
-      <div className="absolute inset-0 flex items-center justify-center">
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
         <h1 className="select-none text-4xl font-light text-primary font-satoshi">
           {GREETINGS[wordIndex]}
         </h1>
+        <div
+          className="h-[2px] w-8 rounded-full"
+          style={{ background: "var(--brand-gradient)" }}
+        />
       </div>
 
       <div className="absolute right-6 top-1/2 -translate-y-1/2 md:right-10">
@@ -96,8 +100,12 @@ export default function LoadingScreen({ onLoadComplete }: LoadingScreenProps) {
           {BAR_WIDTHS.map((width, i) => (
             <div
               key={i}
-              className="bg-muted"
-              style={{ width, height: 2, opacity: BAR_GHOST_OPACITY }}
+              style={{
+                width,
+                height: 2,
+                backgroundColor: "var(--loader-fill)",
+                opacity: BAR_GHOST_OPACITY,
+              }}
             />
           ))}
         </div>

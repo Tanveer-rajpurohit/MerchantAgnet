@@ -44,7 +44,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="w-full relative bg-bg text-primary flex flex-col items-center">
+    <div className="w-full relative bg-bg text-primary flex flex-col items-center overflow-x-clip">
       <HeroSection />
       <InfoSection />
       <FeatureCarousel
