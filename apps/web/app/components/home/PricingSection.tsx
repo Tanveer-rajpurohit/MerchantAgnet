@@ -16,18 +16,18 @@ export default function PricingSection() {
       annually: 0,
     },
     professional: {
-      monthly: 20,
-      annually: 16,
+      monthly: 499,
+      annually: 399,
     },
     enterprise: {
-      monthly: 200,
-      annually: 160,
+      monthly: 4999,
+      annually: 3999,
     },
   };
 
   return (
     <section id="pricing" className="w-full border-b border-border">
-      <div className="w-full max-w-6xl mx-auto border-x border-border">
+      <div className="w-full max-w-6xl mx-auto">
         <div className="py-12 sm:py-16 px-4 sm:px-6 flex flex-col items-center text-center border-b border-border">
           <Badge icon={<CreditCard size={12} />} text="Plans & Pricing" />
           <div className="text-primary text-3xl md:text-5xl font-normal font-instrument tracking-tight mt-3 mb-2">
@@ -65,7 +65,7 @@ export default function PricingSection() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3">
-          <div className="p-6 md:p-8 border-b md:border-b-0 md:border-r border-border flex flex-col justify-between gap-8 bg-surface/30">
+          <div className="p-6 md:p-8 border-b md:border-b-0 md:border-r border-border flex flex-col justify-between gap-8">
             <div className="space-y-6">
               <div>
                 <div className="text-lg font-semibold font-intert text-primary">
@@ -77,14 +77,14 @@ export default function PricingSection() {
               </div>
               <div>
                 <div className="text-4xl font-instrument text-primary">
-                  ${pricing.starter[billingPeriod]}
+                  ₹{pricing.starter[billingPeriod]}
                 </div>
                 <div className="text-xs text-muted font-intert">
                   per month, forever free
                 </div>
               </div>
               <Link
-                href="/merchant"
+                href="/register"
                 className="w-full py-2.5 rounded-lg border border-border bg-surface text-primary text-xs font-medium font-intert flex items-center justify-center hover:border-brand/40 transition-colors"
               >
                 Start for free
@@ -98,7 +98,7 @@ export default function PricingSection() {
                 "Community support",
               ].map((f, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <Check size={14} className="text-success" />
+                  <Check size={14} className="text-success shrink-0" />
                   <span>{f}</span>
                 </div>
               ))}
@@ -120,14 +120,14 @@ export default function PricingSection() {
               </div>
               <div>
                 <div className="text-4xl font-instrument text-primary">
-                  ${pricing.professional[billingPeriod]}
+                  ₹{pricing.professional[billingPeriod]}
                 </div>
                 <div className="text-xs text-muted font-intert">
                   per month, billed {billingPeriod}
                 </div>
               </div>
               <Link
-                href="/merchant"
+                href="/register"
                 className="w-full py-2.5 rounded-lg bg-accent text-bg text-xs font-medium font-intert flex items-center justify-center hover:opacity-90 transition-opacity"
               >
                 Get started
@@ -142,14 +142,14 @@ export default function PricingSection() {
                 "Priority support",
               ].map((f, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <Check size={14} className="text-success" />
+                  <Check size={14} className="text-success shrink-0" />
                   <span>{f}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="p-6 md:p-8 flex flex-col justify-between gap-8 bg-surface/30">
+          <div className="p-6 md:p-8 flex flex-col justify-between gap-8">
             <div className="space-y-6">
               <div>
                 <div className="text-lg font-semibold font-intert text-primary">
@@ -161,14 +161,14 @@ export default function PricingSection() {
               </div>
               <div>
                 <div className="text-4xl font-instrument text-primary">
-                  ${pricing.enterprise[billingPeriod]}
+                  ₹{pricing.enterprise[billingPeriod]}
                 </div>
                 <div className="text-xs text-muted font-intert">
                   per month, billed {billingPeriod}
                 </div>
               </div>
               <Link
-                href="/merchant"
+                href="/register"
                 className="w-full py-2.5 rounded-lg border border-border bg-surface text-primary text-xs font-medium font-intert flex items-center justify-center hover:border-brand/40 transition-colors"
               >
                 Contact sales
@@ -183,7 +183,7 @@ export default function PricingSection() {
                 "White-label customer checkout",
               ].map((f, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <Check size={14} className="text-success" />
+                  <Check size={14} className="text-success shrink-0" />
                   <span>{f}</span>
                 </div>
               ))}

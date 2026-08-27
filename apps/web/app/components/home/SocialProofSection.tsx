@@ -1,41 +1,36 @@
-"use client";
-
-import { Sparkles } from "lucide-react";
-import { Badge } from "../ui";
-
 export default function SocialProofSection() {
-  const partners = [
-    "Sharma Kirana",
-    "SpiceCraft D2C",
-    "Acrocraft Store",
-    "Bloom Organic",
-    "Kerala Organics",
-    "Jaipur Handlooms",
-    "Metro Electronics",
-    "City Fresh",
+  const stats = [
+    { value: "3s", label: "Avg. Link Generation" },
+    { value: "₹0", label: "Platform Fee" },
+    { value: "100%", label: "Approval Gated" },
+    { value: "26+", label: "Products Synced" },
   ];
 
   return (
     <section className="w-full border-b border-border">
-      <div className="w-full max-w-6xl mx-auto border-x border-border">
+      <div className="w-full max-w-6xl mx-auto">
         <div className="py-12 sm:py-16 px-4 sm:px-6 flex flex-col items-center text-center border-b border-border">
-          <Badge icon={<Sparkles size={12} />} text="Social Proof" />
-          <div className="text-primary text-2xl sm:text-3xl md:text-5xl font-semibold leading-tight font-instrument tracking-tight mt-3 mb-2">
-            Confidence backed by results
+          <div className="text-primary text-2xl sm:text-3xl md:text-5xl font-normal leading-tight font-instrument tracking-tight mb-2">
+            Built for real merchant results
           </div>
           <div className="text-muted text-sm sm:text-base font-normal font-intert max-w-xl">
-            Indian merchants achieve more each day with simple, bounded, and
-            explainable agentic tools.
+            Every action is explainable, bounded, and gated. Nothing sends or
+            charges without a clear reason.
           </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4">
-          {partners.map((partner, idx) => (
+          {stats.map((stat, idx) => (
             <div
               key={idx}
-              className="p-6 sm:p-8 flex items-center justify-center border-r border-b border-border last:border-r-0 text-xs sm:text-sm font-semibold font-intert text-secondary"
+              className="p-8 sm:p-10 flex flex-col items-center justify-center gap-2 border-r border-b border-border last:border-r-0 [&:nth-child(2)]:border-r-0 sm:[&:nth-child(2)]:border-r [&:nth-child(3)]:border-b-0 [&:nth-child(4)]:border-b-0 sm:[&:nth-child(1)]:border-b-0 sm:[&:nth-child(2)]:border-b-0"
             >
-              {partner}
+              <div className="text-primary text-4xl sm:text-5xl font-instrument">
+                {stat.value}
+              </div>
+              <div className="text-muted text-xs sm:text-sm font-intert text-center">
+                {stat.label}
+              </div>
             </div>
           ))}
         </div>

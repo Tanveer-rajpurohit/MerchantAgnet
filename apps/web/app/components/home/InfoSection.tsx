@@ -62,10 +62,10 @@ export default function InfoSection() {
   }, []);
 
   const text1 =
-    "Traditional Indian retail runs on WhatsApp and memory — relying on manual UPI calculations and fragmented notebooks. MerchantAgent transforms daily commerce into an autonomous AI copilot generating verified Razorpay links in 3 seconds, tracking real-time inventory, and closing customer orders with zero friction.";
+    "Traditional Indian retail runs on WhatsApp and memory, relying on manual UPI calculations and fragmented notebooks. MerchantAgent transforms daily commerce into an autonomous AI copilot generating verified Razorpay links in 3 seconds, tracking real-time inventory, and closing customer orders with zero friction.";
 
   const text2 =
-    "Beyond speed, your physical catalog is exposed as a structured Model Context Protocol (MCP) server, allowing external buyer AI agents to discover and transact programmatically. Every campaign batch remains strictly governed by human approval gates — ensuring total merchant control.";
+    "Beyond speed, your physical catalog is exposed as a structured Model Context Protocol (MCP) server, allowing external buyer AI agents to discover and transact programmatically. Every campaign batch remains strictly governed by human approval gates, ensuring total merchant control.";
 
   const words1 = text1.split(" ");
   const words2 = text2.split(" ");

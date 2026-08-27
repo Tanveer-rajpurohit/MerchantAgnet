@@ -136,7 +136,7 @@ export default function HeroSection() {
                     </span>
                   </div>
                   <p className="text-xs text-muted font-intert">
-                    Nothing to do right now — waiting on customer deposit.
+                    Nothing to do right now, waiting on customer deposit.
                     MerchantAgent surfaces actions the moment they land.
                   </p>
                 </div>
@@ -149,7 +149,7 @@ export default function HeroSection() {
                       </div>
                       <div>
                         <p className="text-xs font-satoshi font-semibold text-primary">
-                          26 products — purchase catalog + 25 addendums
+                          26 products: purchase catalog + 25 addendums
                         </p>
                         <p className="text-[11px] text-muted font-intert">
                           Received with the order · split and filed

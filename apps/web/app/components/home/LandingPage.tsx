@@ -45,7 +45,7 @@ export default function LandingPage() {
 
   return (
     <div className="w-full relative bg-bg text-primary flex flex-col items-center">
-      <HeroSection activeCard={activeCard} />
+      <HeroSection />
       <InfoSection />
       <FeatureCarousel
         activeCard={activeCard}

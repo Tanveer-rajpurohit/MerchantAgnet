@@ -90,7 +90,7 @@ export default function Navbar() {
           <div className="flex items-center gap-2.5">
             <ThemeToggle inline />
             <Link
-              href="/merchant"
+              href="/login"
               className="px-3.5 py-1.5 bg-accent text-bg shadow-xs overflow-hidden rounded-full flex justify-center items-center text-xs md:text-[13px] font-medium font-intert hover:opacity-90 active:scale-95 transition-all"
             >
               Launch App
