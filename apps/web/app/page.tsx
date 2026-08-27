@@ -2,14 +2,17 @@
 
 import { useState } from "react";
 import LoadingScreen from "./components/LoadingScreen";
+import Navbar from "./components/Navbar";
+import { LandingPage } from "./components/home";
 
 export default function Page() {
   const [isLoading, setIsLoading] = useState(true);
 
   return (
-    <div className="relative">
-      <main className="flex min-h-screen items-center justify-center bg-bg">
-        <p className="text-lg text-muted font-satoshi">MerchantAgent</p>
+    <div className="relative min-h-screen bg-bg text-primary selection:bg-brand selection:text-white">
+      <Navbar />
+      <main>
+        <LandingPage />
       </main>
 
       {isLoading && (

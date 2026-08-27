@@ -6,14 +6,14 @@ Companion to `idea.md`. That doc is the concept. This one is execution-ready: st
 
 ## 1. Tech Stack
 
-| Layer | Choice | Why |
-|---|---|---|
-| Backend + Agent | Python + FastAPI + **Claude Agent SDK** | Matches Razorpay's own production stack (their Agent Studio is built on it) — direct signal you understand their platform. Also matches your current FastAPI experience. |
-| Frontend | Next.js | Two surfaces: merchant chat, customer checkout chat. Your strongest stack. |
-| Database | PostgreSQL + pgvector extension | One database, not split services. Structured data in normal tables; chat/notes also embedded in the same DB via pgvector. |
-| Payments | Razorpay Python SDK, test-mode keys | Free, no KYC, no live money ever moves. |
-| Catalog exposure | Plain FastAPI tool + optional MCP server | MCP matches Razorpay's own developer surface (they run one). Build the plain tool first; wrap it as MCP if time allows. |
-| Hosting (demo) | Local / Railway / Render free tier | No need for anything more for a 10-day build. |
+| Layer            | Choice                                   | Why                                                                                                                                                                      |
+| ---------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Backend + Agent  | Python + FastAPI + **Claude Agent SDK**  | Matches Razorpay's own production stack (their Agent Studio is built on it) — direct signal you understand their platform. Also matches your current FastAPI experience. |
+| Frontend         | Next.js                                  | Two surfaces: merchant chat, customer checkout chat. Your strongest stack.                                                                                               |
+| Database         | PostgreSQL + pgvector extension          | One database, not split services. Structured data in normal tables; chat/notes also embedded in the same DB via pgvector.                                                |
+| Payments         | Razorpay Python SDK, test-mode keys      | Free, no KYC, no live money ever moves.                                                                                                                                  |
+| Catalog exposure | Plain FastAPI tool + optional MCP server | MCP matches Razorpay's own developer surface (they run one). Build the plain tool first; wrap it as MCP if time allows.                                                  |
+| Hosting (demo)   | Local / Railway / Render free tier       | No need for anything more for a 10-day build.                                                                                                                            |
 
 **Explicitly not using:** Go, gRPC, protobufs, Redis, a second AI framework (LangGraph/CrewAI on top of the Agent SDK), WhatsApp Business API, multi-service split. One language, one service, one database — every one of these additions was cut specifically because it costs build time without adding anything the judging criteria reward.
 
@@ -21,15 +21,15 @@ Companion to `idea.md`. That doc is the concept. This one is execution-ready: st
 
 ## 2. Data Strategy — what's exact vs. what's semantic
 
-| Data | Storage | Why |
-|---|---|---|
-| Business profile | Postgres table | Fast, exact lookup |
-| Products / catalog / stock | Postgres table **only** | Must be exact — an AI buyer agent asking "is this in stock" cannot get an approximate answer |
-| Payment links | Postgres table | Transactional record |
-| Campaigns + approval batches | Postgres table | Transactional record |
-| Audit log | Postgres table | Must be exact and ordered |
-| Chat history | Postgres table **+ pgvector embedding** | Needs both exact recall (recent turns) and semantic recall (things outside the context window) |
-| Free-text merchant notes | Postgres table **+ pgvector embedding** | Unstructured — genuinely benefits from semantic search |
+| Data                         | Storage                                 | Why                                                                                            |
+| ---------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Business profile             | Postgres table                          | Fast, exact lookup                                                                             |
+| Products / catalog / stock   | Postgres table **only**                 | Must be exact — an AI buyer agent asking "is this in stock" cannot get an approximate answer   |
+| Payment links                | Postgres table                          | Transactional record                                                                           |
+| Campaigns + approval batches | Postgres table                          | Transactional record                                                                           |
+| Audit log                    | Postgres table                          | Must be exact and ordered                                                                      |
+| Chat history                 | Postgres table **+ pgvector embedding** | Needs both exact recall (recent turns) and semantic recall (things outside the context window) |
+| Free-text merchant notes     | Postgres table **+ pgvector embedding** | Unstructured — genuinely benefits from semantic search                                         |
 
 Rule of thumb: if a wrong answer here could mean the wrong price, the wrong stock count, or a duplicate payment link — it's table-only, never solely reasoned over via vector similarity.
 
@@ -38,6 +38,7 @@ Rule of thumb: if a wrong answer here could mean the wrong price, the wrong stoc
 ## 3. Context Package — what gets built on every chat turn
 
 When a message comes in, assemble:
+
 1. **Merchant profile** (Postgres, fetched once per session) — name, business type, language, city
 2. **Recent-activity snapshot** (Postgres) — last ~5 payment links, last ~3 campaigns, last ~10 audit log entries
 3. **Relevant memory** (pgvector) — top-k semantically relevant past chat turns / notes, only pulled if the current message seems to reference something outside the immediate window

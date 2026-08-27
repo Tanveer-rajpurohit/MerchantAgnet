@@ -7,7 +7,14 @@ interface LoadingScreenProps {
   onLoadComplete: () => void;
 }
 
-const GREETINGS = ["Hello", "नमस्ते", "স্বাগত", "வணக்கம்", "સ્વાગત", "ਸਤ ਸ੍ਰੀ ਅਕਾਲ"];
+const GREETINGS = [
+  "Hello",
+  "नमस्ते",
+  "স্বাগত",
+  "வணக்கம்",
+  "સ્વાગત",
+  "ਸਤ ਸ੍ਰੀ ਅਕਾਲ",
+];
 
 const BAR_COUNT = 30;
 const BAR_WIDTHS = Array.from({ length: BAR_COUNT }, (_, i) => {
@@ -48,11 +55,11 @@ export default function LoadingScreen({ onLoadComplete }: LoadingScreenProps) {
           ease: "sine.inOut",
           onRepeat: () => {
             setWordIndex((prev) =>
-              prev < GREETINGS.length - 1 ? prev + 1 : prev
+              prev < GREETINGS.length - 1 ? prev + 1 : prev,
             );
           },
         },
-        0
+        0,
       );
 
       const bars = barsRef.current?.children;
@@ -65,7 +72,7 @@ export default function LoadingScreen({ onLoadComplete }: LoadingScreenProps) {
             stagger: perBar,
             ease: "power2.out",
           },
-          0
+          0,
         );
       }
     }, containerRef);
@@ -82,7 +89,10 @@ export default function LoadingScreen({ onLoadComplete }: LoadingScreenProps) {
       </div>
 
       <div className="absolute right-6 top-1/2 -translate-y-1/2 md:right-10">
-        <div ref={barsRef} className="flex h-[60vh] flex-col justify-between items-end">
+        <div
+          ref={barsRef}
+          className="flex h-[60vh] flex-col justify-between items-end"
+        >
           {BAR_WIDTHS.map((width, i) => (
             <div
               key={i}

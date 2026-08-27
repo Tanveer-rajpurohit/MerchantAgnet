@@ -4,7 +4,15 @@ import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 
-export default function ThemeToggle() {
+interface ThemeToggleProps {
+  className?: string;
+  inline?: boolean;
+}
+
+export default function ThemeToggle({
+  className = "",
+  inline = false,
+}: ThemeToggleProps) {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const raysRef = useRef<SVGGElement>(null);
@@ -25,12 +33,30 @@ export default function ThemeToggle() {
     if (isInitial.current) {
       isInitial.current = false;
       if (isDark) {
-        gsap.set(raysRef.current, { scale: 0, opacity: 0, rotation: -45, transformOrigin: "50% 50%" });
-        gsap.set(centerRef.current, { attr: { r: 9 }, rotation: 20, transformOrigin: "50% 50%" });
+        gsap.set(raysRef.current, {
+          scale: 0,
+          opacity: 0,
+          rotation: -45,
+          transformOrigin: "50% 50%",
+        });
+        gsap.set(centerRef.current, {
+          attr: { r: 9 },
+          rotation: 20,
+          transformOrigin: "50% 50%",
+        });
         gsap.set(maskRef.current, { attr: { cx: 17, cy: 7, r: 7 } });
       } else {
-        gsap.set(raysRef.current, { scale: 1, opacity: 1, rotation: 0, transformOrigin: "50% 50%" });
-        gsap.set(centerRef.current, { attr: { r: 5 }, rotation: 0, transformOrigin: "50% 50%" });
+        gsap.set(raysRef.current, {
+          scale: 1,
+          opacity: 1,
+          rotation: 0,
+          transformOrigin: "50% 50%",
+        });
+        gsap.set(centerRef.current, {
+          attr: { r: 5 },
+          rotation: 0,
+          transformOrigin: "50% 50%",
+        });
         gsap.set(maskRef.current, { attr: { cx: 24, cy: 0, r: 0 } });
       }
       return;
@@ -82,19 +108,25 @@ export default function ThemeToggle() {
   }, [isDark, mounted]);
 
   if (!mounted) {
-    return <div className="fixed top-5 right-5 z-40 h-9 w-9" />;
+    return (
+      <div
+        className={`h-9 w-9 ${inline ? "" : "fixed top-5 right-5 z-40"} ${className}`}
+      />
+    );
   }
+
+  const basePosClass = inline ? "" : "fixed top-5 right-5 z-40";
 
   return (
     <button
       type="button"
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="fixed top-5 right-5 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-primary transition-transform active:scale-95"
+      className={`flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-primary transition-transform active:scale-95 hover:border-brand/40 ${basePosClass} ${className}`}
       aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
     >
       <svg
-        width="18"
-        height="18"
+        width="17"
+        height="17"
         viewBox="0 0 24 24"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
@@ -112,7 +144,12 @@ export default function ThemeToggle() {
           fill="currentColor"
           mask="url(#theme-toggle-mask)"
         />
-        <g ref={raysRef} stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <g
+          ref={raysRef}
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        >
           <line x1="12" y1="1" x2="12" y2="3" />
           <line x1="12" y1="21" x2="12" y2="23" />
           <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />

@@ -1,5 +1,9 @@
 import localFont from "next/font/local";
-import { Inter_Tight, JetBrains_Mono } from "next/font/google";
+import {
+  Inter_Tight,
+  JetBrains_Mono,
+  Instrument_Serif,
+} from "next/font/google";
 
 export const satoshi = localFont({
   src: [
@@ -27,5 +31,13 @@ export const interTight = Inter_Tight({
 export const fontMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+  display: "swap",
+});
+
+export const instrumentSerif = Instrument_Serif({
+  weight: "400",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  variable: "--font-instrument",
   display: "swap",
 });
