@@ -114,70 +114,87 @@ export function PayoutHistoryTable({
           </p>
         </div>
       ) : (
-        <div>
-          <div className="hidden sm:grid grid-cols-12 items-center gap-4 py-2.5 border-b border-border text-[11px] font-medium font-intert text-muted uppercase tracking-wider">
-            <span className="col-span-4">Description</span>
-            <span className="col-span-2">Method</span>
-            <span className="col-span-2">Date</span>
-            <span className="col-span-2 text-right pr-2">Amount</span>
-            <span className="col-span-1 text-center">Status</span>
-            <span className="col-span-1 text-right">Receipt</span>
-          </div>
-
-          {records.map((record) => (
-            <div
-              key={record.id}
-              className="grid grid-cols-12 items-center gap-4 py-3.5 border-b border-border-subtle hover:bg-surface-muted/30 transition-colors"
-            >
-              <div className="col-span-12 sm:col-span-4 min-w-0 pr-2">
-                <p className="text-sm font-medium font-intert text-primary truncate">
-                  {record.description}
-                </p>
-                <p className="text-[11px] text-muted font-intert mt-0.5 sm:hidden">
-                  {record.method} · {formatDisplayDate(record.date)}
-                </p>
-              </div>
-
-              <span className="col-span-2 text-xs font-intert text-secondary hidden sm:block">
-                {record.method}
-              </span>
-
-              <span className="col-span-2 text-xs font-intert text-secondary hidden sm:block">
-                {formatDisplayDate(record.date)}
-              </span>
-
-              <span className="col-span-6 sm:col-span-2 text-left sm:text-right pr-2 text-sm font-semibold font-mono text-primary">
-                {record.amount}
-              </span>
-
-              <div className="col-span-4 sm:col-span-1 flex justify-center">
-                <span
-                  className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                    record.status === "Settled"
-                      ? "border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10"
-                      : "border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10"
-                  }`}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-border text-[11px] font-medium font-intert text-muted uppercase tracking-wider">
+                <th className="py-3 px-3 font-medium w-[30%] text-left">
+                  Description
+                </th>
+                <th className="py-3 px-3 font-medium hidden sm:table-cell w-[14%] text-left">
+                  Method
+                </th>
+                <th className="py-3 px-3 font-medium hidden sm:table-cell w-[18%] text-left">
+                  Date
+                </th>
+                <th className="py-3 px-3 font-medium w-[16%] text-left">
+                  Amount
+                </th>
+                <th className="py-3 px-3 font-medium w-[14%] text-left">
+                  Status
+                </th>
+                <th className="py-3 px-3 font-medium w-[8%] text-right">
+                  Receipt
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-subtle">
+              {records.map((record) => (
+                <tr
+                  key={record.id}
+                  className="hover:bg-surface-muted/30 transition-colors"
                 >
-                  {record.status}
-                </span>
-              </div>
-
-              <div className="col-span-2 sm:col-span-1 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => handleDownloadReceipt(record.id)}
-                  title="Download receipt"
-                  className="flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-surface hover:bg-surface-muted text-secondary hover:text-primary transition-colors cursor-pointer"
-                >
-                  {receiptDownloaded === record.id ? (
-                    <Check size={14} className="text-emerald-600 dark:text-emerald-400" />
-                  ) : (
-                    <FileDown size={14} />
-                  )}
-                </button>
-              </div>
-            </div>
-          ))}
+                  <td className="py-3.5 px-3">
+                    <p className="text-sm font-medium font-intert text-primary truncate">
+                      {record.description}
+                    </p>
+                    <p className="text-[11px] text-muted font-intert mt-0.5 sm:hidden">
+                      {record.method} · {formatDisplayDate(record.date)}
+                    </p>
+                  </td>
+                  <td className="py-3.5 px-3 text-xs font-intert text-secondary hidden sm:table-cell">
+                    {record.method}
+                  </td>
+                  <td className="py-3.5 px-3 text-xs font-intert text-secondary hidden sm:table-cell">
+                    {formatDisplayDate(record.date)}
+                  </td>
+                  <td className="py-3.5 px-3 text-sm font-semibold font-mono text-primary whitespace-nowrap">
+                    {record.amount}
+                  </td>
+                  <td className="py-3.5 px-3 whitespace-nowrap">
+                    <span
+                      className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                        record.status === "Settled"
+                          ? "border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10"
+                          : "border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10"
+                      }`}
+                    >
+                      {record.status}
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-3 text-right">
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadReceipt(record.id)}
+                        title="Download receipt"
+                        className="flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-surface hover:bg-surface-muted text-secondary hover:text-primary transition-colors cursor-pointer"
+                      >
+                        {receiptDownloaded === record.id ? (
+                          <Check
+                            size={14}
+                            className="text-emerald-600 dark:text-emerald-400"
+                          />
+                        ) : (
+                          <FileDown size={14} />
+                        )}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
