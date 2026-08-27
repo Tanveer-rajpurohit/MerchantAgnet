@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AuthLayout } from "../../components/auth/AuthLayout";
 import { AuthFormCard } from "../../components/auth/AuthFormCard";
 import { AuthInput } from "../../components/auth/AuthInput";
@@ -10,8 +11,11 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const router = useRouter();
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    router.push("/onboarding");
   };
 
   return (
@@ -93,6 +97,7 @@ export default function LoginPage() {
 
         <button
           type="button"
+          onClick={() => router.push("/onboarding")}
           className="w-full flex items-center justify-center gap-2 bg-surface hover:bg-surface-muted border border-border text-primary transition-colors font-medium rounded-xl py-2.5 px-4 font-intert"
         >
           <svg

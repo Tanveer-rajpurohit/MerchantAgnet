@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AuthLayout } from "../../components/auth/AuthLayout";
 import { AuthFormCard } from "../../components/auth/AuthFormCard";
 import { AuthInput } from "../../components/auth/AuthInput";
@@ -29,8 +30,11 @@ export default function RegisterPage() {
     setStrength((score || 1) as Strength);
   }, [password]);
 
+  const router = useRouter();
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    router.push("/onboarding");
   };
 
   return (
@@ -47,6 +51,7 @@ export default function RegisterPage() {
 
         <button
           type="button"
+          onClick={() => router.push("/onboarding")}
           className="w-full flex items-center justify-center gap-2 bg-surface hover:bg-surface-muted border border-border text-primary transition-colors font-medium rounded-xl py-2.5 px-4 mb-6 font-intert"
         >
           <svg
