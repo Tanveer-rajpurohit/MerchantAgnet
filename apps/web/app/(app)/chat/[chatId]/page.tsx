@@ -1,22 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ChatInput } from "../../../components/app";
-import type { ActionMode } from "../../../components/app";
-import { Sparkles, Check, Copy } from "lucide-react";
-
-interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  actionType?: "payment_link" | "catalog" | "campaign" | "general";
-  metadata?: {
-    linkUrl?: string;
-    amount?: string;
-    customerName?: string;
-    itemsCount?: number;
-  };
-}
+import {
+  ChatInput,
+  ChatMessageItem,
+  useWordStream,
+} from "../../../components/app/chat";
+import type { ActionMode, ChatMessageData } from "../../../components/app/chat";
 
 export default function ChatSessionPage({
   params,
@@ -24,11 +14,17 @@ export default function ChatSessionPage({
   params: Promise<{ chatId: string }>;
 }) {
   const [chatId, setChatId] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const [query, setQuery] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { startStream, stopStream, streamingId } = useWordStream();
+
+  useEffect(() => {
+    return () => {
+      stopStream();
+    };
+  }, [stopStream]);
 
   useEffect(() => {
     params.then((p) => {
@@ -43,9 +39,51 @@ export default function ChatSessionPage({
           id: "m-init-2",
           role: "assistant",
           content:
-            "Here is your store snapshot: 3 payment links were settled today totaling ₹2,450. In your catalog, Amul Milk 1L is currently at 4 units (below your alert threshold of 10).",
-          actionType: "catalog",
-          metadata: { itemsCount: 1 },
+            "Here is your real-time store snapshot across today's transactions and inventory:\n\n### Store Operations Summary\n- **Payment Links:** 3 payment links settled today totaling **₹2,450.00**.\n- **Inventory:** 1 product has dropped below your low-stock alert level.\n\nReview the live status details below:",
+          thinking: {
+            durationSeconds: 2,
+            summary:
+              "Checked today's payment activity and scanned your product stock levels.",
+            steps: [
+              {
+                id: "init-step-1",
+                label: "Reviewed today's payment link activity",
+                detail: "3 links settled, ₹2,450 total collected",
+                status: "completed",
+              },
+              {
+                id: "init-step-2",
+                label: "Checked inventory against your alert levels",
+                detail: "Amul Milk has only 4 units (alert set at 10)",
+                status: "completed",
+              },
+            ],
+            detailedThought:
+              "You asked for recent payments and low-stock products.\nI found 3 settled payment links from today totaling ₹2,450.\nI checked all products against your configured alert thresholds.\nAmul Taaza Milk is the only critical item at 4 units remaining.",
+          },
+          catalogStock: {
+            title: "Inventory Alert",
+            items: [
+              {
+                id: "init-p1",
+                name: "Amul Taaza Milk 1L",
+                category: "Dairy & Staples",
+                currentStock: 4,
+                threshold: 10,
+                sellingPrice: "₹62.00",
+                status: "critical",
+              },
+              {
+                id: "init-p2",
+                name: "Aashirvaad Atta 5kg",
+                category: "Flour & Grains",
+                currentStock: 22,
+                threshold: 6,
+                sellingPrice: "₹260.00",
+                status: "ok",
+              },
+            ],
+          },
         },
       ]);
     });
@@ -56,7 +94,7 @@ export default function ChatSessionPage({
   }, [messages, isTyping]);
 
   const handleSend = (text: string, mode: ActionMode) => {
-    const userMsg: ChatMessage = {
+    const userMsg: ChatMessageData = {
       id: Math.random().toString(36).slice(2, 9),
       role: "user",
       content: text,
@@ -67,47 +105,73 @@ export default function ChatSessionPage({
     setIsTyping(true);
 
     setTimeout(() => {
-      let assistantMsg: ChatMessage;
+      let assistantMsg: ChatMessageData;
+      const lower = text.toLowerCase();
 
       if (
         mode === "payment-link" ||
-        text.toLowerCase().includes("link") ||
-        text.toLowerCase().includes("₹")
+        lower.includes("link") ||
+        lower.includes("₹") ||
+        lower.includes("pay")
       ) {
         assistantMsg = {
           id: Math.random().toString(36).slice(2, 9),
           role: "assistant",
           content:
-            "Generated a new Razorpay payment link in test-mode. Customer link is active and ready for dispatch.",
-          actionType: "payment_link",
-          metadata: {
-            linkUrl: "https://rzp.io/l/test_pay_custom",
-            amount: "₹650.00",
+            "I've generated a Razorpay payment link for **₹650.00**.\n\n### Transaction Summary\n- **Order Value:** ₹650.00 (Custom provisions order)\n- **Payment Mode:** Razorpay Test Mode\n- **Status:** Link active and ready to share via WhatsApp or SMS.",
+          thinking: {
+            durationSeconds: 2,
+            summary:
+              "Confirmed your Razorpay connection and created a ₹650 payment link.",
+            steps: [
+              {
+                id: "s1",
+                label: "Confirmed your Razorpay account is active",
+                detail: "Test mode keys verified",
+                status: "completed",
+              },
+              {
+                id: "s2",
+                label: "Created ₹650 payment link",
+                detail: "Link ready for sharing with customer",
+                status: "completed",
+              },
+              {
+                id: "s3",
+                label: "Logged to your audit trail",
+                detail: "Action recorded for compliance",
+                status: "completed",
+              },
+            ],
+          },
+          paymentLink: {
             customerName: "Customer",
+            amount: "₹650.00",
+            description: "Kirana store custom order",
+            linkUrl: "https://rzp.io/l/test_pay_custom",
+            status: "active",
           },
         };
       } else {
         assistantMsg = {
           id: Math.random().toString(36).slice(2, 9),
           role: "assistant",
-          content: "Action processed successfully on your merchant catalog.",
-          actionType: "general",
+          content:
+            "Done! I've processed your request and recorded the action in your store's audit trail.\n\nEverything is logged so you can review it anytime from the Audit Log page.",
+          thinking: {
+            durationSeconds: 1,
+            summary: "Completed your store action and logged it.",
+          },
         };
       }
 
-      setMessages((prev) => [...prev, assistantMsg]);
       setIsTyping(false);
+      startStream(assistantMsg, setMessages);
     }, 600);
   };
 
-  const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex-1 flex flex-col min-h-0 h-full">
       <div className="flex items-center justify-between h-14 px-6 border-b border-border shrink-0 bg-surface">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-muted bg-surface-muted px-2 py-0.5 rounded-md border border-border">
@@ -119,75 +183,37 @@ export default function ChatSessionPage({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
-        <div className="mx-auto max-w-2xl space-y-6">
+      <div className="flex-1 overflow-y-auto min-h-0 px-4 sm:px-8 py-6">
+        <div className="mx-auto max-w-3xl space-y-2 animate-in fade-in duration-300">
           {messages.map((msg) => (
-            <div
+            <ChatMessageItem
               key={msg.id}
-              className={`flex ${
-                msg.role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              <div
-                className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm font-intert leading-relaxed transition-all ${
-                  msg.role === "user"
-                    ? "bg-surface-muted border border-border text-primary"
-                    : "bg-surface border border-border text-primary"
-                }`}
-              >
-                {msg.role === "assistant" && (
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-brand mb-2">
-                    <Sparkles size={13} />
-                    <span>MerchantAgent</span>
-                  </div>
-                )}
-
-                <p className="text-[14px] text-primary leading-relaxed">
-                  {msg.content}
-                </p>
-
-                {msg.actionType === "payment_link" && msg.metadata?.linkUrl && (
-                  <div className="mt-3 p-3 rounded-xl bg-bg border border-border flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <span className="text-[11px] font-mono text-muted block truncate">
-                        {msg.metadata.linkUrl}
-                      </span>
-                      <span className="text-xs font-semibold text-primary font-intert">
-                        {msg.metadata.amount} for {msg.metadata.customerName}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        copyToClipboard(msg.metadata!.linkUrl!, msg.id)
-                      }
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface border border-border hover:bg-surface-muted text-xs font-medium font-intert text-primary transition-colors shrink-0"
-                    >
-                      {copiedId === msg.id ? (
-                        <>
-                          <Check size={12} className="text-emerald-500" />
-                          <span>Copied</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy size={12} />
-                          <span>Copy Link</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+              message={msg}
+              isStreaming={msg.id === streamingId}
+            />
           ))}
 
           {isTyping && (
-            <div className="flex justify-start animate-in fade-in">
-              <div className="bg-surface border border-border rounded-2xl px-4 py-3 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-brand animate-bounce" />
-                <div className="w-2 h-2 rounded-full bg-brand animate-bounce [animation-delay:0.15s]" />
-                <div className="w-2 h-2 rounded-full bg-brand animate-bounce [animation-delay:0.3s]" />
-              </div>
+            <div className="my-6">
+              <ChatMessageItem
+                message={{
+                  id: "typing-indicator-session",
+                  role: "assistant",
+                  content: "",
+                  thinking: {
+                    durationSeconds: 1,
+                    summary: "Working on your request...",
+                    steps: [
+                      {
+                        id: "step-session-live",
+                        label: "Processing your store action...",
+                        status: "in_progress",
+                      },
+                    ],
+                  },
+                }}
+                isStreaming
+              />
             </div>
           )}
 
@@ -195,8 +221,8 @@ export default function ChatSessionPage({
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-border px-4 sm:px-6 py-4 bg-bg">
-        <div className="mx-auto max-w-2xl">
+      <div className="shrink-0 border-t border-border px-4 sm:px-8 py-4 bg-bg">
+        <div className="mx-auto max-w-3xl">
           <ChatInput
             value={query}
             onChange={setQuery}
