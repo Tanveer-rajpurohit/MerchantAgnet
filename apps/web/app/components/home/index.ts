@@ -1,6 +1,7 @@
 export { default as LandingPage } from "./LandingPage";
 export { default as Badge } from "./Badge";
 export { default as HeroSection } from "./HeroSection";
+export { default as InfoSection } from "./InfoSection";
 export { default as FeatureCarousel } from "./FeatureCarousel";
 export { default as SocialProofSection } from "./SocialProofSection";
 export { default as TestimonialsSection } from "./TestimonialsSection";

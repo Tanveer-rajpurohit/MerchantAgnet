@@ -5,8 +5,8 @@ import { CheckCircle2 } from "lucide-react";
 
 export default function FooterSection() {
   return (
-    <footer className="w-full pt-12 pb-0">
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row justify-between pb-10 gap-8">
+    <footer className="w-full bg-bg">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row justify-between pt-12 pb-10 gap-8">
         <div className="space-y-3">
           <Link
             href="/"

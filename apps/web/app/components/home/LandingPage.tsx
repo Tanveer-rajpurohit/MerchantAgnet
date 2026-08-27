@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import HeroSection from "./HeroSection";
+import InfoSection from "./InfoSection";
 import FeatureCarousel from "./FeatureCarousel";
 import SocialProofSection from "./SocialProofSection";
 import TestimonialsSection from "./TestimonialsSection";
@@ -45,6 +46,7 @@ export default function LandingPage() {
   return (
     <div className="w-full relative bg-bg text-primary flex flex-col items-center">
       <HeroSection activeCard={activeCard} />
+      <InfoSection />
       <FeatureCarousel
         activeCard={activeCard}
         progress={progress}
