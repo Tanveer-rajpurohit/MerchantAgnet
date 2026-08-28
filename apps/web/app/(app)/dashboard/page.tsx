@@ -1,7 +1,32 @@
+import {
+  StatCards,
+  QuickActions,
+  RecentActivity,
+  LowStock,
+} from "../../components/app/dashboard";
+
 export default function DashboardPage() {
   return (
-    <div className="flex h-full items-center justify-center">
-      <h1 className="text-2xl font-instrument text-primary">Dashboard</h1>
+    <div className="w-full h-full overflow-y-auto font-intert">
+      <div className="px-6 sm:px-10 lg:px-16 py-8 sm:py-10">
+        <div className="mb-8">
+          <h1 className="text-2xl sm:text-3xl font-instrument text-primary tracking-tight">
+            Good to see you, Sharma Store
+          </h1>
+          <p className="text-sm text-muted font-intert mt-1">
+            Here&apos;s what&apos;s happening across your store today.
+          </p>
+        </div>
+
+        <StatCards />
+
+        <QuickActions />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <RecentActivity />
+          <LowStock />
+        </div>
+      </div>
     </div>
   );
 }

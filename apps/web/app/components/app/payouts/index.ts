@@ -1,5 +1,9 @@
 export { PayoutsHeader } from "./PayoutsHeader";
 export { AccountOverview } from "./AccountOverview";
 export { PayoutHistoryTable } from "./PayoutHistoryTable";
+export { PaymentLinksTable } from "./PaymentLinksTable";
 export { WithdrawModal } from "./WithdrawModal";
-export * from "./types";
+export type {
+  PayoutRecord,
+  PaymentLinkRecord,
+} from "../../../types/payout/types";

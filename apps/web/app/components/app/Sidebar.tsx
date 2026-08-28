@@ -6,9 +6,9 @@ import { usePathname } from "next/navigation";
 import {
   Sparkles,
   BarChart3,
+  ClipboardList,
   Package,
-  CreditCard,
-  Wallet,
+  Users,
   Banknote,
   SlidersHorizontal,
   Plus,
@@ -27,9 +27,9 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: "/chat", label: "Chat", icon: Sparkles },
   { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
+  { href: "/orders", label: "Orders", icon: ClipboardList },
   { href: "/products", label: "Products", icon: Package },
-  { href: "/payment-links", label: "Payment Links", icon: CreditCard },
-  { href: "/expenses", label: "Expenses", icon: Wallet },
+  { href: "/customers", label: "Customers", icon: Users },
   { href: "/payouts", label: "Payouts", icon: Banknote },
   { href: "/settings", label: "Settings", icon: SlidersHorizontal },
 ];

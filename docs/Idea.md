@@ -60,3 +60,17 @@ _(Deliberately not included: an expense/budget-tracking step. That data doesn't 
 ## What Makes This Different From Razorpay's Existing Agent Studio
 
 Razorpay's shipped agents automate _operations_ for merchants already wired into modern commerce tooling (Shopify, Tally, QuickBooks). This targets merchants who aren't — the ones running on WhatsApp groups and paper ledgers — and adds the one piece Razorpay's current agents don't focus on: making that merchant's catalog something an _external_ AI agent can transact against, not just something their own chat can describe.
+
+## Order Management and WhatsApp AI Bill Dispatch
+
+Order Management provides a unified view of customer orders, itemized purchase breakdown, and outstanding balances.
+
+### Key Capabilities:
+
+1. **Transaction & Balance Tracking**: Track purchases across customers with real-time balance due, paid amounts, and statuses (All, Unpaid, Paid, Cancelled).
+2. **Searchable Customer & Product Autocomplete**: Add or edit items for existing unpaid orders with catalog suggestions, unit pricing, and quantity adjustments.
+3. **AI WhatsApp Assistant**:
+   - **Automated Bill Formatting**: The AI agent drafts personalized WhatsApp messages with itemized summaries, totals, and greetings.
+   - **Integrated Razorpay Payment Link**: Automatically generates a test-mode payment link embedded directly inside the WhatsApp message draft.
+   - **Polite Payment Reminders**: Generate targeted reminder drafts for outstanding dues with a single click.
+   - **One-Click Dispatch**: Opens directly in WhatsApp Web or mobile app with the prefilled message and link, allowing merchants to collect payments without leaving their natural workflow.

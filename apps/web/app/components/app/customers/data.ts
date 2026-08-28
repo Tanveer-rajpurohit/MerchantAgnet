@@ -1,0 +1,176 @@
+import type {
+  Customer,
+  ConnectionStatus,
+  ChatMessage,
+} from "../../../types/customer";
+
+export const MESSAGE_LIMIT = 3;
+
+export const CUSTOMERS: Customer[] = [
+  {
+    id: "1",
+    name: "Rahul Sharma",
+    phone: "+91 98xxxx1234",
+    status: "Connected",
+    totalSpent: "₹500",
+    lastActivity: "10 min ago",
+    messagesUsed: 0,
+    lastMessage: "Thanks for the order!",
+    lastMessageTime: "10m",
+    unread: 1,
+  },
+  {
+    id: "2",
+    name: "Priya Mehta",
+    phone: "+91 98xxxx5678",
+    status: "Connected",
+    totalSpent: "₹1,200",
+    lastActivity: "2 hrs ago",
+    messagesUsed: 0,
+    lastMessage: "Payment link received",
+    lastMessageTime: "2h",
+  },
+  {
+    id: "3",
+    name: "Ankit Verma",
+    phone: "+91 98xxxx9012",
+    status: "Connected",
+    totalSpent: "₹750",
+    lastActivity: "1 day ago",
+    messagesUsed: 0,
+    lastMessage: "Will order again tomorrow",
+    lastMessageTime: "1d",
+  },
+  {
+    id: "4",
+    name: "Sunita Rao",
+    phone: "+91 98xxxx3456",
+    status: "Connected",
+    totalSpent: "₹350",
+    lastActivity: "1 day ago",
+    messagesUsed: 0,
+    lastMessage: "Delivered, thank you",
+    lastMessageTime: "1d",
+  },
+  {
+    id: "5",
+    name: "Vikram Patel",
+    phone: "+91 98xxxx7890",
+    status: "Connected",
+    totalSpent: "₹2,100",
+    lastActivity: "5 days ago",
+    messagesUsed: 0,
+    lastMessage: "Can you send me the bill?",
+    lastMessageTime: "5d",
+  },
+  {
+    id: "6",
+    name: "Neha Gupta",
+    phone: "+91 98xxxx2345",
+    status: "Pending",
+    totalSpent: "₹0",
+    lastActivity: "Never purchased",
+    messagesUsed: 2,
+    lastMessage: "Hi, do you deliver?",
+    lastMessageTime: "3d",
+  },
+  {
+    id: "7",
+    name: "Meena Iyer",
+    phone: "+91 98xxxx6789",
+    status: "Pending",
+    totalSpent: "₹0",
+    lastActivity: "Never purchased",
+    messagesUsed: 3,
+    lastMessageTime: "1w",
+  },
+];
+
+export const CHAT_MESSAGES: Record<string, ChatMessage[]> = {
+  "1": [
+    {
+      id: "m1",
+      sender: "customer",
+      text: "Bhaiya, Maggi ka 12-pack hai?",
+      time: "10:20 AM",
+    },
+    {
+      id: "m2",
+      sender: "merchant",
+      text: "Haan Rahul bhai, ₹145 ka hai. Payment link bhejta hoon.",
+      time: "10:21 AM",
+    },
+    {
+      id: "m3",
+      sender: "merchant",
+      text: "https://rzp.io/l/test-rahul500",
+      time: "10:21 AM",
+    },
+    {
+      id: "m4",
+      sender: "customer",
+      text: "Done, payment ho gaya!",
+      time: "10:25 AM",
+    },
+    {
+      id: "m5",
+      sender: "merchant",
+      text: "Thanks for the order!",
+      time: "10:26 AM",
+    },
+  ],
+  "2": [
+    {
+      id: "m1",
+      sender: "merchant",
+      text: "Priya ji, monthly grocery order ka link bhej raha hoon.",
+      time: "Yesterday",
+    },
+    {
+      id: "m2",
+      sender: "merchant",
+      text: "https://rzp.io/l/test-priya1200",
+      time: "Yesterday",
+    },
+    {
+      id: "m3",
+      sender: "customer",
+      text: "Payment link received",
+      time: "Yesterday",
+    },
+  ],
+  "3": [
+    {
+      id: "m1",
+      sender: "customer",
+      text: "Diwali offer abhi bhi available hai?",
+      time: "Mon",
+    },
+    {
+      id: "m2",
+      sender: "merchant",
+      text: "Haan, ₹750 ka special combo hai.",
+      time: "Mon",
+    },
+    {
+      id: "m3",
+      sender: "customer",
+      text: "Will order again tomorrow",
+      time: "Mon",
+    },
+  ],
+  "6": [
+    {
+      id: "m1",
+      sender: "customer",
+      text: "Hi, do you deliver to Andheri?",
+      time: "Fri",
+    },
+    {
+      id: "m2",
+      sender: "merchant",
+      text: "Yes, we deliver within 5km.",
+      time: "Fri",
+    },
+  ],
+};

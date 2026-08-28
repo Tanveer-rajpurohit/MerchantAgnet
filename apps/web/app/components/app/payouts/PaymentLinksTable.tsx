@@ -1,25 +1,28 @@
+"use client";
+
 import { useState } from "react";
 import {
+  Copy,
+  ExternalLink,
   Check,
-  FileDown,
   ChevronLeft,
   ChevronRight,
   CalendarDays,
   X,
   Filter,
 } from "lucide-react";
-import { PayoutRecord } from "../../../types/payout/types";
+import { PaymentLinkRecord } from "../../../types/payout/types";
 import { SearchInput, StatusBadge } from "../utils";
 
-interface PayoutHistoryTableProps {
-  records: PayoutRecord[];
+interface PaymentLinksTableProps {
+  records: PaymentLinkRecord[];
   totalRecordsCount: number;
   search: string;
-  onSearchChange: (value: string) => void;
+  onSearchChange: (v: string) => void;
   statusFilter: string;
-  onStatusFilterChange: (value: string) => void;
+  onStatusFilterChange: (v: string) => void;
   dateFilter: string;
-  onDateChange: (date: string) => void;
+  onDateFilterChange: (v: string) => void;
   currentPage: number;
   onPageChange: (page: number) => void;
   itemsPerPage?: number;
@@ -34,13 +37,17 @@ function formatDisplayDate(iso: string): string {
   });
 }
 
-const STATUS_OPTIONS = ["All", "Settled", "Pending"];
+const STATUS_OPTIONS = ["All", "Pending", "Expired"];
 
-function getStatusVariant(status: string): "success" | "warning" {
-  return status === "Settled" ? "success" : "warning";
+function getStatusVariant(
+  status: PaymentLinkRecord["status"],
+): "success" | "warning" | "danger" {
+  if (status === "Paid") return "success";
+  if (status === "Pending") return "warning";
+  return "danger";
 }
 
-export function PayoutHistoryTable({
+export function PaymentLinksTable({
   records,
   totalRecordsCount,
   search,
@@ -48,23 +55,21 @@ export function PayoutHistoryTable({
   statusFilter,
   onStatusFilterChange,
   dateFilter,
-  onDateChange,
+  onDateFilterChange,
   currentPage,
   onPageChange,
   itemsPerPage = 10,
-}: PayoutHistoryTableProps) {
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+}: PaymentLinksTableProps) {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [receiptDownloaded, setReceiptDownloaded] = useState<string | null>(
-    null,
-  );
-
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const totalPages = Math.max(1, Math.ceil(totalRecordsCount / itemsPerPage));
   const safePage = Math.min(currentPage, totalPages);
 
-  const handleDownloadReceipt = (id: string) => {
-    setReceiptDownloaded(id);
-    setTimeout(() => setReceiptDownloaded(null), 2000);
+  const handleCopy = (link: PaymentLinkRecord) => {
+    navigator.clipboard?.writeText(link.linkUrl);
+    setCopiedId(link.id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
@@ -73,7 +78,7 @@ export function PayoutHistoryTable({
         <SearchInput
           value={search}
           onChange={onSearchChange}
-          placeholder="Search by description or amount..."
+          placeholder="Search by name, link or amount..."
           className="w-full sm:w-96"
         />
 
@@ -119,7 +124,7 @@ export function PayoutHistoryTable({
           {dateFilter && (
             <button
               type="button"
-              onClick={() => onDateChange("")}
+              onClick={() => onDateFilterChange("")}
               className="inline-flex items-center gap-1 px-2.5 py-2 sm:py-1.5 rounded-lg border border-border bg-surface text-xs font-medium font-intert text-secondary hover:text-primary hover:bg-surface-muted transition-colors cursor-pointer"
             >
               <X size={11} />
@@ -148,7 +153,7 @@ export function PayoutHistoryTable({
                   type="date"
                   value={dateFilter}
                   onChange={(e) => {
-                    onDateChange(e.target.value);
+                    onDateFilterChange(e.target.value);
                     setShowCalendar(false);
                   }}
                   max="2026-08-27"
@@ -162,56 +167,64 @@ export function PayoutHistoryTable({
       </div>
 
       <p className="text-xs text-muted font-intert mb-3">
-        {dateFilter
-          ? `Showing results for ${formatDisplayDate(dateFilter)}`
-          : `${totalRecordsCount} transactions`}
+        {totalRecordsCount} {totalRecordsCount === 1 ? "link" : "links"}
       </p>
 
       {records.length === 0 ? (
         <div className="py-16 text-center border border-border rounded-xl bg-surface">
           <p className="text-sm text-muted font-intert">
-            No transactions found.
+            No payment links match your filters.
           </p>
         </div>
       ) : (
         <>
           <div className="sm:hidden flex flex-col gap-2.5">
-            {records.map((record) => (
+            {records.map((r) => (
               <div
-                key={record.id}
+                key={r.id}
                 className="rounded-xl border border-border bg-surface p-4"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <p className="text-sm font-medium text-primary truncate">
-                    {record.description}
-                  </p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-primary truncate">
+                      {r.customerName}
+                    </p>
+                    <p className="text-xs text-muted mt-0.5 truncate">
+                      {r.description}
+                    </p>
+                  </div>
                   <StatusBadge
-                    label={record.status}
-                    variant={getStatusVariant(record.status)}
+                    label={r.status}
+                    variant={getStatusVariant(r.status)}
                   />
                 </div>
                 <div className="flex items-center justify-between pt-2.5 border-t border-border-subtle">
                   <div className="text-xs text-muted">
-                    {record.method} · {formatDisplayDate(record.date)}
+                    <span className="text-primary font-medium">{r.amount}</span>{" "}
+                    · {formatDisplayDate(r.date)}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-primary">
-                      {record.amount}
-                    </span>
+                  <div className="flex items-center gap-1.5">
                     <button
-                      type="button"
-                      onClick={() => handleDownloadReceipt(record.id)}
+                      onClick={() => handleCopy(r)}
                       className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-surface text-secondary hover:text-primary transition-colors"
                     >
-                      {receiptDownloaded === record.id ? (
+                      {copiedId === r.id ? (
                         <Check
                           size={14}
                           className="text-emerald-600 dark:text-emerald-400"
                         />
                       ) : (
-                        <FileDown size={14} />
+                        <Copy size={14} />
                       )}
                     </button>
+                    <a
+                      href={r.linkUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-surface text-secondary hover:text-primary transition-colors"
+                    >
+                      <ExternalLink size={14} />
+                    </a>
                   </div>
                 </div>
               </div>
@@ -222,54 +235,63 @@ export function PayoutHistoryTable({
             <table className="w-full text-sm font-intert">
               <thead>
                 <tr className="border-b border-border bg-surface-muted text-left text-xs text-muted uppercase tracking-wide">
+                  <th className="px-5 py-3 font-medium">Customer</th>
                   <th className="px-5 py-3 font-medium">Description</th>
-                  <th className="px-5 py-3 font-medium">Method</th>
-                  <th className="px-5 py-3 font-medium">Date</th>
                   <th className="px-5 py-3 font-medium">Amount</th>
                   <th className="px-5 py-3 font-medium">Status</th>
-                  <th className="px-5 py-3 font-medium text-right">Receipt</th>
+                  <th className="px-5 py-3 font-medium">Date</th>
+                  <th className="px-5 py-3 font-medium text-right">Link</th>
                 </tr>
               </thead>
               <tbody>
-                {records.map((record) => (
+                {records.map((r) => (
                   <tr
-                    key={record.id}
+                    key={r.id}
                     className="border-b border-border last:border-0 hover:bg-surface-muted/60 transition-colors"
                   >
                     <td className="px-5 py-3.5 text-primary font-medium">
-                      {record.description}
+                      {r.customerName}
                     </td>
-                    <td className="px-5 py-3.5 text-secondary">
-                      {record.method}
+                    <td className="px-5 py-3.5 text-secondary truncate max-w-[200px]">
+                      {r.description}
                     </td>
-                    <td className="px-5 py-3.5 text-secondary">
-                      {formatDisplayDate(record.date)}
-                    </td>
-                    <td className="px-5 py-3.5 text-primary font-medium">
-                      {record.amount}
+                    <td className="px-5 py-3.5 text-primary font-medium whitespace-nowrap">
+                      {r.amount}
                     </td>
                     <td className="px-5 py-3.5">
                       <StatusBadge
-                        label={record.status}
-                        variant={getStatusVariant(record.status)}
+                        label={r.status}
+                        variant={getStatusVariant(r.status)}
                       />
                     </td>
+                    <td className="px-5 py-3.5 text-secondary">
+                      {formatDisplayDate(r.date)}
+                    </td>
                     <td className="px-5 py-3.5">
-                      <div className="flex justify-end">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
-                          type="button"
-                          onClick={() => handleDownloadReceipt(record.id)}
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-surface hover:bg-surface-muted text-secondary hover:text-primary transition-colors cursor-pointer"
+                          onClick={() => handleCopy(r)}
+                          title="Copy link"
+                          className="flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-surface hover:bg-surface-muted text-secondary hover:text-primary transition-colors cursor-pointer"
                         >
-                          {receiptDownloaded === record.id ? (
+                          {copiedId === r.id ? (
                             <Check
                               size={14}
                               className="text-emerald-600 dark:text-emerald-400"
                             />
                           ) : (
-                            <FileDown size={14} />
+                            <Copy size={14} />
                           )}
                         </button>
+                        <a
+                          href={r.linkUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Open link"
+                          className="flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-surface hover:bg-surface-muted text-secondary hover:text-primary transition-colors"
+                        >
+                          <ExternalLink size={14} />
+                        </a>
                       </div>
                     </td>
                   </tr>
