@@ -9,6 +9,7 @@ import { AgentThinking, AgentStep } from "./AgentThinking";
 import { PaymentLinkCard } from "./PaymentLinkCard";
 import { CatalogStockCard, StockItem } from "./CatalogStockCard";
 import { CampaignGateCard } from "./CampaignGateCard";
+import { RevenueSummaryCard, RevenueMetric } from "./RevenueSummaryCard";
 
 export interface ChatMessageData {
   id: string;
@@ -22,6 +23,7 @@ export interface ChatMessageData {
   };
   paymentLink?: {
     customerName: string;
+    customerPhone?: string;
     amount: string;
     description: string;
     linkUrl: string;
@@ -38,6 +40,7 @@ export interface ChatMessageData {
     discountPercent: string;
     offerMessage: string;
   };
+  revenueSummary?: RevenueMetric;
 }
 
 interface ChatMessageItemProps {
@@ -161,6 +164,7 @@ export function ChatMessageItem({
         {message.paymentLink && (
           <PaymentLinkCard
             customerName={message.paymentLink.customerName}
+            customerPhone={message.paymentLink.customerPhone}
             amount={message.paymentLink.amount}
             description={message.paymentLink.description}
             linkUrl={message.paymentLink.linkUrl}
@@ -183,6 +187,10 @@ export function ChatMessageItem({
             discountPercent={message.campaignGate.discountPercent}
             offerMessage={message.campaignGate.offerMessage}
           />
+        )}
+
+        {message.revenueSummary && (
+          <RevenueSummaryCard data={message.revenueSummary} />
         )}
 
         {message.content && !isStreaming && (

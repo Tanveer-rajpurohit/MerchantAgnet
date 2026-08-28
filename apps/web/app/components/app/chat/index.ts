@@ -4,6 +4,8 @@ export { PaymentLinkCard } from "./PaymentLinkCard";
 export { CatalogStockCard } from "./CatalogStockCard";
 export type { StockItem } from "./CatalogStockCard";
 export { CampaignGateCard } from "./CampaignGateCard";
+export { RevenueSummaryCard } from "./RevenueSummaryCard";
+export type { RevenueMetric } from "./RevenueSummaryCard";
 export { ChatMessageItem } from "./ChatMessageItem";
 export type { ChatMessageData } from "./ChatMessageItem";
 export { ChatInput } from "./ChatInput";

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import ThemeToggle from "./ThemeToggle";
+import { AgentOrb } from "./app/utils";
 
 export default function Navbar() {
   const [progress, setProgress] = useState(0);
@@ -60,9 +61,10 @@ export default function Navbar() {
           <div className="flex items-center gap-6 sm:gap-8">
             <Link
               href="/"
-              className="text-primary font-instrument italic text-xl sm:text-2xl font-normal tracking-tight hover:opacity-85 transition-opacity"
+              className="flex items-center gap-2 text-primary font-instrument italic text-xl sm:text-2xl font-normal tracking-tight hover:opacity-85 transition-opacity"
             >
-              MerchantAgent
+              <AgentOrb size={20} className="not-italic text-brand" />
+              <span>MerchantAgent</span>
             </Link>
 
             <div className="hidden md:flex items-center gap-5 text-xs md:text-[13px] font-medium font-intert text-secondary">

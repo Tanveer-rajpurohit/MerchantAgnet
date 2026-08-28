@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   X,
   Copy,
   Check,
-  Link2,
   ExternalLink,
   ShieldCheck,
   MessageSquare,
   RefreshCw,
   BellRing,
+  Link2,
 } from "lucide-react";
 import type { Order } from "../../../types/order";
 
@@ -21,6 +21,20 @@ interface WhatsAppAIModalProps {
 }
 
 type GenerationMode = "both" | "reminder";
+
+function RazorpayIcon({ size = 12 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="currentColor"
+      className="shrink-0"
+    >
+      <path d="M22.436 0l-11.91 7.773-1.174 4.276 6.625-4.297L11.65 24h4.391l6.395-24zM14.26 10.098L3.389 17.166 1.564 24h9.008l3.688-13.902Z" />
+    </svg>
+  );
+}
 
 function WhatsAppIcon({ size = 18 }: { size?: number }) {
   return (
@@ -48,31 +62,43 @@ export function WhatsAppAIModal({
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [messageText, setMessageText] = useState("");
-
-  const dueAmount = order ? order.totalAmount - order.paidAmount : 0;
-  const paymentLink = order ? `https://rzp.io/l/ord-${order.id}` : "";
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
-    if (!isOpen || !order) {
-      setHasStarted(false);
-      setIsGenerating(false);
-      setStepIndex(0);
-      setMessageText("");
-      setMode("both");
-    }
-  }, [isOpen, order]);
+    return () => {
+      timersRef.current.forEach((t) => clearTimeout(t));
+      timersRef.current = [];
+    };
+  }, []);
 
   if (!isOpen || !order) return null;
 
+  const dueAmount = order.totalAmount - order.paidAmount;
+  const paymentLink = `https://rzp.io/l/ord-${order.id}`;
+
+  const handleClose = () => {
+    timersRef.current.forEach((t) => clearTimeout(t));
+    timersRef.current = [];
+    setHasStarted(false);
+    setIsGenerating(false);
+    setStepIndex(0);
+    setMessageText("");
+    setMode("both");
+    onClose();
+  };
+
   const triggerGeneration = (selectedMode: GenerationMode) => {
+    timersRef.current.forEach((t) => clearTimeout(t));
+    timersRef.current = [];
+
     setMode(selectedMode);
     setHasStarted(true);
     setIsGenerating(true);
     setStepIndex(0);
 
-    const timer1 = setTimeout(() => setStepIndex(1), 350);
-    const timer2 = setTimeout(() => setStepIndex(2), 700);
-    const timer3 = setTimeout(() => {
+    const t1 = setTimeout(() => setStepIndex(1), 350);
+    const t2 = setTimeout(() => setStepIndex(2), 700);
+    const t3 = setTimeout(() => {
       setIsGenerating(false);
       setStepIndex(3);
 
@@ -83,15 +109,15 @@ export function WhatsAppAIModal({
         )
         .join("\n");
 
-      let draft = "";
-      if (selectedMode === "both") {
-        draft = `Namaste ${order.customerName} ji! 🙏\nHere is your order summary from Sharma Store:\n\n📦 Order Items:\n${itemsList}\n\n💵 Total Bill: ₹${order.totalAmount}\n⏳ Amount Due: ₹${dueAmount}\n\n💳 Pay online instantly via Razorpay:\n${paymentLink}\n\nThank you for shopping with us!`;
-      } else {
-        draft = `Namaste ${order.customerName} ji! 🙏\nThis is a gentle reminder regarding your outstanding payment of ₹${dueAmount} for your recent order at Sharma Store.\n\n💳 Quick Online Payment Link:\n${paymentLink}\n\nPlease let us know once paid. Thank you!`;
-      }
+      const draft =
+        selectedMode === "both"
+          ? `Namaste ${order.customerName} ji! 🙏\nHere is your order summary from Sharma Store:\n\n📦 Order Items:\n${itemsList}\n\n💵 Total Bill: ₹${order.totalAmount}\n⏳ Amount Due: ₹${dueAmount}\n\n💳 Pay online instantly via Razorpay:\n${paymentLink}\n\nThank you for shopping with us!`
+          : `Namaste ${order.customerName} ji! 🙏\nThis is a gentle reminder regarding your outstanding payment of ₹${dueAmount} for your recent order at Sharma Store.\n\n💳 Quick Online Payment Link:\n${paymentLink}\n\nPlease let us know once paid. Thank you!`;
 
       setMessageText(draft);
     }, 1100);
+
+    timersRef.current = [t1, t2, t3];
   };
 
   const handleCopyLink = () => {
@@ -149,7 +175,7 @@ export function WhatsAppAIModal({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-primary hover:bg-surface-muted transition-colors cursor-pointer"
           >
             <X size={16} />
@@ -246,9 +272,9 @@ export function WhatsAppAIModal({
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-bg p-3.5">
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-5 h-5 rounded bg-[#02042B] text-[#3395FF] flex items-center justify-center text-[10px]">
-                    <Link2 size={11} />
+                <div className="flex items-center gap-2">
+                  <div className="flex h-5 w-5 items-center justify-center rounded-sm bg-[#02042B] text-[#3395FF] shrink-0">
+                    <RazorpayIcon size={11} />
                   </div>
                   <span className="text-xs font-medium text-primary">
                     Razorpay Payment Link

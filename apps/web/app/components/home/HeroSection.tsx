@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { Play } from "lucide-react";
 import gsap from "gsap";
 import { HERO_REVEAL_EVENT } from "../LoadingScreen";
 
@@ -20,12 +19,9 @@ export default function HeroSection() {
     const words = titleRef.current.querySelectorAll<HTMLElement>(".hero-word");
     gsap.set(words, { yPercent: 110, opacity: 0 });
 
-    let fallbackId: number;
-
     const reveal = () => {
       if (revealedRef.current) return;
       revealedRef.current = true;
-      window.clearTimeout(fallbackId);
       window.removeEventListener(HERO_REVEAL_EVENT, reveal);
 
       gsap.to(words, {
@@ -39,11 +35,11 @@ export default function HeroSection() {
     };
 
     window.addEventListener(HERO_REVEAL_EVENT, reveal, { once: true });
-    fallbackId = window.setTimeout(reveal, 2400);
+    const fallbackId = window.setTimeout(reveal, 2400);
 
     return () => {
-      window.removeEventListener(HERO_REVEAL_EVENT, reveal);
       window.clearTimeout(fallbackId);
+      window.removeEventListener(HERO_REVEAL_EVENT, reveal);
     };
   }, []);
 

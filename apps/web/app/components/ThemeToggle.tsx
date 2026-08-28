@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import gsap from "gsap";
 
 interface ThemeToggleProps {
@@ -14,15 +14,15 @@ export default function ThemeToggle({
   inline = false,
 }: ThemeToggleProps) {
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const raysRef = useRef<SVGGElement>(null);
   const centerRef = useRef<SVGCircleElement>(null);
   const maskRef = useRef<SVGCircleElement>(null);
   const isInitial = useRef(true);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const currentTheme = theme === "system" ? resolvedTheme : theme;
   const isDark = currentTheme === "dark";

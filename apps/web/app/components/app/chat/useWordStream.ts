@@ -3,8 +3,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { ChatMessageData } from "./ChatMessageItem";
 
-const WORDS_PER_TICK = 1;
-const TICK_MS = 28;
+const WORDS_PER_TICK = 2;
+const TICK_MS = 14;
 
 export function useWordStream() {
   const [streamingId, setStreamingId] = useState<string | null>(null);
@@ -43,6 +43,7 @@ export function useWordStream() {
         paymentLink: undefined,
         catalogStock: undefined,
         campaignGate: undefined,
+        revenueSummary: undefined,
       };
 
       setMessages((prev) => [...prev, partial]);

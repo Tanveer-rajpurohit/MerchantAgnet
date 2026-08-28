@@ -1,4 +1,5 @@
-import { Globe } from "lucide-react";
+import Link from "next/link";
+import { Globe, ArrowRight } from "lucide-react";
 
 const PROFILE_FIELDS = [
   { label: "Business Name", value: "Sharma Store" },
@@ -15,9 +16,17 @@ export function StoreProfileSection() {
             Store Profile
           </h2>
           <p className="text-xs text-muted font-intert mt-0.5">
-            Business details configured during onboarding.
+            Business details and merchant credentials.
           </p>
         </div>
+
+        <Link
+          href="/profile"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-bg hover:bg-surface-muted text-xs font-medium text-secondary hover:text-primary transition-colors"
+        >
+          <span>Edit Profile</span>
+          <ArrowRight size={12} />
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

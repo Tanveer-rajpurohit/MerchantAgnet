@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthLayout } from "../../components/auth/AuthLayout";
@@ -15,19 +15,15 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [strength, setStrength] = useState<Strength>(0);
 
-  useEffect(() => {
-    if (!password) {
-      setStrength(0);
-      return;
-    }
+  const strength = useMemo<Strength>(() => {
+    if (!password) return 0;
     let score = 0;
     if (password.length > 7) score++;
     if (/[A-Z]/.test(password)) score++;
     if (/[0-9]/.test(password)) score++;
     if (/[^A-Za-z0-9]/.test(password)) score++;
-    setStrength((score || 1) as Strength);
+    return (score || 1) as Strength;
   }, [password]);
 
   const router = useRouter();

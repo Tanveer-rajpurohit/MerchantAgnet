@@ -8,6 +8,7 @@ import {
   PaymentLinksTable,
   WithdrawModal,
 } from "../../components/app/payouts";
+import { PaymentLinkModal } from "../../components/app/utils";
 import type { PayoutRecord, PaymentLinkRecord } from "../../types/payout/types";
 
 const ALL_RECORDS: PayoutRecord[] = [
@@ -342,6 +343,7 @@ type PayoutsTab = "payouts" | "payment-links";
 export default function PayoutsPage() {
   const [activeTab, setActiveTab] = useState<PayoutsTab>("payouts");
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [showPaymentLinkModal, setShowPaymentLinkModal] = useState(false);
 
   const [payoutSearch, setPayoutSearch] = useState("");
   const [payoutStatusFilter, setPayoutStatusFilter] = useState("All");
@@ -407,7 +409,9 @@ export default function PayoutsPage() {
   return (
     <div className="w-full h-full overflow-y-auto font-intert">
       <div className="px-4 sm:px-10 lg:px-16 py-6 sm:py-10">
-        <PayoutsHeader />
+        <PayoutsHeader
+          onCreateLinkClick={() => setShowPaymentLinkModal(true)}
+        />
 
         <AccountOverview onWithdrawClick={() => setShowWithdrawModal(true)} />
 
@@ -472,6 +476,7 @@ export default function PayoutsPage() {
             currentPage={safeLinkPage}
             onPageChange={setLinkPage}
             itemsPerPage={ITEMS_PER_PAGE}
+            onCreateLinkClick={() => setShowPaymentLinkModal(true)}
           />
         )}
       </div>
@@ -479,6 +484,11 @@ export default function PayoutsPage() {
       <WithdrawModal
         isOpen={showWithdrawModal}
         onClose={() => setShowWithdrawModal(false)}
+      />
+
+      <PaymentLinkModal
+        isOpen={showPaymentLinkModal}
+        onClose={() => setShowPaymentLinkModal(false)}
       />
     </div>
   );

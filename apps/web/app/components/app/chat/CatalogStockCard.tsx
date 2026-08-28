@@ -1,6 +1,6 @@
 "use client";
 
-import { Package, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
 export interface StockItem {
   id: string;
@@ -24,18 +24,13 @@ export function CatalogStockCard({
   return (
     <div className="w-full my-4 rounded-2xl border border-border bg-surface p-4 sm:p-5 font-intert">
       <div className="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-brand/15 text-brand flex items-center justify-center shrink-0">
-            <Package size={15} />
-          </div>
-          <div>
-            <span className="text-xs font-semibold text-primary block leading-none">
-              {title}
-            </span>
-            <span className="text-[11px] text-muted">
-              Exact store inventory records
-            </span>
-          </div>
+        <div>
+          <span className="text-xs font-semibold text-primary block leading-none">
+            {title}
+          </span>
+          <span className="text-[11px] text-muted">
+            Exact store inventory records
+          </span>
         </div>
 
         <span className="text-xs text-muted font-mono">
@@ -55,7 +50,7 @@ export function CatalogStockCard({
             </div>
 
             <div className="text-right">
-              <span className="font-mono font-medium text-primary block">
+              <span className="font-intert font-medium text-primary block">
                 {item.sellingPrice}
               </span>
               <span className="text-[11px] text-muted">

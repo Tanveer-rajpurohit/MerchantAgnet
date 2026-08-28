@@ -1,11 +1,17 @@
+"use client";
+
+import { useState } from "react";
 import {
   StatCards,
   QuickActions,
   RecentActivity,
   LowStock,
 } from "../../components/app/dashboard";
+import { PaymentLinkModal } from "../../components/app/utils";
 
 export default function DashboardPage() {
+  const [showPaymentLinkModal, setShowPaymentLinkModal] = useState(false);
+
   return (
     <div className="w-full h-full overflow-y-auto font-intert">
       <div className="px-6 sm:px-10 lg:px-16 py-8 sm:py-10">
@@ -20,13 +26,20 @@ export default function DashboardPage() {
 
         <StatCards />
 
-        <QuickActions />
+        <QuickActions
+          onGeneratePaymentLink={() => setShowPaymentLinkModal(true)}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <RecentActivity />
           <LowStock />
         </div>
       </div>
+
+      <PaymentLinkModal
+        isOpen={showPaymentLinkModal}
+        onClose={() => setShowPaymentLinkModal(false)}
+      />
     </div>
   );
 }

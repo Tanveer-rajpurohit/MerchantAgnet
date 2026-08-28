@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Sparkles,
+  Bot,
   BarChart3,
   ClipboardList,
   Package,
@@ -13,19 +13,19 @@ import {
   SlidersHorizontal,
   Plus,
   ChevronsLeft,
-  ChevronsRight,
   Menu,
   X,
 } from "lucide-react";
+import { AgentOrb } from "./utils";
 
 interface NavItem {
   href: string;
   label: string;
-  icon: typeof Sparkles;
+  icon: typeof Bot;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/chat", label: "Chat", icon: Sparkles },
+  { href: "/chat", label: "Chat", icon: Bot },
   { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
   { href: "/orders", label: "Orders", icon: ClipboardList },
   { href: "/products", label: "Products", icon: Package },
@@ -90,25 +90,33 @@ export function Sidebar({ children }: SidebarProps) {
             <Link
               href="/chat"
               onClick={() => setMobileOpen(false)}
-              className="text-primary font-instrument italic text-xl tracking-tight"
+              className="flex items-center gap-2 text-primary font-instrument italic text-xl tracking-tight"
             >
-              MerchantAgent
+              <AgentOrb size={18} className="not-italic text-brand shrink-0" />
+              <span>MerchantAgent</span>
             </Link>
           </div>
+
+          {collapsed && (
+            <button
+              type="button"
+              onClick={() => setCollapsed(false)}
+              className="hidden md:flex items-center justify-center mx-auto text-brand hover:opacity-80 transition-opacity cursor-pointer"
+              title="Expand Sidebar"
+            >
+              <AgentOrb size={20} />
+            </button>
+          )}
 
           <button
             type="button"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             onClick={() => setCollapsed(!collapsed)}
             className={`hidden md:flex items-center justify-center w-8 h-8 rounded-lg text-muted hover:text-primary hover:bg-surface-muted transition-colors ${
-              collapsed ? "mx-auto" : ""
+              collapsed ? "hidden" : ""
             }`}
           >
-            {collapsed ? (
-              <ChevronsRight size={16} />
-            ) : (
-              <ChevronsLeft size={16} />
-            )}
+            <ChevronsLeft size={16} />
           </button>
 
           <button
@@ -201,11 +209,7 @@ export function Sidebar({ children }: SidebarProps) {
                     key={item.id}
                     href={`/chat/${item.id}`}
                     onClick={() => setMobileOpen(false)}
-                    className={`block truncate rounded-lg px-2.5 py-1.5 text-[13px] font-intert transition-colors ${
-                      pathname === `/chat/${item.id}`
-                        ? "bg-surface-muted text-primary font-medium"
-                        : "text-secondary hover:text-primary hover:bg-surface-muted"
-                    }`}
+                    className="block px-2.5 py-1.5 rounded-lg text-xs font-intert text-secondary hover:text-primary hover:bg-surface-muted transition-colors truncate"
                   >
                     {item.title}
                   </Link>
@@ -215,56 +219,56 @@ export function Sidebar({ children }: SidebarProps) {
           </div>
         </div>
 
-        {collapsed && <div className="hidden md:block flex-1" />}
-
-        <div className="mt-auto border-t border-border p-3 shrink-0">
+        <div className="p-2.5 border-t border-border mt-auto shrink-0">
           <Link
-            href="/settings"
+            href="/profile"
             onClick={() => setMobileOpen(false)}
-            title="Sharma Store (Settings)"
-            className={`flex items-center rounded-xl hover:bg-surface-muted transition-all group ${
-              collapsed
-                ? "md:justify-center md:p-0.5 px-2 py-1.5 gap-2.5"
-                : "px-2 py-1.5 gap-2.5"
+            className={`flex items-center gap-2.5 p-2 rounded-xl bg-surface-muted hover:bg-border/40 transition-all duration-300 ${
+              collapsed ? "md:justify-center md:p-1.5" : ""
             }`}
           >
-            <div className="w-8 h-8 rounded-full bg-brand/15 flex items-center justify-center text-brand text-xs font-semibold font-intert shrink-0 group-hover:ring-2 group-hover:ring-brand/30 transition-all">
-              S
+            <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center font-medium font-intert text-xs shrink-0">
+              ST
             </div>
             <div
-              className={`flex-1 min-w-0 overflow-hidden whitespace-nowrap transition-all duration-300 ${
+              className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
                 collapsed
                   ? "md:w-0 md:opacity-0 md:hidden"
-                  : "w-auto opacity-100"
+                  : "w-auto opacity-100 flex-1 min-w-0"
               }`}
             >
-              <p className="text-sm font-medium text-primary truncate font-intert">
+              <p className="text-xs font-medium font-intert text-primary truncate">
                 Sharma Store
               </p>
-              <p className="text-[11px] text-muted truncate font-intert">
-                Kirana / Grocery
+              <p className="text-[11px] text-muted font-intert truncate">
+                sharma@kirana.in
               </p>
             </div>
           </Link>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="flex items-center h-14 px-4 border-b border-border shrink-0 md:hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <header className="h-14 shrink-0 flex items-center justify-between px-4 border-b border-border bg-surface md:hidden">
           <button
             type="button"
-            aria-label="Open navigation menu"
+            aria-label="Open sidebar"
             onClick={() => setMobileOpen(true)}
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-secondary hover:text-primary hover:bg-surface-muted transition-colors cursor-pointer"
+            className="flex items-center justify-center w-8 h-8 rounded-lg text-muted hover:text-primary hover:bg-surface-muted transition-colors"
           >
             <Menu size={18} />
           </button>
-          <span className="ml-3 text-primary font-instrument italic text-lg">
-            MerchantAgent
-          </span>
+          <Link
+            href="/chat"
+            className="flex items-center gap-1.5 text-primary font-instrument italic text-lg tracking-tight"
+          >
+            <AgentOrb size={16} className="not-italic text-brand" />
+            <span>MerchantAgent</span>
+          </Link>
+          <div className="w-8" />
         </header>
 
-        <main className="flex-1 flex flex-col min-w-0 min-h-0 overflow-y-auto">
+        <main className="flex-1 overflow-hidden flex flex-col min-h-0 bg-bg">
           {children}
         </main>
       </div>

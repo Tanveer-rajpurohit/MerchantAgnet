@@ -110,9 +110,103 @@ export default function ChatSessionPage({
       const lower = text.toLowerCase();
 
       if (
+        lower.includes("revenue") ||
+        lower.includes("weekly") ||
+        lower.includes("growth") ||
+        lower.includes("performance") ||
+        lower.includes("settled") ||
+        lower.includes("sales") ||
+        (lower.includes("summary") && !lower.includes("bill"))
+      ) {
+        assistantMsg = {
+          id: Math.random().toString(36).slice(2, 9),
+          role: "assistant",
+          content: "Here is your weekly revenue and collection summary:",
+          revenueSummary: {
+            thisWeek: 18420,
+            lastWeek: 14250,
+            growthPercent: 29.2,
+            totalOrders: 42,
+            avgOrderValue: 438,
+            paymentMethods: {
+              upi: 64,
+              card: 24,
+              netbanking: 12,
+            },
+            aiInsight:
+              "Collection grew by 29.2% this week driven by repeat UPI orders. Dairy and beverage bundles saw the highest conversion.",
+          },
+        };
+      } else if (
+        mode === "campaign" ||
+        lower.includes("campaign") ||
+        lower.includes("diwali") ||
+        lower.includes("discount") ||
+        lower.includes("offer") ||
+        lower.includes("festive")
+      ) {
+        assistantMsg = {
+          id: Math.random().toString(36).slice(2, 9),
+          role: "assistant",
+          content:
+            "I have drafted the campaign for your approval before anything is sent:",
+          campaignGate: {
+            campaignName: "Diwali Festive Savings",
+            segmentDescription: "Top 20 Repeat Kirana Customers",
+            targetCount: 20,
+            discountPercent: "10% OFF",
+            offerMessage:
+              "Happy Diwali from Sharma Store! Enjoy 10% instant discount on your order today.",
+          },
+        };
+      } else if (
+        mode === "catalog" ||
+        lower.includes("stock") ||
+        lower.includes("inventory") ||
+        lower.includes("replenish") ||
+        lower.includes("restock") ||
+        lower.includes("alert")
+      ) {
+        assistantMsg = {
+          id: Math.random().toString(36).slice(2, 9),
+          role: "assistant",
+          content: "Here is your live inventory report for low-stock items:",
+          catalogStock: {
+            title: "Live Inventory & Stock Status",
+            items: [
+              {
+                id: "p1",
+                name: "Amul Taaza Milk 1L",
+                category: "Dairy & Staples",
+                currentStock: 4,
+                threshold: 10,
+                sellingPrice: "₹62.00",
+                status: "critical",
+              },
+              {
+                id: "p2",
+                name: "Fortune Sunflower Oil 1L",
+                category: "Edible Oils",
+                currentStock: 2,
+                threshold: 5,
+                sellingPrice: "₹145.00",
+                status: "low",
+              },
+            ],
+          },
+        };
+      } else if (
         mode === "payment-link" ||
-        lower.includes("link") ||
+        lower.includes("payment link") ||
+        lower.includes("create link") ||
+        lower.includes("send link") ||
+        lower.includes("generate link") ||
+        lower.includes("razorpay link") ||
+        lower.includes("pay link") ||
+        lower.includes("charge") ||
         lower.includes("₹") ||
+        lower.includes("rahul") ||
+        lower.includes("link") ||
         lower.includes("pay")
       ) {
         assistantMsg = {
@@ -147,6 +241,7 @@ export default function ChatSessionPage({
           },
           paymentLink: {
             customerName: "Customer",
+            customerPhone: "+91 98765 43210",
             amount: "₹650.00",
             description: "Kirana store custom order",
             linkUrl: "https://rzp.io/l/test_pay_custom",
@@ -158,7 +253,7 @@ export default function ChatSessionPage({
           id: Math.random().toString(36).slice(2, 9),
           role: "assistant",
           content:
-            "Done! I've processed your request and recorded the action in your store's audit trail.\n\nEverything is logged so you can review it anytime from the Audit Log page.",
+            "Done! I've processed your request and recorded the action in your store's audit trail.\n\nEverything is logged so you can review it anytime.",
           thinking: {
             durationSeconds: 1,
             summary: "Completed your store action and logged it.",

@@ -1,6 +1,7 @@
 "use client";
 
 import { Link2, Package, Megaphone, TrendingUp } from "lucide-react";
+import type { ActionMode } from "./ChatInput";
 
 interface SuggestionItem {
   id: string;
@@ -8,16 +9,17 @@ interface SuggestionItem {
   title: string;
   subtitle: string;
   prompt: string;
+  mode: ActionMode;
 }
 
 const SUGGESTIONS: SuggestionItem[] = [
   {
     id: "1",
     icon: Link2,
-    title: "Generate Razorpay Link",
+    title: "Generate Payment Link",
     subtitle: "Create a ₹500 payment link for Rahul's grocery order",
-    prompt:
-      "Generate a ₹500 Razorpay payment link for customer Rahul for grocery order",
+    prompt: "Generate a ₹500 payment link for customer Rahul",
+    mode: "payment-link",
   },
   {
     id: "2",
@@ -26,6 +28,7 @@ const SUGGESTIONS: SuggestionItem[] = [
     subtitle: "List products approaching replenishment threshold",
     prompt:
       "Show me all products in inventory that are below low stock alert limit",
+    mode: "catalog",
   },
   {
     id: "3",
@@ -34,32 +37,33 @@ const SUGGESTIONS: SuggestionItem[] = [
     subtitle: "Draft 10% discount offer for top 20 loyal buyers",
     prompt:
       "Draft a 10% Diwali discount campaign for my top 20 repeat customers and show the approval batch",
+    mode: "campaign",
   },
   {
     id: "4",
     icon: TrendingUp,
     title: "Weekly Revenue Summary",
-    subtitle: "Review settled links and growth trends",
-    prompt:
-      "Summarize this week's settled payment links and revenue performance",
+    subtitle: "Review weekly collections, growth trends and insights",
+    prompt: "Show weekly revenue summary and store performance",
+    mode: "default",
   },
 ];
 
 interface ChatSuggestionsProps {
-  onSelect: (prompt: string) => void;
+  onSelect: (prompt: string, mode?: ActionMode) => void;
 }
 
 export function ChatSuggestions({ onSelect }: ChatSuggestionsProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full font-intert">
       {SUGGESTIONS.map((item) => {
         const Icon = item.icon;
         return (
           <button
             key={item.id}
             type="button"
-            onClick={() => onSelect(item.prompt)}
-            className="flex items-start gap-3 p-3.5 rounded-xl border border-border bg-surface hover:bg-surface-muted/70 text-left transition-all group"
+            onClick={() => onSelect(item.prompt, item.mode)}
+            className="flex items-start gap-3 p-3.5 rounded-xl border border-border bg-surface hover:bg-surface-muted/70 text-left transition-all group cursor-pointer"
           >
             <div className="w-8 h-8 rounded-lg bg-surface-muted group-hover:bg-brand/15 text-muted group-hover:text-brand flex items-center justify-center shrink-0 transition-colors">
               <Icon size={16} />

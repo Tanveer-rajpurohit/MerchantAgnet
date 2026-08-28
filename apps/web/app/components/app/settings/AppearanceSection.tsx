@@ -1,16 +1,16 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Sun, Moon, Laptop } from "lucide-react";
 
 export function AppearanceSection() {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   const THEMES = [
     {
@@ -50,7 +50,7 @@ export function AppearanceSection() {
             key={t.id}
             type="button"
             onClick={() => setTheme(t.id)}
-            className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all ${
+            className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
               mounted && theme === t.id
                 ? "border-brand bg-brand/5 text-primary"
                 : "border-border bg-bg text-secondary hover:text-primary hover:bg-surface-muted"

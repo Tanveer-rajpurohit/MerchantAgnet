@@ -10,6 +10,7 @@ import {
   CalendarDays,
   X,
   Filter,
+  Plus,
 } from "lucide-react";
 import { PaymentLinkRecord } from "../../../types/payout/types";
 import { SearchInput, StatusBadge } from "../utils";
@@ -26,6 +27,7 @@ interface PaymentLinksTableProps {
   currentPage: number;
   onPageChange: (page: number) => void;
   itemsPerPage?: number;
+  onCreateLinkClick?: () => void;
 }
 
 function formatDisplayDate(iso: string): string {
@@ -59,6 +61,7 @@ export function PaymentLinksTable({
   currentPage,
   onPageChange,
   itemsPerPage = 10,
+  onCreateLinkClick,
 }: PaymentLinksTableProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -83,6 +86,17 @@ export function PaymentLinksTable({
         />
 
         <div className="flex items-center gap-2">
+          {onCreateLinkClick && (
+            <button
+              type="button"
+              onClick={onCreateLinkClick}
+              className="inline-flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg btn-brand-solid text-xs font-medium font-intert transition-opacity cursor-pointer shrink-0"
+            >
+              <Plus size={13} />
+              <span>Create Link</span>
+            </button>
+          )}
+
           <div className="relative">
             <button
               type="button"
