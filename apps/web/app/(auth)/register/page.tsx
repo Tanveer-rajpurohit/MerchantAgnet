@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Store, User } from "lucide-react";
 import { AuthLayout } from "../../components/auth/AuthLayout";
 import { AuthFormCard } from "../../components/auth/AuthFormCard";
 import { AuthInput } from "../../components/auth/AuthInput";
@@ -11,6 +12,7 @@ import { PasswordStrengthBar } from "../../components/auth/PasswordStrengthBar";
 type Strength = 0 | 1 | 2 | 3 | 4;
 
 export default function RegisterPage() {
+  const [role, setRole] = useState<"merchant" | "customer">("merchant");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,30 +32,74 @@ export default function RegisterPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    router.push("/onboarding");
+    if (role === "merchant") {
+      router.push("/onboarding");
+    } else {
+      router.push("/user");
+    }
   };
 
   return (
     <AuthLayout>
       <AuthFormCard>
-        <div className="mb-8">
-          <h1 className="font-instrument text-3xl text-primary mb-2">
+        <div className="mb-6">
+          <h1 className="font-instrument text-3xl text-primary mb-1.5">
             Create your account
           </h1>
-          <p className="font-intert text-secondary">
-            Start growing your merchant business in minutes.
+          <p className="font-intert text-secondary text-sm">
+            {role === "merchant"
+              ? "Start growing your merchant business with AI in minutes."
+              : "Shop and order from local stores via AI Copilot."}
           </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-surface-muted border border-border mb-6 font-intert">
+          <button
+            type="button"
+            onClick={() => setRole("merchant")}
+            className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+              role === "merchant"
+                ? "bg-surface text-primary shadow-xs font-semibold border border-border"
+                : "text-muted hover:text-primary"
+            }`}
+          >
+            <Store
+              size={13}
+              className={role === "merchant" ? "text-brand" : "text-muted"}
+            />
+            <span>Merchant / Seller</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setRole("customer")}
+            className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+              role === "customer"
+                ? "bg-surface text-primary shadow-xs font-semibold border border-border"
+                : "text-muted hover:text-primary"
+            }`}
+          >
+            <User
+              size={13}
+              className={role === "customer" ? "text-brand" : "text-muted"}
+            />
+            <span>Buyer / Customer</span>
+          </button>
         </div>
 
         <button
           type="button"
-          onClick={() => router.push("/onboarding")}
-          className="w-full flex items-center justify-center gap-2 bg-surface hover:bg-surface-muted border border-border text-primary transition-colors font-medium rounded-xl py-2.5 px-4 mb-6 font-intert"
+          onClick={() =>
+            role === "merchant"
+              ? router.push("/onboarding")
+              : router.push("/user")
+          }
+          className="w-full flex items-center justify-center gap-2 bg-surface hover:bg-surface-muted border border-border text-primary transition-colors font-medium rounded-xl py-2.5 px-4 mb-6 font-intert text-xs"
         >
           <svg
             viewBox="0 0 24 24"
-            width="20"
-            height="20"
+            width="18"
+            height="18"
             xmlns="http://www.w3.org/2000/svg"
           >
             <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238598)">
@@ -75,7 +121,7 @@ export default function RegisterPage() {
               />
             </g>
           </svg>
-          Google
+          Continue with Google
         </button>
 
         <div className="mb-6">
@@ -83,7 +129,7 @@ export default function RegisterPage() {
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-border-subtle"></div>
             </div>
-            <div className="relative flex justify-center text-sm">
+            <div className="relative flex justify-center text-xs">
               <span className="px-2 bg-bg text-muted font-intert">
                 or sign up with email
               </span>
@@ -91,91 +137,71 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="w-full">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <AuthInput
-            id="name"
+            label={role === "merchant" ? "Store Owner Name" : "Your Full Name"}
             type="text"
-            label="Full name"
-            placeholder="John Doe"
+            placeholder={
+              role === "merchant" ? "Tanveer Sharma" : "Rahul Sharma"
+            }
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
           />
 
           <AuthInput
-            id="email"
+            label="Email Address"
             type="email"
-            label="Work email"
-            placeholder="name@company.com"
+            placeholder="you@domain.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
 
-          <div className="mb-4">
+          <div>
             <AuthInput
-              id="password"
+              label="Password"
               type="password"
-              label="Create password"
-              placeholder="••••••••"
+              placeholder="Create a strong password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               showPasswordToggle
               required
-              className="mb-0"
             />
-            {password && <PasswordStrengthBar strength={strength} />}
+            {password.length > 0 && <PasswordStrengthBar strength={strength} />}
           </div>
 
           <AuthInput
-            id="confirmPassword"
+            label="Confirm Password"
             type="password"
-            label="Confirm password"
-            placeholder="••••••••"
+            placeholder="Re-enter your password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             showPasswordToggle
             required
           />
 
-          <div className="flex items-start mt-2 mb-6">
-            <div className="flex items-center h-5">
-              <input
-                id="terms"
-                type="checkbox"
-                required
-                className="h-4 w-4 rounded border-border text-brand focus:ring-brand accent-brand bg-surface mt-0.5"
-              />
-            </div>
-            <div className="ml-2 text-sm text-secondary font-intert leading-tight">
-              <label htmlFor="terms">
-                By creating an account, you agree to our{" "}
-                <Link href="/terms" className="link-brand">
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="/privacy" className="link-brand">
-                  Privacy Policy
-                </Link>
-                .
-              </label>
-            </div>
+          <div className="pt-2">
+            <button
+              type="submit"
+              className="w-full py-2.5 px-4 rounded-xl btn-brand-solid text-xs font-medium cursor-pointer shadow-xs"
+            >
+              {role === "merchant"
+                ? "Create Merchant Account"
+                : "Create Buyer Account"}
+            </button>
           </div>
-
-          <button
-            type="submit"
-            className="btn-brand-solid w-full shadow-xs font-medium rounded-xl py-3 px-4 font-intert flex items-center justify-center"
-          >
-            Create Account
-          </button>
         </form>
 
-        <div className="mt-8 text-center text-sm font-intert text-secondary">
+        <p className="mt-6 text-center text-xs text-muted font-intert">
           Already have an account?{" "}
-          <Link href="/login" className="link-brand font-medium">
+          <Link
+            href="/login"
+            className="text-primary hover:underline font-medium"
+          >
             Sign in
           </Link>
-        </div>
+        </p>
       </AuthFormCard>
     </AuthLayout>
   );
