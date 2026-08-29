@@ -10,6 +10,7 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.address import Address
     from app.models.merchant_profile import MerchantProfile
+    from app.models.user_settings import UserSettings
 
 class UserRole(str, enum.Enum):
     merchant = "merchant"
@@ -87,6 +88,12 @@ class User(Base):
     )
     merchant_profile: Mapped["MerchantProfile | None"] = relationship(
         "MerchantProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    settings: Mapped["UserSettings | None"] = relationship(
+        "UserSettings",
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan",

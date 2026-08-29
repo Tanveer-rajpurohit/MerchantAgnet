@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User, UserRole
 from app.models.merchant_profile import MerchantProfile
+from app.models.user_settings import UserSettings
 
 async def get_by_email(db: AsyncSession, email: str) -> User | None:
     result = await db.execute(select(User).where(User.email == email.strip().lower()))
@@ -38,6 +39,9 @@ async def create_user(
     )
     db.add(new_user)
     
+    settings = UserSettings(user=new_user)
+    db.add(settings)
+
     if role == UserRole.merchant:
         merchant_profile = MerchantProfile(
             user=new_user,
@@ -68,6 +72,9 @@ async def create_google_user(
         role=role,
     )
     db.add(new_user)
+
+    settings = UserSettings(user=new_user)
+    db.add(settings)
 
     if role == UserRole.merchant:
         merchant_profile = MerchantProfile(

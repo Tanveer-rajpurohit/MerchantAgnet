@@ -1,4 +1,4 @@
-# MerchantAgent — Database Design
+# MerchantAgent - Database Design
 
 ## Raw Schema (JSON)
 ```json
@@ -7,12 +7,11 @@
         "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
         "email": "VARCHAR(255) UNIQUE NOT NULL",
         "google_id": "VARCHAR(255) UNIQUE",
-        "phone_number": "VARCHAR(20) UNIQUE NOT NULL",
+        "phone_number": "VARCHAR(20) UNIQUE",
         "password_hash": "VARCHAR(255)",
         "role": "user_role NOT NULL",
         "full_name": "VARCHAR(255) NOT NULL",
         "profile_picture": "VARCHAR(255)",
-        "phone_number": "VARCHAR(255) UNIQUE",
         "is_phone_verified": "BOOLEAN NOT NULL DEFAULT false",
         "is_active": "BOOLEAN NOT NULL DEFAULT true",
         "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()",
@@ -45,11 +44,20 @@
         "razorpay_key_id_encrypted": "TEXT",
         "razorpay_key_secret_encrypted": "TEXT",
         "is_razorpay_active": "BOOLEAN NOT NULL DEFAULT false",
-        "onboarding_completed_at": "TIMESTAMPTZ",
+        "onboarding_completed_at": "TIMESTAMPTZ"
+    },
+
+    "user_settings": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "user_id": "UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE",
+        "show_mobile_number": "BOOLEAN NOT NULL DEFAULT true",
+        "show_email": "BOOLEAN NOT NULL DEFAULT false",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()",
+        "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
     },
 
     "enums": {
-        "user_role": ["merchant", "customer"],
+        "user_role": ["merchant", "customer"]
     }
 }
 ```
