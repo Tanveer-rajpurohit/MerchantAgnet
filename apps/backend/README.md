@@ -38,7 +38,31 @@ cp .env.example .env
 
 ---
 
-## 4. Run Development Server
+## 4. Database Migrations (Alembic)
+
+### Initialize Async Alembic (Already configured)
+```bash
+alembic init -t async alembic
+```
+
+### Generate Migration from SQLAlchemy Models
+```bash
+alembic revision --autogenerate -m "create_users_addresses_merchant_profiles"
+```
+
+### Apply Migrations to Database
+```bash
+alembic upgrade head
+```
+
+### Rollback Migration (if needed)
+```bash
+alembic downgrade -1
+```
+
+---
+
+## 5. Run Development Server
 
 ```bash
 uvicorn app.main:app --reload --port 8000
@@ -46,7 +70,7 @@ uvicorn app.main:app --reload --port 8000
 
 ---
 
-## 5. API Documentation & Health Check
+## 6. API Documentation & Health Check
 
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
