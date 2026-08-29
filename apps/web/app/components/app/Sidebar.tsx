@@ -10,6 +10,7 @@ import {
   Package,
   Users,
   Banknote,
+  History,
   SlidersHorizontal,
   Plus,
   ChevronsLeft,
@@ -31,6 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/products", label: "Products", icon: Package },
   { href: "/customers", label: "Customers", icon: Users },
   { href: "/payouts", label: "Payouts", icon: Banknote },
+  { href: "/audit-log", label: "Audit Log", icon: History },
   { href: "/settings", label: "Settings", icon: SlidersHorizontal },
 ];
 

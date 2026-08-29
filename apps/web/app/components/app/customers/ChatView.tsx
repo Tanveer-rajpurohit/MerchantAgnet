@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowUp, Lock, Paperclip, X } from "lucide-react";
 import type { Customer, ChatMessage } from "../../../types/customer";
-import { StatusBadge } from "../utils";
 import { MESSAGE_LIMIT } from "./data";
 
 interface ChatViewProps {
@@ -51,10 +50,9 @@ function CustomerProfilePopup({
           </div>
           <div>
             <p className="text-sm font-medium text-primary">{customer.name}</p>
-            <StatusBadge
-              label={customer.status}
-              variant={customer.status === "Connected" ? "success" : "warning"}
-            />
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium border border-emerald-500/20 shrink-0">
+                <span>Connected</span>
+            </span>
           </div>
         </div>
 
@@ -161,12 +159,13 @@ export function ChatView({ customer, messages }: ChatViewProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-border bg-surface shrink-0">
+      <div className="flex items-center gap-3.5 px-4 sm:px-6 py-[9px] border-b border-border bg-surface shrink-0">
         <Link
           href="/customers"
-          className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-bg hover:bg-surface-muted text-secondary hover:text-primary transition-colors shrink-0"
+          className="flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-bg hover:bg-surface-muted text-muted hover:text-primary transition-colors cursor-pointer shrink-0"
+          title="Back to Stores"
         >
-          <ArrowLeft size={16} />
+          <ArrowLeft size={14} />
         </Link>
 
         <button
@@ -183,12 +182,9 @@ export function ChatView({ customer, messages }: ChatViewProps) {
               <p className="text-sm font-medium text-primary truncate">
                 {customer.name}
               </p>
-              <StatusBadge
-                label={customer.status}
-                variant={
-                  customer.status === "Connected" ? "success" : "warning"
-                }
-              />
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium border border-emerald-500/20 shrink-0">
+                <span>Connected</span>
+              </span>
             </div>
             <p className="text-xs text-muted truncate">
               {customer.phone}
@@ -238,7 +234,7 @@ export function ChatView({ customer, messages }: ChatViewProps) {
         )}
       </div>
 
-      <div className="px-4 sm:px-6 py-3 border-t border-border bg-surface shrink-0">
+      <div className="px-4 sm:px-6 py-3 border-t border-border bg-bg shrink-0">
         {isBlocked ? (
           <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-surface-muted text-muted text-xs font-intert">
             <Lock size={13} />
