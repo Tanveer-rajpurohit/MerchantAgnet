@@ -1,5 +1,6 @@
 import uuid
 from fastapi import HTTPException, UploadFile, status
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.s3 import upload_file_to_s3
 from app.models.user import User
@@ -64,18 +65,28 @@ def _build_profile_response(user: User) -> ProfileResponse:
 
 async def get_profile(
     db: AsyncSession,
+    redis: Redis,
     user_id: uuid.UUID,
 ) -> ProfileResponse:
+    cache_key = f"profile:{user_id}"
+    cached_data = await redis.get(cache_key)
+    if cached_data:
+        return ProfileResponse.model_validate_json(cached_data)
+
     user = await profile_repository.get_user_with_relations(db, user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-    return _build_profile_response(user)
+
+    profile_response = _build_profile_response(user)
+    await redis.set(cache_key, profile_response.model_dump_json(), ex=3600)
+    return profile_response
 
 async def update_profile(
     db: AsyncSession,
+    redis: Redis,
     user_id: uuid.UUID,
     payload: UpdateProfileRequest,
 ) -> ProfileResponse:
@@ -135,17 +146,25 @@ async def update_profile(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-    return _build_profile_response(refreshed_user)
+
+    profile_response = _build_profile_response(refreshed_user)
+    cache_key = f"profile:{user_id}"
+    await redis.set(cache_key, profile_response.model_dump_json(), ex=3600)
+    return profile_response
 
 async def update_avatar(
     db: AsyncSession,
     user: User,
     file: UploadFile,
+    redis: Redis,
 ) -> AvatarResponse:
     avatar_url = await upload_file_to_s3(file, user.id)
     user.profile_picture = avatar_url
 
     await db.flush()
+
+    cache_key = f"profile:{user.id}"
+    await redis.delete(cache_key)
 
     return AvatarResponse(
         avatar_url=avatar_url,
@@ -171,6 +190,7 @@ async def get_settings(
 
 async def update_settings(
     db: AsyncSession,
+    redis: Redis,
     user_id: uuid.UUID,
     payload: UpdateSettingsRequest,
 ) -> SettingsResponse:
@@ -189,6 +209,10 @@ async def update_settings(
         settings.show_email = payload.show_email
 
     await db.flush()
+
+    cache_key = f"profile:{user_id}"
+    await redis.delete(cache_key)
+
     return SettingsResponse(
         show_mobile_number=settings.show_mobile_number,
         show_email=settings.show_email,

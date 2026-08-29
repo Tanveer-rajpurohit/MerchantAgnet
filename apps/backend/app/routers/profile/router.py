@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, UploadFile, File, status
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
+from app.db.redis import get_redis
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.services import profile_service
@@ -22,8 +24,9 @@ router = APIRouter(prefix="/profile", tags=["Profile & Settings"])
 async def get_profile(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
 ):
-    return await profile_service.get_profile(db, current_user.id)
+    return await profile_service.get_profile(db, redis, current_user.id)
 
 @router.put(
     "",
@@ -34,8 +37,9 @@ async def update_profile(
     payload: UpdateProfileRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
 ):
-    return await profile_service.update_profile(db, current_user.id, payload)
+    return await profile_service.update_profile(db, redis, current_user.id, payload)
 
 @router.post(
     "/avatar",
@@ -46,8 +50,9 @@ async def upload_avatar(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
 ):
-    return await profile_service.update_avatar(db, current_user, file)
+    return await profile_service.update_avatar(db, current_user, file, redis)
 
 @router.get(
     "/settings",
@@ -69,5 +74,6 @@ async def update_settings(
     payload: UpdateSettingsRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
 ):
-    return await profile_service.update_settings(db, current_user.id, payload)
+    return await profile_service.update_settings(db, redis, current_user.id, payload)
