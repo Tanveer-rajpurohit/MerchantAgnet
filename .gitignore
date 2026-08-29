@@ -5,18 +5,32 @@ node_modules
 .pnp
 .pnp.js
 
+# python virtual environments & cache
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
 # testing
 coverage
+.coverage
+htmlcov/
 
 # next.js
 .next/
 out/
-build
+build/
 .swc/
 
 # misc
 .DS_Store
 *.pem
+*.swp
 
 # debug
 npm-debug.log*
@@ -24,10 +38,12 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+!.env.example
 
 # turbo
 .turbo
