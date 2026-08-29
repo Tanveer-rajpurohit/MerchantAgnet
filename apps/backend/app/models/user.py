@@ -33,11 +33,12 @@ class User(Base):
         String(255),
         unique=True,
         nullable=True,
+        index=True,
     )
-    phone_number: Mapped[str] = mapped_column(
+    phone_number: Mapped[str | None] = mapped_column(
         String(20),
         unique=True,
-        nullable=False,
+        nullable=True,
         index=True,
     )
     password_hash: Mapped[str | None] = mapped_column(

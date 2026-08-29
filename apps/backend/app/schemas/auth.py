@@ -5,13 +5,16 @@ from app.models.user import UserRole
 class RegisterRequest(BaseModel):
     full_name: str = Field(min_length=2, max_length=255)
     email: EmailStr
-    phone_number: str = Field(min_length=10, max_length=20)
     password: str = Field(min_length=8, max_length=128)
     role: UserRole = UserRole.customer
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+class GoogleAuthRequest(BaseModel):
+    id_token: str
+    role: UserRole = UserRole.customer
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
@@ -33,7 +36,7 @@ class MessageResponse(BaseModel):
 class UserOut(BaseModel):
     id: uuid.UUID
     email: str
-    phone_number: str
+    phone_number: str | None = None
     full_name: str
     role: UserRole
     profile_picture: str | None = None

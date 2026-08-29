@@ -9,6 +9,7 @@ from app.services import auth_service
 from app.schemas.auth import (
     RegisterRequest,
     LoginRequest,
+    GoogleAuthRequest,
     RefreshTokenRequest,
     AuthTokensResponse,
     AccessTokenResponse,
@@ -41,6 +42,18 @@ async def login(
     redis: Redis = Depends(get_redis),
 ):
     return await auth_service.login_user(db, redis, payload)
+
+@router.post(
+    "/google",
+    response_model=AuthTokensResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def google_auth(
+    payload: GoogleAuthRequest,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+):
+    return await auth_service.google_login_user(db, redis, payload)
 
 @router.post(
     "/refresh",

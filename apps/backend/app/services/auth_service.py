@@ -8,11 +8,13 @@ from app.core.security import (
     create_access_token,
     generate_refresh_token,
 )
+from app.core.google_auth import verify_google_id_token
 from app.models.user import User
 from app.repositories import user_repository
 from app.schemas.auth import (
     RegisterRequest,
     LoginRequest,
+    GoogleAuthRequest,
     RefreshTokenRequest,
     AuthTokensResponse,
     AccessTokenResponse,
@@ -51,18 +53,12 @@ async def register_user(
             detail="Email is already registered",
         )
 
-    if await user_repository.get_by_phone(db, payload.phone_number):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Phone number is already registered",
-        )
-
     user = await user_repository.create_user(
         db=db,
         full_name=payload.full_name,
         email=payload.email,
-        phone_number=payload.phone_number,
         password_hash=hash_password(payload.password),
+        phone_number=None,
         role=payload.role,
     )
 
@@ -86,6 +82,41 @@ async def login_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account has been deactivated",
+        )
+
+    return await _create_session_tokens(redis, user)
+
+async def google_login_user(
+    db: AsyncSession,
+    redis: Redis,
+    payload: GoogleAuthRequest,
+) -> AuthTokensResponse:
+    google_user = verify_google_id_token(payload.id_token)
+    user = await user_repository.get_by_google_id(db, google_user.google_id)
+
+    if user is None:
+        user = await user_repository.get_by_email(db, google_user.email)
+        if user is not None:
+            user = await user_repository.link_google_id(
+                db=db,
+                user=user,
+                google_id=google_user.google_id,
+                profile_picture=google_user.picture,
+            )
+        else:
+            user = await user_repository.create_google_user(
+                db=db,
+                full_name=google_user.full_name,
+                email=google_user.email,
+                google_id=google_user.google_id,
+                profile_picture=google_user.picture,
+                role=payload.role,
+            )
 
     if not user.is_active:
         raise HTTPException(
