@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     )
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    AWS_ACCESS_KEY_ID: str = Field(default="", validation_alias=AliasChoices("AWS_ACCESS_KEY_ID"))
+    AWS_SECRET_ACCESS_KEY: str = Field(default="", validation_alias=AliasChoices("AWS_SECRET_ACCESS_KEY"))
+    AWS_REGION: str = Field(default="ap-south-1", validation_alias=AliasChoices("AWS_REGION"))
+    AWS_S3_BUCKET_NAME: str = Field(default="merchantagent-assets", validation_alias=AliasChoices("AWS_S3_BUCKET_NAME"))
     
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -50,3 +50,8 @@ class UpdateProfileRequest(BaseModel):
     upi_vpa: str | None = None
     preferred_language: str | None = None
     address: AddressDTO | None = None
+
+class AvatarResponse(BaseModel):
+    avatar_url: str
+    message: str = "Avatar updated successfully"
+    model_config = ConfigDict(from_attributes=True)

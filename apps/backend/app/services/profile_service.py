@@ -1,6 +1,7 @@
 import uuid
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.s3 import upload_file_to_s3
 from app.models.user import User
 from app.repositories import profile_repository
 from app.schemas.profile import (
@@ -10,6 +11,7 @@ from app.schemas.profile import (
     ProfileResponse,
     UpdateProfileRequest,
     UpdateSettingsRequest,
+    AvatarResponse,
 )
 
 def _build_profile_response(user: User) -> ProfileResponse:
@@ -134,6 +136,21 @@ async def update_profile(
             detail="User not found",
         )
     return _build_profile_response(refreshed_user)
+
+async def update_avatar(
+    db: AsyncSession,
+    user: User,
+    file: UploadFile,
+) -> AvatarResponse:
+    avatar_url = await upload_file_to_s3(file, user.id)
+    user.profile_picture = avatar_url
+
+    await db.flush()
+
+    return AvatarResponse(
+        avatar_url=avatar_url,
+        message="Avatar updated successfully",
+    )
 
 async def get_settings(
     db: AsyncSession,
