@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
@@ -9,16 +10,19 @@ from app.services import customer_connection_service
 from app.schemas.customer import (
     CustomerConnectionCreateRequest,
     CustomerConnectionResponse,
+    PaginatedCustomerConnectionResponse,
 )
 
 router = APIRouter(prefix="/customers", tags=["Customers"])
 
 @router.get(
     "",
-    response_model=list[CustomerConnectionResponse],
+    response_model=PaginatedCustomerConnectionResponse,
 )
 async def list_customers(
     status_filter: ConnectionStatus | None = Query(None, alias="status"),
+    cursor: datetime | None = Query(None),
+    limit: int = Query(30, ge=1, le=100),
     current_user: User = Depends(get_current_merchant),
     db: AsyncSession = Depends(get_db),
 ):
@@ -31,6 +35,8 @@ async def list_customers(
         db=db,
         merchant_id=current_user.merchant_profile.id,
         status_filter=status_filter,
+        cursor=cursor,
+        limit=limit,
     )
 
 @router.get(

@@ -23,3 +23,9 @@ class CustomerConnectionResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+class PaginatedCustomerConnectionResponse(BaseModel):
+    items: list[CustomerConnectionResponse]
+    next_cursor: datetime | None = None
+    has_more: bool
+    model_config = ConfigDict(from_attributes=True)

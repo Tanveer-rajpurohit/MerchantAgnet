@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,6 +44,8 @@ async def list_by_merchant(
     db: AsyncSession,
     merchant_id: uuid.UUID | str,
     status: ConnectionStatus | None = None,
+    cursor: datetime | None = None,
+    limit: int = 30,
 ) -> list[CustomerConnection]:
     m_id = uuid.UUID(str(merchant_id)) if isinstance(merchant_id, str) else merchant_id
     query = (
@@ -54,7 +57,10 @@ async def list_by_merchant(
     if status is not None:
         query = query.where(CustomerConnection.status == status)
 
-    query = query.order_by(CustomerConnection.updated_at.desc())
+    if cursor is not None:
+        query = query.where(CustomerConnection.updated_at < cursor)
+
+    query = query.order_by(CustomerConnection.updated_at.desc()).limit(limit + 1)
     result = await db.execute(query)
     return list(result.scalars().all())
 

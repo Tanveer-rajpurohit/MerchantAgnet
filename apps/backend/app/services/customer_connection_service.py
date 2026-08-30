@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User, UserRole
@@ -7,6 +8,7 @@ from app.repositories import customer_connection_repository
 from app.schemas.customer import (
     CustomerConnectionCreateRequest,
     CustomerConnectionResponse,
+    PaginatedCustomerConnectionResponse,
 )
 
 def to_response(connection: CustomerConnection) -> CustomerConnectionResponse:
@@ -31,13 +33,25 @@ async def list_merchant_customers(
     db: AsyncSession,
     merchant_id: uuid.UUID,
     status_filter: ConnectionStatus | None = None,
-) -> list[CustomerConnectionResponse]:
+    cursor: datetime | None = None,
+    limit: int = 30,
+) -> PaginatedCustomerConnectionResponse:
     connections = await customer_connection_repository.list_by_merchant(
         db=db,
         merchant_id=merchant_id,
         status=status_filter,
+        cursor=cursor,
+        limit=limit,
     )
-    return [to_response(c) for c in connections]
+    has_more = len(connections) > limit
+    items = connections[:limit]
+    next_cursor = items[-1].updated_at if has_more and items else None
+
+    return PaginatedCustomerConnectionResponse(
+        items=[to_response(c) for c in items],
+        next_cursor=next_cursor,
+        has_more=has_more,
+    )
 
 async def get_connection_by_id(
     db: AsyncSession,
