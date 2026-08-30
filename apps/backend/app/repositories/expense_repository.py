@@ -47,6 +47,7 @@ async def create_expense(
     )
     db.add(expense)
     await db.flush()
+    await db.refresh(expense)
     return expense
 
 async def bulk_replace_expenses(

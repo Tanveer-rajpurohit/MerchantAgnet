@@ -51,6 +51,7 @@ async def create_product(
     )
     db.add(product)
     await db.flush()
+    await db.refresh(product)
     return product
 
 async def bulk_replace_products(

@@ -33,6 +33,7 @@ async def update_product(db: AsyncSession, merchant_id: uuid.UUID, product_id: u
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(product, field, value)
     await db.flush()
+    await db.refresh(product)
     return ProductResponse.model_validate(product)
 
 async def delete_product(db: AsyncSession, merchant_id: uuid.UUID, product_id: uuid.UUID) -> None:

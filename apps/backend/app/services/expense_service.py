@@ -37,6 +37,7 @@ async def update_expense(db: AsyncSession, merchant_id: uuid.UUID, expense_id: u
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(expense, field, value)
     await db.flush()
+    await db.refresh(expense)
     return ExpenseResponse.model_validate(expense)
 
 async def batch_replace_expenses(db: AsyncSession, merchant_id: uuid.UUID, payload: ExpenseBatchRequest) -> list[ExpenseResponse]:
