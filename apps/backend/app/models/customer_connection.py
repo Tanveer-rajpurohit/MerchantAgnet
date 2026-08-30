@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
-from sqlalchemy import String, Integer, Numeric, DateTime, Enum as SAEnum, ForeignKey, func
+from sqlalchemy import Integer, Numeric, DateTime, Enum as SAEnum, ForeignKey, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
@@ -18,6 +18,9 @@ class ConnectionStatus(str, enum.Enum):
 
 class CustomerConnection(Base):
     __tablename__ = "customer_connections"
+    __table_args__ = (
+        UniqueConstraint("merchant_id", "customer_id", name="uq_merchant_customer"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -30,18 +33,9 @@ class CustomerConnection(Base):
         nullable=False,
         index=True,
     )
-    customer_id: Mapped[uuid.UUID | None] = mapped_column(
+    customer_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    customer_name: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-    )
-    customer_phone: Mapped[str] = mapped_column(
-        String(20),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -83,7 +77,7 @@ class CustomerConnection(Base):
         "MerchantProfile",
         back_populates="customer_connections",
     )
-    customer: Mapped["User | None"] = relationship(
+    customer: Mapped["User"] = relationship(
         "User",
         back_populates="customer_connections",
     )
