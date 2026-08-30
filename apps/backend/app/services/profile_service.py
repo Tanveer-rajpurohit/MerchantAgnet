@@ -246,13 +246,12 @@ async def update_settings(
 
     ai_dto: AIInfoDTO | None = None
     if payload.ai_info is not None and user.merchant_profile:
-        ai_info = profile_repository.get_or_create_ai_info(
-            db,
-            user.merchant_profile,
-            payload.ai_info.help_with,
+        ai_info = profile_repository.update_or_create_ai_info(
+            db=db,
+            merchant_profile=user.merchant_profile,
+            help_with=payload.ai_info.help_with,
+            rule=payload.ai_info.rule,
         )
-        ai_info.help_with = payload.ai_info.help_with
-        ai_info.rule = payload.ai_info.rule
         ai_dto = AIInfoDTO(
             help_with=ai_info.help_with,
             rule=ai_info.rule,

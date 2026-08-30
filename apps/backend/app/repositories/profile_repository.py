@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -82,14 +83,37 @@ def get_or_create_merchant_profile(db: AsyncSession, user: User) -> MerchantProf
     user.merchant_profile = profile
     return profile
 
-def get_or_create_ai_info(db: AsyncSession, merchant_profile: MerchantProfile, help_with: str = "") -> AIInfo:
+def update_or_create_ai_info(
+    db: AsyncSession,
+    merchant_profile: MerchantProfile,
+    help_with: str,
+    rule: str | None = None,
+) -> AIInfo:
     if merchant_profile.ai_info is not None:
+        merchant_profile.ai_info.help_with = help_with
+        merchant_profile.ai_info.rule = rule
         return merchant_profile.ai_info
+
     ai_info = AIInfo(
         merchant_profile=merchant_profile,
         help_with=help_with,
-        rule=None,
+        rule=rule,
     )
     db.add(ai_info)
     merchant_profile.ai_info = ai_info
     return ai_info
+
+async def complete_onboarding(
+    db: AsyncSession,
+    merchant_profile: MerchantProfile,
+    goals: str,
+    rules: str | None,
+) -> None:
+    update_or_create_ai_info(
+        db=db,
+        merchant_profile=merchant_profile,
+        help_with=goals,
+        rule=rules,
+    )
+    merchant_profile.onboarding_completed_at = datetime.now(timezone.utc)
+    await db.flush()
