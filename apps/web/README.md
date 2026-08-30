@@ -1,28 +1,58 @@
+# MerchantAgent — Frontend
+
+Next.js frontend for MerchantAgent, an AI growth agent for small Indian merchants (Razorpay Buildathon, Track 1 — AI Growth & Agentic Commerce).
+
 ## Getting Started
 
-First, run the development server:
-
 ```bash
-yarn dev
+pnpm install
+pnpm dev
 ```
 
-Open [http://localhost:3001](http://localhost:3001) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `src/app/page.tsx`. The page auto-updates as you edit the file.
+## Tech Stack
 
-To create [API routes](https://nextjs.org/docs/app/building-your-application/routing/router-handlers) add an `api/` directory to the `app/` directory with a `route.ts` file. For individual endpoints, create a subfolder in the `api` directory, like `api/hello/route.ts` would map to [http://localhost:3001/api/hello](http://localhost:3001/api/hello).
+- **Framework:** Next.js (App Router)
+- **Styling:** Tailwind CSS, custom design tokens in `app/globals.css` (light/dark, single orange brand accent)
+- **Fonts:** Satoshi (display), Inter Tight (body/UI), JetBrains Mono (data/numeric)
+- **Icons:** lucide-react
 
-## Learn More
+## Route Groups
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/
+├── (marketing)/          # Public landing page
+├── (auth)/                # Login, register (merchant/customer role split)
+├── onboarding/            # Merchant onboarding — profile, Razorpay connect, products, goals
+├── (app)/                 # Merchant dashboard
+│   ├── chat/               # Merchant-facing AI agent chat
+│   ├── dashboard/
+│   ├── orders/             # Orders + WhatsApp message generation
+│   ├── products/           # Catalog management
+│   ├── customers/          # Connected/Pending customer list + per-customer chat
+│   ├── payouts/            # Payouts + Payment Links (tabbed)
+│   ├── audit-log/
+│   └── settings/
+└── (user)/                # Customer-facing side
+    └── user/
+        ├── page.tsx         # Store directory → chat (single-route state machine)
+        ├── orders/
+        ├── profile/
+        └── settings/
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn/foundations/about-nextjs) - an interactive Next.js tutorial.
+## Key Design Decisions
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+- **Mobile-first tables:** long lists (Customers, Products, Payouts, Payment Links) render as card lists below the `sm` breakpoint and as tables above it — not a horizontally-scrolling table on mobile.
+- **One unified customer connection model:** customers are `Pending` (up to 3 messages before a real connection is required) or `Connected` (completed a purchase or accepted an add-request). Campaigns can only target `Connected` customers — this is the mechanism that prevents mass-messaging non-customers.
+- **Shared `FilterBar`** (search + status dropdown + date picker) used identically across Payouts and Payment Links tabs.
 
-## Deploy on Vercel
+## Currently Frontend-Only
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_source=github.com&utm_medium=referral&utm_campaign=turborepo-readme) from the creators of Next.js.
+This app is not yet wired to the backend — all data shown is local mock data (consistent demo dataset: "Sharma Store," a fixed set of customer/product names reused across pages). See `apps/backend/README.md` for backend setup and status.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+## Related Docs
+
+- `docs/Idea.md` / `docs/Idea(tech).md` — product concept and technical plan
+- `docs/Database Design.md` — schema for the tables the frontend expects
