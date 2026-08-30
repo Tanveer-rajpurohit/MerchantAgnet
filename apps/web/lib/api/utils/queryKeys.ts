@@ -8,6 +8,8 @@ export const queryKeys = {
   },
   onboarding: {
     root: ["onboarding"] as const,
+    expenses: ["onboarding", "expenses"] as const,
+    products: ["onboarding", "products"] as const,
   },
   products: {
     all: ["products"] as const,

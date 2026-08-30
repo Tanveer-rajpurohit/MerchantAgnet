@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Camera, Trash2, ShieldCheck } from "lucide-react";
+import { useProfile } from "../../../../hooks";
 
 interface ProfileAvatarSectionProps {
   name: string;
@@ -20,24 +21,31 @@ export function ProfileAvatarSection({
 }: ProfileAvatarSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const { uploadAvatar } = useProfile();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploading(true);
-    const reader = new FileReader();
-    reader.onload = () => {
-      onAvatarChange(reader.result as string);
+    try {
+      const res = await uploadAvatar(file);
+      onAvatarChange(res.avatar_url);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = () => {
+        onAvatarChange(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } finally {
       setIsUploading(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const getInitials = (text: string) => {
     return text
       .split(" ")
-      .map((w) => w[0])
+      .map((w: string) => w[0])
       .filter(Boolean)
       .slice(0, 2)
       .join("")
@@ -51,11 +59,11 @@ export function ProfileAvatarSection({
           <div className="relative group shrink-0">
             <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-brand/10 border-2 border-border overflow-hidden flex items-center justify-center text-brand font-medium text-xl shadow-xs">
               {avatarUrl ? (
-                <div
-                  className="w-full h-full bg-cover bg-center"
-                  style={{ backgroundImage: `url(${avatarUrl})` }}
-                  aria-label={name}
-                  role="img"
+                <img
+                  src={avatarUrl}
+                  alt={name}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 <span>{getInitials(name || storeName || "SS")}</span>
@@ -104,9 +112,10 @@ export function ProfileAvatarSection({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-1.5 rounded-xl border border-border bg-bg hover:bg-surface-muted text-xs font-medium text-secondary hover:text-primary transition-colors cursor-pointer"
+            disabled={isUploading}
+            className="px-3 py-1.5 rounded-xl border border-border bg-bg hover:bg-surface-muted text-xs font-medium text-secondary hover:text-primary transition-colors cursor-pointer disabled:opacity-50"
           >
-            Change Photo
+            {isUploading ? "Uploading..." : "Change Photo"}
           </button>
           {avatarUrl && (
             <button

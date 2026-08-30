@@ -8,7 +8,6 @@ from app.repositories import profile_repository
 from app.schemas.profile import (
     AddressDTO,
     MerchantProfileDTO,
-    ExpenseDTO,
     AIInfoDTO,
     SettingsResponse,
     ProfileResponse,
@@ -35,17 +34,6 @@ def _build_profile_response(user: User) -> ProfileResponse:
     merchant_dto: MerchantProfileDTO | None = None
     if user.merchant_profile is not None:
         mp = user.merchant_profile
-        expenses_dtos = [
-            ExpenseDTO(
-                id=e.id,
-                category=e.category,
-                amount=e.amount,
-                due_on=e.due_on,
-                notes=e.notes,
-            )
-            for e in mp.expenses
-        ] if mp.expenses else []
-
         merchant_dto = MerchantProfileDTO(
             business_name=mp.business_name,
             business_type=mp.business_type,
@@ -54,7 +42,6 @@ def _build_profile_response(user: User) -> ProfileResponse:
             upi_vpa=mp.upi_vpa,
             preferred_language=mp.preferred_language,
             is_razorpay_active=mp.is_razorpay_active,
-            expenses=expenses_dtos,
         )
 
     settings_dto: SettingsResponse | None = None

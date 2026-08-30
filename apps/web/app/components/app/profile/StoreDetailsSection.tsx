@@ -3,16 +3,15 @@
 import { Store, Tag, MapPin, FileText } from "lucide-react";
 
 export interface StoreDetailsData {
-  storeName: string;
-  category: string;
-  address: string;
-  cityState: string;
-  gstin: string;
+  storeName?: string;
+  category?: string;
+  address?: string;
+  cityState?: string;
+  gstin?: string;
 }
 
 interface StoreDetailsSectionProps {
-  data: StoreDetailsData;
-  onChange: (field: keyof StoreDetailsData, value: string) => void;
+  data?: StoreDetailsData;
 }
 
 const CATEGORIES = [
@@ -24,10 +23,7 @@ const CATEGORIES = [
   "General Retail",
 ];
 
-export function StoreDetailsSection({
-  data,
-  onChange,
-}: StoreDetailsSectionProps) {
+export function StoreDetailsSection({ data }: StoreDetailsSectionProps) {
   return (
     <section className="rounded-2xl border border-border bg-surface p-5 sm:p-6 font-intert">
       <div className="mb-4 pb-3 border-b border-border">
@@ -47,9 +43,10 @@ export function StoreDetailsSection({
             <span>Store / Business Name</span>
           </label>
           <input
+            name="storeName"
             type="text"
-            value={data.storeName}
-            onChange={(e) => onChange("storeName", e.target.value)}
+            defaultValue={data?.storeName || ""}
+            key={data?.storeName || ""}
             placeholder="Sharma Store"
             className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-border bg-bg text-primary focus:outline-none focus:border-brand/50 transition-colors"
           />
@@ -61,8 +58,9 @@ export function StoreDetailsSection({
             <span>Business Category</span>
           </label>
           <select
-            value={data.category}
-            onChange={(e) => onChange("category", e.target.value)}
+            name="category"
+            defaultValue={data?.category || CATEGORIES[0]}
+            key={data?.category || CATEGORIES[0]}
             className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-border bg-bg text-primary focus:outline-none focus:border-brand/50 transition-colors cursor-pointer"
           >
             {CATEGORIES.map((cat) => (
@@ -79,9 +77,10 @@ export function StoreDetailsSection({
             <span>Shop Address / Street Landmark</span>
           </label>
           <input
+            name="address"
             type="text"
-            value={data.address}
-            onChange={(e) => onChange("address", e.target.value)}
+            defaultValue={data?.address || ""}
+            key={data?.address || ""}
             placeholder="Shop #4, Link Road, Andheri West"
             className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-border bg-bg text-primary focus:outline-none focus:border-brand/50 transition-colors"
           />
@@ -93,9 +92,10 @@ export function StoreDetailsSection({
             <span>City & State</span>
           </label>
           <input
+            name="cityState"
             type="text"
-            value={data.cityState}
-            onChange={(e) => onChange("cityState", e.target.value)}
+            defaultValue={data?.cityState || ""}
+            key={data?.cityState || ""}
             placeholder="Mumbai, Maharashtra 400053"
             className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-border bg-bg text-primary focus:outline-none focus:border-brand/50 transition-colors"
           />
@@ -107,9 +107,10 @@ export function StoreDetailsSection({
             <span>GSTIN / Shop License (Optional)</span>
           </label>
           <input
+            name="gstin"
             type="text"
-            value={data.gstin}
-            onChange={(e) => onChange("gstin", e.target.value)}
+            defaultValue={data?.gstin || ""}
+            key={data?.gstin || ""}
             placeholder="27AAAAA0000A1Z5"
             className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-border bg-bg text-primary focus:outline-none focus:border-brand/50 transition-colors uppercase font-mono"
           />

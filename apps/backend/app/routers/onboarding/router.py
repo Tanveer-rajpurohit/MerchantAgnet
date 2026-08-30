@@ -13,6 +13,8 @@ from app.schemas.onboarding import (
     OnboardingProductsRequest,
     OnboardingCompleteRequest,
     OnboardingStepResponse,
+    OnboardingExpensesResponse,
+    OnboardingProductsResponse,
 )
 
 router = APIRouter(prefix="/onboarding", tags=["Merchant Onboarding"])
@@ -36,8 +38,30 @@ async def save_profile_step(
     )
     return await onboarding_service.save_onboarding_profile(
         db,
+        redis,
         current_user.id,
         payload,
+    )
+
+@router.get(
+    "/expenses",
+    response_model=OnboardingExpensesResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_expenses_step(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+):
+    await check_rate_limit(
+        redis=redis,
+        key=f"rate_limit:onboarding:get_expenses:{current_user.id}",
+        limit=30,
+        window_seconds=60,
+    )
+    return await onboarding_service.get_onboarding_expenses(
+        db,
+        current_user.id,
     )
 
 @router.put(
@@ -59,8 +83,30 @@ async def save_expenses_step(
     )
     return await onboarding_service.save_onboarding_expenses(
         db,
+        redis,
         current_user.id,
         payload,
+    )
+
+@router.get(
+    "/products",
+    response_model=OnboardingProductsResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_products_step(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+):
+    await check_rate_limit(
+        redis=redis,
+        key=f"rate_limit:onboarding:get_products:{current_user.id}",
+        limit=30,
+        window_seconds=60,
+    )
+    return await onboarding_service.get_onboarding_products(
+        db,
+        current_user.id,
     )
 
 @router.put(
@@ -82,6 +128,7 @@ async def save_products_step(
     )
     return await onboarding_service.save_onboarding_products(
         db,
+        redis,
         current_user.id,
         payload,
     )

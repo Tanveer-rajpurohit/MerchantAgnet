@@ -1,13 +1,19 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { AppearanceSection } from "../../../components/app/settings/AppearanceSection";
-import { SessionSection } from "../../../components/app/settings/SessionSection";
+import {
+  AppearanceSection,
+  PrivacySection,
+  SessionSection,
+} from "../../../components/app/settings";
+import { useAuth } from "../../../../context/AuthContext";
 
 export default function UserSettingsPage() {
   const router = useRouter();
+  const { logout } = useAuth();
 
   const handleSignOut = () => {
+    logout();
     router.push("/login");
   };
 
@@ -25,6 +31,7 @@ export default function UserSettingsPage() {
 
         <div className="space-y-6">
           <AppearanceSection />
+          <PrivacySection />
           <SessionSection onSignOut={handleSignOut} />
         </div>
       </div>

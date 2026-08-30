@@ -1,5 +1,10 @@
 import { Sidebar } from "../components/app";
+import { RoleGuard } from "../components/auth";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  return <Sidebar>{children}</Sidebar>;
+  return (
+    <RoleGuard allowedRole="merchant">
+      <Sidebar>{children}</Sidebar>
+    </RoleGuard>
+  );
 }

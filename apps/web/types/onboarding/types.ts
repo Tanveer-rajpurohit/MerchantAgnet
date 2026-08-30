@@ -20,6 +20,18 @@ export interface OnboardingExpenseRow {
   notes?: string | null;
 }
 
+export interface OnboardingExpenseDTO {
+  id: string;
+  category: string;
+  amount: number;
+  due_on?: string | null;
+  notes?: string | null;
+}
+
+export interface OnboardingExpensesResponse {
+  expenses: OnboardingExpenseDTO[];
+}
+
 export interface OnboardingExpensesPayload {
   expenses: OnboardingExpenseRow[];
 }
@@ -30,6 +42,19 @@ export interface OnboardingProductRow {
   selling_price: number | string;
   current_stock?: number;
   low_stock_alert?: number;
+}
+
+export interface OnboardingProductDTO {
+  id: string;
+  product_name: string;
+  cost_price: number;
+  selling_price: number;
+  current_stock: number;
+  low_stock_alert: number;
+}
+
+export interface OnboardingProductsResponse {
+  products: OnboardingProductDTO[];
 }
 
 export interface OnboardingProductsPayload {

@@ -1,5 +1,4 @@
 import uuid
-from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field
 
 class AddressDTO(BaseModel):
@@ -10,14 +9,6 @@ class AddressDTO(BaseModel):
     state: str | None = Field(None, max_length=100)
     pincode: str | None = Field(None, max_length=20)
     country: str = Field("India", max_length=100)
-    model_config = ConfigDict(from_attributes=True)
-
-class ExpenseDTO(BaseModel):
-    id: uuid.UUID | None = None
-    category: str = Field(..., min_length=1, max_length=100)
-    amount: Decimal = Field(..., ge=0)
-    due_on: str = Field("1st of month", max_length=50)
-    notes: str | None = Field(None, max_length=500)
     model_config = ConfigDict(from_attributes=True)
 
 class AIInfoDTO(BaseModel):
@@ -33,7 +24,6 @@ class MerchantProfileDTO(BaseModel):
     upi_vpa: str | None = None
     preferred_language: str = "English"
     is_razorpay_active: bool = False
-    expenses: list[ExpenseDTO] = []
     model_config = ConfigDict(from_attributes=True)
 
 class SettingsResponse(BaseModel):

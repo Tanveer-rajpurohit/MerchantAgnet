@@ -10,14 +10,6 @@ export interface AddressDTO {
   country?: string;
 }
 
-export interface ExpenseDTO {
-  id?: string | null;
-  category: string;
-  amount: number | string;
-  due_on?: string;
-  notes?: string | null;
-}
-
 export interface AIInfoDTO {
   help_with: string;
   rule?: string | null;
@@ -31,7 +23,6 @@ export interface MerchantProfileDTO {
   upi_vpa?: string | null;
   preferred_language?: string;
   is_razorpay_active?: boolean;
-  expenses?: ExpenseDTO[];
 }
 
 export interface SettingsResponse {

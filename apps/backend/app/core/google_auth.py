@@ -19,11 +19,12 @@ def verify_google_id_token(token: str) -> GoogleUserInfo:
             token,
             _google_request,
             settings.GOOGLE_CLIENT_ID if settings.GOOGLE_CLIENT_ID else None,
+            clock_skew_in_seconds=15,
         )
-    except ValueError:
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired Google authentication token",
+            detail=f"Invalid or expired Google authentication token: {str(e)}",
         )
 
     issuer = payload.get("iss")

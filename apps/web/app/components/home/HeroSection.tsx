@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import gsap from "gsap";
 import { HERO_REVEAL_EVENT } from "../LoadingScreen";
+import { useAuth } from "../../../context/AuthContext";
 
 const LINE_1 = ["Effortless", "custom", "commerce"];
 const LINE_2 = ["by"];
@@ -11,6 +12,7 @@ const LINE_2 = ["by"];
 export default function HeroSection() {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const revealedRef = useRef(false);
+  const { user, isAuthenticated, isOnboarded } = useAuth();
 
   useEffect(() => {
     if (!titleRef.current) return;
@@ -42,6 +44,8 @@ export default function HeroSection() {
       window.removeEventListener(HERO_REVEAL_EVENT, reveal);
     };
   }, []);
+
+  const destination = !isAuthenticated ? "/login" : (user?.role === "merchant" ? (isOnboarded ? "/chat" : "/onboarding") : "/user");
 
   return (
     <section className="brand-glow w-full pt-28 sm:pt-36 pb-12 sm:pb-16 flex flex-col items-center border-b border-border">
@@ -94,7 +98,7 @@ export default function HeroSection() {
 
         <div className="flex items-center justify-center mb-10 sm:mb-14">
           <Link
-            href="/chat"
+            href={destination}
             className="btn-brand-solid h-11 sm:h-12 px-8 sm:px-10 py-2.5 rounded-xl shadow-xs flex justify-center items-center active:scale-95 text-sm sm:text-[15px] font-medium font-intert"
           >
             Meet your assistant

@@ -1,30 +1,67 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { onboardingService } from "../lib/api/services/onboardingService";
+import { tokenStorage } from "../lib/api/utils/tokenStorage";
 import { queryKeys } from "../lib/api/utils/queryKeys";
 import type {
   OnboardingStepResponse,
   OnboardingProfilePayload,
   OnboardingExpensesPayload,
+  OnboardingExpensesResponse,
   OnboardingProductsPayload,
+  OnboardingProductsResponse,
   OnboardingCompletePayload,
+  UserOut,
+  ProfileResponse,
 } from "../types";
 
 export function useOnboarding() {
   const queryClient = useQueryClient();
 
+  const { data: savedExpensesData, isLoading: isLoadingExpenses } = useQuery<OnboardingExpensesResponse>({
+    queryKey: queryKeys.onboarding.expenses,
+    queryFn: () => onboardingService.getExpenses(),
+    enabled: tokenStorage.hasTokens(),
+  });
+
+  const { data: savedProductsData, isLoading: isLoadingProducts } = useQuery<OnboardingProductsResponse>({
+    queryKey: queryKeys.onboarding.products,
+    queryFn: () => onboardingService.getProducts(),
+    enabled: tokenStorage.hasTokens(),
+  });
+
   const saveProfileMutation = useMutation({
     mutationFn: (payload: OnboardingProfilePayload) => onboardingService.saveProfile(payload),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.profile.root });
+    onSuccess: (_, variables) => {
+      queryClient.setQueryData(queryKeys.profile.root, (old: ProfileResponse | null | undefined) => {
+        if (!old) return old;
+        return {
+          ...old,
+          merchant_profile: old.merchant_profile
+            ? {
+                ...old.merchant_profile,
+                business_name: variables.business_name,
+                business_type: variables.business_type,
+                business_description: variables.business_description || null,
+                preferred_language: variables.preferred_language || old.merchant_profile.preferred_language,
+              }
+            : null,
+          address: old.address
+            ? {
+                ...old.address,
+                city: variables.city,
+              }
+            : null,
+        };
+      });
     },
   });
 
   const saveExpensesMutation = useMutation({
     mutationFn: (payload: OnboardingExpensesPayload) => onboardingService.saveExpenses(payload),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.profile.root });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.expenses });
       await queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all });
     },
   });
@@ -32,7 +69,7 @@ export function useOnboarding() {
   const saveProductsMutation = useMutation({
     mutationFn: (payload: OnboardingProductsPayload) => onboardingService.saveProducts(payload),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.profile.root });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.products });
       await queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
     },
   });
@@ -40,6 +77,10 @@ export function useOnboarding() {
   const completeOnboardingMutation = useMutation({
     mutationFn: (payload: OnboardingCompletePayload) => onboardingService.completeOnboarding(payload),
     onSuccess: async () => {
+      queryClient.setQueryData(queryKeys.auth.me, (old: UserOut | null | undefined) => {
+        if (!old) return old;
+        return { ...old, is_onboarded: true };
+      });
       await queryClient.invalidateQueries({ queryKey: queryKeys.auth.me });
       await queryClient.invalidateQueries({ queryKey: queryKeys.profile.root });
     },
@@ -62,6 +103,10 @@ export function useOnboarding() {
   };
 
   return {
+    savedExpenses: savedExpensesData?.expenses ?? [],
+    savedProducts: savedProductsData?.products ?? [],
+    isLoadingExpenses,
+    isLoadingProducts,
     saveProfile,
     saveExpenses,
     saveProducts,

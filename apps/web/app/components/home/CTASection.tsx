@@ -1,6 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { useAuth } from "../../../context/AuthContext";
 
 export default function CTASection() {
+  const { user, isAuthenticated, isOnboarded } = useAuth();
+  const destination = !isAuthenticated ? "/register" : (user?.role === "merchant" ? (isOnboarded ? "/dashboard" : "/onboarding") : "/user");
+
   return (
     <section className="brand-glow w-full border-b border-border py-16 sm:py-24">
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 flex flex-col items-center text-center gap-6">
@@ -13,10 +19,10 @@ export default function CTASection() {
           </div>
         </div>
         <Link
-          href="/register"
+          href={destination}
           className="btn-brand-solid h-12 px-10 rounded-xl shadow-xs flex justify-center items-center text-sm font-medium font-intert active:scale-95 transition-all"
         >
-          Get started free
+          {isAuthenticated ? "Go to Dashboard" : "Get started free"}
         </Link>
       </div>
     </section>

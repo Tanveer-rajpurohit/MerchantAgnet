@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -24,6 +25,18 @@ class OnboardingExpenseRow(BaseModel):
 class OnboardingExpensesRequest(BaseModel):
     expenses: list[OnboardingExpenseRow] = []
 
+class OnboardingExpenseDTO(BaseModel):
+    id: uuid.UUID
+    category: str
+    amount: Decimal
+    due_on: str | None = None
+    notes: str | None = None
+    model_config = ConfigDict(from_attributes=True)
+
+class OnboardingExpensesResponse(BaseModel):
+    expenses: list[OnboardingExpenseDTO] = []
+    model_config = ConfigDict(from_attributes=True)
+
 class OnboardingProductRow(BaseModel):
     product_name: str = Field(..., min_length=1, max_length=255)
     cost_price: Decimal = Field(..., ge=0)
@@ -34,6 +47,19 @@ class OnboardingProductRow(BaseModel):
 class OnboardingProductsRequest(BaseModel):
     products: list[OnboardingProductRow] = []
     skip_inventory: bool = False
+
+class OnboardingProductDTO(BaseModel):
+    id: uuid.UUID
+    product_name: str
+    cost_price: Decimal
+    selling_price: Decimal
+    current_stock: int
+    low_stock_alert: int
+    model_config = ConfigDict(from_attributes=True)
+
+class OnboardingProductsResponse(BaseModel):
+    products: list[OnboardingProductDTO] = []
+    model_config = ConfigDict(from_attributes=True)
 
 class OnboardingCompleteRequest(BaseModel):
     selected_goals: list[str] = []

@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { AgentOrb } from "./utils";
+import { useAuth } from "../../../context/AuthContext";
 
 interface NavItem {
   href: string;
@@ -64,8 +65,18 @@ export function Sidebar({ children }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user } = useAuth();
 
   const grouped = groupByDate(MOCK_HISTORY);
+
+  const displayName = user?.full_name || "Merchant";
+  const displayEmail = user?.email || "";
+  const initials = displayName
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <div className="flex h-screen bg-bg overflow-hidden">
@@ -229,8 +240,17 @@ export function Sidebar({ children }: SidebarProps) {
               collapsed ? "md:justify-center md:p-1.5" : ""
             }`}
           >
-            <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center font-medium font-intert text-xs shrink-0">
-              ST
+            <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center font-medium font-intert text-xs shrink-0 overflow-hidden">
+              {user?.profile_picture ? (
+                <img
+                  src={user.profile_picture}
+                  alt={displayName}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span>{initials}</span>
+              )}
             </div>
             <div
               className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
@@ -240,10 +260,10 @@ export function Sidebar({ children }: SidebarProps) {
               }`}
             >
               <p className="text-xs font-medium font-intert text-primary truncate">
-                Sharma Store
+                {displayName}
               </p>
               <p className="text-[11px] text-muted font-intert truncate">
-                sharma@kirana.in
+                {displayEmail}
               </p>
             </div>
           </Link>

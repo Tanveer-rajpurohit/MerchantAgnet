@@ -10,9 +10,9 @@ import {
   ChevronsLeft,
   Menu,
   X,
-  ArrowLeft,
 } from "lucide-react";
 import { AgentOrb } from "../app/utils";
+import { useAuth } from "../../../context/AuthContext";
 
 interface UserNavItem {
   href: string;
@@ -48,6 +48,16 @@ export function UserSidebar({ children }: UserSidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user } = useAuth();
+
+  const displayName = user?.full_name || "Customer";
+  const displayContact = user?.email || user?.phone_number || "";
+  const initials = displayName
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <div className="flex h-screen bg-bg overflow-hidden font-intert">
@@ -174,26 +184,7 @@ export function UserSidebar({ children }: UserSidebarProps) {
           </div>
         </div>
 
-        <div className="p-2.5 border-t border-border mt-auto shrink-0 space-y-1.5">
-          <Link
-            href="/chat"
-            className={`flex items-center gap-2 p-2 rounded-xl text-xs text-muted hover:text-primary hover:bg-surface-muted transition-colors ${
-              collapsed ? "md:justify-center md:p-1.5" : ""
-            }`}
-            title="Switch to Merchant Workspace"
-          >
-            <ArrowLeft size={13} className="shrink-0" />
-            <span
-              className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
-                collapsed
-                  ? "md:w-0 md:opacity-0 md:hidden"
-                  : "w-auto opacity-100"
-              }`}
-            >
-              Merchant Portal
-            </span>
-          </Link>
-
+        <div className="p-2.5 border-t border-border mt-auto shrink-0">
           <Link
             href="/user/profile"
             onClick={() => setMobileOpen(false)}
@@ -202,8 +193,17 @@ export function UserSidebar({ children }: UserSidebarProps) {
             }`}
             title="View Profile"
           >
-            <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center font-medium text-xs shrink-0">
-              RS
+            <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center font-medium text-xs shrink-0 overflow-hidden">
+              {user?.profile_picture ? (
+                <img
+                  src={user.profile_picture}
+                  alt={displayName}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span>{initials}</span>
+              )}
             </div>
             <div
               className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
@@ -213,9 +213,9 @@ export function UserSidebar({ children }: UserSidebarProps) {
               }`}
             >
               <p className="text-xs font-medium text-primary truncate">
-                Rahul Sharma
+                {displayName}
               </p>
-              <p className="text-[11px] text-muted truncate">+91 98765 43210</p>
+              <p className="text-[11px] text-muted truncate">{displayContact}</p>
             </div>
           </Link>
         </div>

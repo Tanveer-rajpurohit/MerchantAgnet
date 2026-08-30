@@ -10,10 +10,15 @@ from app.schemas.onboarding import (
     OnboardingProductsRequest,
     OnboardingCompleteRequest,
     OnboardingStepResponse,
+    OnboardingExpenseDTO,
+    OnboardingExpensesResponse,
+    OnboardingProductDTO,
+    OnboardingProductsResponse,
 )
 
 async def save_onboarding_profile(
     db: AsyncSession,
+    redis: Redis,
     user_id: uuid.UUID,
     payload: OnboardingProfileRequest,
 ) -> OnboardingStepResponse:
@@ -47,10 +52,37 @@ async def save_onboarding_profile(
     addr.city = payload.city.strip()
 
     await db.flush()
+
+    cache_key = f"profile:{user_id}"
+    await redis.delete(cache_key)
+
     return OnboardingStepResponse(step="profile", status="saved")
+
+async def get_onboarding_expenses(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+) -> OnboardingExpensesResponse:
+    user = await profile_repository.get_user_with_relations(db, user_id)
+    if not user or user.role != UserRole.merchant or not user.merchant_profile:
+        return OnboardingExpensesResponse(expenses=[])
+
+    expenses = await expense_repository.list_by_merchant(db, user.merchant_profile.id)
+    return OnboardingExpensesResponse(
+        expenses=[
+            OnboardingExpenseDTO(
+                id=e.id,
+                category=e.category,
+                amount=e.amount,
+                due_on=e.due_on,
+                notes=e.notes,
+            )
+            for e in expenses
+        ]
+    )
 
 async def save_onboarding_expenses(
     db: AsyncSession,
+    redis: Redis,
     user_id: uuid.UUID,
     payload: OnboardingExpensesRequest,
 ) -> OnboardingStepResponse:
@@ -74,14 +106,43 @@ async def save_onboarding_expenses(
         expenses=payload.expenses,
     )
 
+    await db.flush()
+
+    cache_key = f"profile:{user_id}"
+    await redis.delete(cache_key)
+
     return OnboardingStepResponse(
         step="expenses",
         status="saved",
         count=saved_count,
     )
 
+async def get_onboarding_products(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+) -> OnboardingProductsResponse:
+    user = await profile_repository.get_user_with_relations(db, user_id)
+    if not user or user.role != UserRole.merchant or not user.merchant_profile:
+        return OnboardingProductsResponse(products=[])
+
+    products = await product_repository.list_by_merchant(db, user.merchant_profile.id, active_only=True)
+    return OnboardingProductsResponse(
+        products=[
+            OnboardingProductDTO(
+                id=p.id,
+                product_name=p.product_name,
+                cost_price=p.cost_price,
+                selling_price=p.selling_price,
+                current_stock=p.current_stock,
+                low_stock_alert=p.low_stock_alert,
+            )
+            for p in products
+        ]
+    )
+
 async def save_onboarding_products(
     db: AsyncSession,
+    redis: Redis,
     user_id: uuid.UUID,
     payload: OnboardingProductsRequest,
 ) -> OnboardingStepResponse:
@@ -105,6 +166,11 @@ async def save_onboarding_products(
         products=payload.products,
         skip_inventory=payload.skip_inventory,
     )
+
+    await db.flush()
+
+    cache_key = f"profile:{user_id}"
+    await redis.delete(cache_key)
 
     return OnboardingStepResponse(
         step="products",
@@ -154,6 +220,8 @@ async def complete_onboarding(
         goals=goals_str,
         rules=rules,
     )
+
+    await db.flush()
 
     cache_key = f"profile:{user_id}"
     await redis.delete(cache_key)

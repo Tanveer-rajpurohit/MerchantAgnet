@@ -4,6 +4,13 @@ import type { AccessTokenResponse, ApiErrorPayload, ApiValidationErrorItem } fro
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
+const NO_REFRESH_ROUTES = [
+  "/auth/login",
+  "/auth/register",
+  "/auth/refresh",
+  "/auth/google",
+];
+
 export class ApiError extends Error {
   status: number;
   data: unknown;
@@ -38,6 +45,10 @@ const processQueue = (error: unknown, token: string | null = null): void => {
   });
   failedQueue = [];
 };
+
+function isAuthRouteWithoutRefresh(endpoint: string): boolean {
+  return NO_REFRESH_ROUTES.some((route) => endpoint.includes(route));
+}
 
 async function executeRefresh(): Promise<string> {
   const refreshToken = tokenStorage.getRefreshToken();
@@ -130,7 +141,13 @@ export async function fetchClient<T>(
     throw new ApiError(0, "Network connection error", error);
   }
 
-  if (response.status === 401 && !skipAuth && !endpoint.includes("/auth/")) {
+  if (response.status === 401 && !skipAuth && !isAuthRouteWithoutRefresh(endpoint)) {
+    const refreshToken = tokenStorage.getRefreshToken();
+    if (!refreshToken) {
+      tokenStorage.clearTokens();
+      throw new ApiError(401, "Session expired, please sign in again");
+    }
+
     if (isRefreshing) {
       try {
         const newToken = await new Promise<string>((resolve, reject) => {

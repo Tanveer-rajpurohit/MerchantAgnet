@@ -3,7 +3,9 @@ import type {
   OnboardingStepResponse,
   OnboardingProfilePayload,
   OnboardingExpensesPayload,
+  OnboardingExpensesResponse,
   OnboardingProductsPayload,
+  OnboardingProductsResponse,
   OnboardingCompletePayload,
 } from "../../../types";
 
@@ -14,10 +16,18 @@ export const onboardingService = {
     return await api.put<OnboardingStepResponse>("/onboarding/profile", payload);
   },
 
+  async getExpenses(): Promise<OnboardingExpensesResponse> {
+    return await api.get<OnboardingExpensesResponse>("/onboarding/expenses");
+  },
+
   async saveExpenses(
     payload: OnboardingExpensesPayload
   ): Promise<OnboardingStepResponse> {
     return await api.put<OnboardingStepResponse>("/onboarding/expenses", payload);
+  },
+
+  async getProducts(): Promise<OnboardingProductsResponse> {
+    return await api.get<OnboardingProductsResponse>("/onboarding/products");
   },
 
   async saveProducts(

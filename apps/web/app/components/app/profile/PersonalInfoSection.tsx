@@ -3,21 +3,17 @@
 import { User, Phone, Mail, ShieldCheck } from "lucide-react";
 
 export interface PersonalInfoData {
-  fullName: string;
-  phone: string;
-  email: string;
-  alternatePhone: string;
+  fullName?: string;
+  phone?: string;
+  email?: string;
+  alternatePhone?: string;
 }
 
 interface PersonalInfoSectionProps {
-  data: PersonalInfoData;
-  onChange: (field: keyof PersonalInfoData, value: string) => void;
+  data?: PersonalInfoData;
 }
 
-export function PersonalInfoSection({
-  data,
-  onChange,
-}: PersonalInfoSectionProps) {
+export function PersonalInfoSection({ data }: PersonalInfoSectionProps) {
   return (
     <section className="rounded-2xl border border-border bg-surface p-5 sm:p-6 font-intert">
       <div className="mb-4 pb-3 border-b border-border">
@@ -36,9 +32,10 @@ export function PersonalInfoSection({
             <span>Full Name</span>
           </label>
           <input
+            name="fullName"
             type="text"
-            value={data.fullName}
-            onChange={(e) => onChange("fullName", e.target.value)}
+            defaultValue={data?.fullName || ""}
+            key={data?.fullName || ""}
             placeholder="e.g. Tanveer Sharma"
             className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-border bg-bg text-primary focus:outline-none focus:border-brand/50 transition-colors"
           />
@@ -56,9 +53,10 @@ export function PersonalInfoSection({
             </span>
           </div>
           <input
+            name="phone"
             type="tel"
-            value={data.phone}
-            onChange={(e) => onChange("phone", e.target.value)}
+            defaultValue={data?.phone || ""}
+            key={data?.phone || ""}
             placeholder="+91 98765 43210"
             className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-border bg-bg text-primary focus:outline-none focus:border-brand/50 transition-colors font-intert"
           />
@@ -76,7 +74,8 @@ export function PersonalInfoSection({
           </div>
           <input
             type="email"
-            value={data.email}
+            defaultValue={data?.email || ""}
+            key={data?.email || ""}
             readOnly
             disabled
             className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-border bg-surface-muted text-muted cursor-not-allowed font-intert"
@@ -89,9 +88,10 @@ export function PersonalInfoSection({
             <span>Alternate Contact / Landline</span>
           </label>
           <input
+            name="alternatePhone"
             type="tel"
-            value={data.alternatePhone}
-            onChange={(e) => onChange("alternatePhone", e.target.value)}
+            defaultValue={data?.alternatePhone || ""}
+            key={data?.alternatePhone || ""}
             placeholder="+91 22 2630 1100"
             className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-border bg-bg text-primary focus:outline-none focus:border-brand/50 transition-colors font-intert"
           />

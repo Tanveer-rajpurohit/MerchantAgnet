@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import ThemeToggle from "./ThemeToggle";
 import { AgentOrb } from "./app/utils";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Navbar() {
   const [progress, setProgress] = useState(0);
+  const { user, isAuthenticated, isOnboarded } = useAuth();
 
   useEffect(() => {
     let animationFrameId: number;
@@ -35,6 +37,8 @@ export default function Navbar() {
   const navMarginTop = 16 - progress * 4;
   const navPaddingY = 12 - progress * 4;
   const navPaddingX = 24 - progress * 6;
+
+  const appDestination = !isAuthenticated ? "/login" : (user?.role === "merchant" ? (isOnboarded ? "/chat" : "/onboarding") : "/user");
 
   return (
     <header className="fixed top-0 left-0 right-0 z-40 pointer-events-none">
@@ -92,10 +96,10 @@ export default function Navbar() {
           <div className="flex items-center gap-2.5">
             <ThemeToggle inline />
             <Link
-              href="/login"
+              href={appDestination}
               className="px-4 py-1.5 bg-brand text-white shadow-xs rounded-xl flex justify-center items-center text-xs md:text-[13px] font-medium font-intert hover:opacity-90 active:scale-95 transition-all"
             >
-              Launch App
+              {isAuthenticated ? "Open App" : "Launch App"}
             </Link>
           </div>
         </nav>

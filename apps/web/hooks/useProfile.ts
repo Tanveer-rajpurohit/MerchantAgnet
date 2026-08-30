@@ -29,25 +29,38 @@ export function useProfile() {
 
   const updateProfileMutation = useMutation({
     mutationFn: (payload: UpdateProfilePayload) => profileService.updateProfile(payload),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.profile.root });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.auth.me });
+    onSuccess: (updatedProfile) => {
+      queryClient.setQueryData(queryKeys.profile.root, updatedProfile);
+      if (updatedProfile.settings) {
+        queryClient.setQueryData(queryKeys.profile.settings, updatedProfile.settings);
+      }
     },
   });
 
   const uploadAvatarMutation = useMutation({
     mutationFn: (file: File) => profileService.uploadAvatar(file),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.profile.root });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.auth.me });
+    onSuccess: (avatarData) => {
+      queryClient.setQueryData<ProfileResponse>(queryKeys.profile.root, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          profile_picture: avatarData.avatar_url,
+        };
+      });
     },
   });
 
   const updateSettingsMutation = useMutation({
     mutationFn: (payload: UpdateSettingsPayload) => profileService.updateSettings(payload),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.profile.settings });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.profile.root });
+    onSuccess: (updatedSettings) => {
+      queryClient.setQueryData(queryKeys.profile.settings, updatedSettings);
+      queryClient.setQueryData<ProfileResponse>(queryKeys.profile.root, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          settings: updatedSettings,
+        };
+      });
     },
   });
 
