@@ -38,6 +38,7 @@
         "user_id": "UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE",
         "business_name": "VARCHAR(255) NOT NULL",
         "business_type": "VARCHAR(100) NOT NULL",
+        "business_description": "TEXT",
         "gstin": "VARCHAR(15)",
         "upi_vpa": "VARCHAR(100)",
         "preferred_language": "VARCHAR(20) NOT NULL DEFAULT 'English'",
@@ -52,6 +53,39 @@
         "user_id": "UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE",
         "show_mobile_number": "BOOLEAN NOT NULL DEFAULT true",
         "show_email": "BOOLEAN NOT NULL DEFAULT false",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()",
+        "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
+    },
+
+    "info_ai": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "merchant_id": "UUID UNIQUE NOT NULL REFERENCES merchant_profiles(id) ON DELETE CASCADE",
+        "help_with": "TEXT NOT NULL",
+        "rule": "TEXT",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()",
+        "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
+    },
+
+    "expenses": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "merchant_id": "UUID NOT NULL REFERENCES merchant_profiles(id) ON DELETE CASCADE",
+        "category": "VARCHAR(100) NOT NULL",
+        "amount": "NUMERIC(10,2) NOT NULL",
+        "due_on": "VARCHAR(50) NOT NULL DEFAULT '1st of month'",
+        "notes": "TEXT",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()",
+        "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
+    },
+
+    "products": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "merchant_id": "UUID NOT NULL REFERENCES merchant_profiles(id) ON DELETE CASCADE",
+        "product_name": "VARCHAR(255) NOT NULL",
+        "cost_price": "NUMERIC(10,2) NOT NULL",
+        "selling_price": "NUMERIC(10,2) NOT NULL",
+        "current_stock": "INTEGER NOT NULL DEFAULT 0",
+        "low_stock_alert": "INTEGER NOT NULL DEFAULT 0",
+        "is_active": "BOOLEAN NOT NULL DEFAULT true",
         "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()",
         "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
     },

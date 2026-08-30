@@ -8,6 +8,9 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.user import User
+    from app.models.product import Product
+    from app.models.expense import Expense
+    from app.models.ai_info import AIInfo
 
 class MerchantProfile(Base):
     __tablename__ = "merchant_profiles"
@@ -31,6 +34,10 @@ class MerchantProfile(Base):
     business_type: Mapped[str] = mapped_column(
         String(100),
         nullable=False,
+    )
+    business_description: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
     )
     gstin: Mapped[str | None] = mapped_column(
         String(15),
@@ -66,4 +73,20 @@ class MerchantProfile(Base):
     user: Mapped["User"] = relationship(
         "User",
         back_populates="merchant_profile",
+    )
+    ai_info: Mapped["AIInfo | None"] = relationship(
+        "AIInfo",
+        back_populates="merchant_profile",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    expenses: Mapped[list["Expense"]] = relationship(
+        "Expense",
+        back_populates="merchant_profile",
+        cascade="all, delete-orphan",
+    )
+    products: Mapped[list["Product"]] = relationship(
+        "Product",
+        back_populates="merchant_profile",
+        cascade="all, delete-orphan",
     )
