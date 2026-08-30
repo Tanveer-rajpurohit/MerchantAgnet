@@ -1,6 +1,7 @@
 import uuid
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from app.models.user import UserRole
+from datetime import datetime
 
 class RegisterRequest(BaseModel):
     full_name: str = Field(min_length=2, max_length=255)
@@ -42,5 +43,7 @@ class UserOut(BaseModel):
     profile_picture: str | None = None
     is_active: bool
     is_phone_verified: bool
-
+    onboarding_completed_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
     model_config = ConfigDict(from_attributes=True)

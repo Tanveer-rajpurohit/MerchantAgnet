@@ -8,6 +8,8 @@ from app.repositories import profile_repository
 from app.schemas.profile import (
     AddressDTO,
     MerchantProfileDTO,
+    ExpenseDTO,
+    AIInfoDTO,
     SettingsResponse,
     ProfileResponse,
     UpdateProfileRequest,
@@ -33,23 +35,44 @@ def _build_profile_response(user: User) -> ProfileResponse:
     merchant_dto: MerchantProfileDTO | None = None
     if user.merchant_profile is not None:
         mp = user.merchant_profile
+        expenses_dtos = [
+            ExpenseDTO(
+                id=e.id,
+                category=e.category,
+                amount=e.amount,
+                due_on=e.due_on,
+                notes=e.notes,
+            )
+            for e in mp.expenses
+        ] if mp.expenses else []
+
         merchant_dto = MerchantProfileDTO(
             business_name=mp.business_name,
             business_type=mp.business_type,
+            business_description=mp.business_description,
             gstin=mp.gstin,
             upi_vpa=mp.upi_vpa,
             preferred_language=mp.preferred_language,
             is_razorpay_active=mp.is_razorpay_active,
+            expenses=expenses_dtos,
         )
 
     settings_dto: SettingsResponse | None = None
+    ai_dto: AIInfoDTO | None = None
+    if user.merchant_profile and user.merchant_profile.ai_info:
+        ai_dto = AIInfoDTO(
+            help_with=user.merchant_profile.ai_info.help_with,
+            rule=user.merchant_profile.ai_info.rule,
+        )
+
     if user.settings is not None:
         settings_dto = SettingsResponse(
             show_mobile_number=user.settings.show_mobile_number,
             show_email=user.settings.show_email,
+            ai_info=ai_dto,
         )
     else:
-        settings_dto = SettingsResponse()
+        settings_dto = SettingsResponse(ai_info=ai_dto)
 
     return ProfileResponse(
         id=user.id,
@@ -107,6 +130,7 @@ async def update_profile(
         for x in [
             payload.business_name,
             payload.business_type,
+            payload.business_description,
             payload.gstin,
             payload.upi_vpa,
             payload.preferred_language,
@@ -117,6 +141,8 @@ async def update_profile(
             mp.business_name = payload.business_name.strip()
         if payload.business_type is not None:
             mp.business_type = payload.business_type.strip()
+        if payload.business_description is not None:
+            mp.business_description = payload.business_description.strip() if payload.business_description.strip() else None
         if payload.gstin is not None:
             mp.gstin = payload.gstin.strip().upper() if payload.gstin.strip() else None
         if payload.upi_vpa is not None:
@@ -181,11 +207,21 @@ async def get_settings(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-    if user.settings is None:
-        return SettingsResponse()
+
+    ai_dto: AIInfoDTO | None = None
+    if user.merchant_profile and user.merchant_profile.ai_info:
+        ai_dto = AIInfoDTO(
+            help_with=user.merchant_profile.ai_info.help_with,
+            rule=user.merchant_profile.ai_info.rule,
+        )
+
+    show_mobile = user.settings.show_mobile_number if user.settings else True
+    show_email = user.settings.show_email if user.settings else False
+
     return SettingsResponse(
-        show_mobile_number=user.settings.show_mobile_number,
-        show_email=user.settings.show_email,
+        show_mobile_number=show_mobile,
+        show_email=show_email,
+        ai_info=ai_dto,
     )
 
 async def update_settings(
@@ -208,6 +244,25 @@ async def update_settings(
     if payload.show_email is not None:
         settings.show_email = payload.show_email
 
+    ai_dto: AIInfoDTO | None = None
+    if payload.ai_info is not None and user.merchant_profile:
+        ai_info = profile_repository.get_or_create_ai_info(
+            db,
+            user.merchant_profile,
+            payload.ai_info.help_with,
+        )
+        ai_info.help_with = payload.ai_info.help_with
+        ai_info.rule = payload.ai_info.rule
+        ai_dto = AIInfoDTO(
+            help_with=ai_info.help_with,
+            rule=ai_info.rule,
+        )
+    elif user.merchant_profile and user.merchant_profile.ai_info:
+        ai_dto = AIInfoDTO(
+            help_with=user.merchant_profile.ai_info.help_with,
+            rule=user.merchant_profile.ai_info.rule,
+        )
+
     await db.flush()
 
     cache_key = f"profile:{user_id}"
@@ -216,4 +271,5 @@ async def update_settings(
     return SettingsResponse(
         show_mobile_number=settings.show_mobile_number,
         show_email=settings.show_email,
+        ai_info=ai_dto,
     )

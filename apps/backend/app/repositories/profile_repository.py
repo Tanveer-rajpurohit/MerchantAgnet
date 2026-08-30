@@ -6,6 +6,7 @@ from app.models.user import User
 from app.models.address import Address
 from app.models.merchant_profile import MerchantProfile
 from app.models.user_settings import UserSettings
+from app.models.ai_info import AIInfo
 
 async def get_user_with_relations(
     db: AsyncSession,
@@ -15,7 +16,8 @@ async def get_user_with_relations(
     query = (
         select(User)
         .options(
-            selectinload(User.merchant_profile),
+            selectinload(User.merchant_profile).selectinload(MerchantProfile.ai_info),
+            selectinload(User.merchant_profile).selectinload(MerchantProfile.expenses),
             selectinload(User.addresses),
             selectinload(User.settings),
         )
@@ -31,7 +33,10 @@ async def get_user_with_settings(
     parsed_id = uuid.UUID(str(user_id)) if isinstance(user_id, str) else user_id
     query = (
         select(User)
-        .options(selectinload(User.settings))
+        .options(
+            selectinload(User.settings),
+            selectinload(User.merchant_profile).selectinload(MerchantProfile.ai_info),
+        )
         .where(User.id == parsed_id)
     )
     result = await db.execute(query)
@@ -76,3 +81,15 @@ def get_or_create_merchant_profile(db: AsyncSession, user: User) -> MerchantProf
     db.add(profile)
     user.merchant_profile = profile
     return profile
+
+def get_or_create_ai_info(db: AsyncSession, merchant_profile: MerchantProfile, help_with: str = "") -> AIInfo:
+    if merchant_profile.ai_info is not None:
+        return merchant_profile.ai_info
+    ai_info = AIInfo(
+        merchant_profile=merchant_profile,
+        help_with=help_with,
+        rule=None,
+    )
+    db.add(ai_info)
+    merchant_profile.ai_info = ai_info
+    return ai_info

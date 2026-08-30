@@ -1,5 +1,6 @@
 import uuid
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User, UserRole
 from app.models.merchant_profile import MerchantProfile
@@ -19,7 +20,12 @@ async def get_by_google_id(db: AsyncSession, google_id: str) -> User | None:
 
 async def get_by_id(db: AsyncSession, user_id: uuid.UUID | str) -> User | None:
     parsed_id = uuid.UUID(str(user_id)) if isinstance(user_id, str) else user_id
-    result = await db.execute(select(User).where(User.id == parsed_id))
+    query = (
+        select(User)
+        .options(selectinload(User.merchant_profile))
+        .where(User.id == parsed_id)
+    )
+    result = await db.execute(query)
     return result.scalar_one_or_none()
 
 async def create_user(

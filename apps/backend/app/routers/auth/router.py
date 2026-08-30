@@ -119,5 +119,22 @@ async def logout(
 )
 async def get_me(
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    return current_user
+    onboarding_at = None
+    if current_user.merchant_profile:
+        onboarding_at = current_user.merchant_profile.onboarding_completed_at
+
+    return UserOut(
+        id=current_user.id,
+        email=current_user.email,
+        phone_number=current_user.phone_number,
+        full_name=current_user.full_name,
+        role=current_user.role,
+        profile_picture=current_user.profile_picture,
+        is_active=current_user.is_active,
+        is_phone_verified=current_user.is_phone_verified,
+        onboarding_completed_at=onboarding_at,
+        created_at=current_user.created_at,
+        updated_at=current_user.updated_at,
+    )
