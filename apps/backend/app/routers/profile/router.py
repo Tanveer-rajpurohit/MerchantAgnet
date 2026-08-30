@@ -6,6 +6,7 @@ from app.db.redis import get_redis
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.services import profile_service
+from app.core.rate_limiter import check_rate_limit
 from app.schemas.profile import (
     ProfileResponse,
     UpdateProfileRequest,
@@ -52,6 +53,12 @@ async def upload_avatar(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
+    await check_rate_limit(
+        redis=redis,
+        key=f"rate_limit:avatar:user:{current_user.id}",
+        limit=10,
+        window_seconds=3600,
+    )
     return await profile_service.update_avatar(db, current_user, file, redis)
 
 @router.get(

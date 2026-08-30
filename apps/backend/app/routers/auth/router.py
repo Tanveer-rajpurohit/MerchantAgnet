@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
@@ -6,6 +6,7 @@ from app.db.redis import get_redis
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.services import auth_service
+from app.core.rate_limiter import check_rate_limit, get_client_ip
 from app.schemas.auth import (
     RegisterRequest,
     LoginRequest,
@@ -26,9 +27,17 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 )
 async def register(
     payload: RegisterRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
+    ip = get_client_ip(request)
+    await check_rate_limit(
+        redis=redis,
+        key=f"rate_limit:register:ip:{ip}",
+        limit=5,
+        window_seconds=3600,
+    )
     return await auth_service.register_user(db, redis, payload)
 
 @router.post(
@@ -38,9 +47,23 @@ async def register(
 )
 async def login(
     payload: LoginRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
+    ip = get_client_ip(request)
+    await check_rate_limit(
+        redis=redis,
+        key=f"rate_limit:login:ip:{ip}",
+        limit=10,
+        window_seconds=60,
+    )
+    await check_rate_limit(
+        redis=redis,
+        key=f"rate_limit:login:email:{payload.email.strip().lower()}",
+        limit=5,
+        window_seconds=900,
+    )
     return await auth_service.login_user(db, redis, payload)
 
 @router.post(
@@ -50,9 +73,17 @@ async def login(
 )
 async def google_auth(
     payload: GoogleAuthRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
+    ip = get_client_ip(request)
+    await check_rate_limit(
+        redis=redis,
+        key=f"rate_limit:google:ip:{ip}",
+        limit=10,
+        window_seconds=60,
+    )
     return await auth_service.google_login_user(db, redis, payload)
 
 @router.post(
@@ -62,9 +93,17 @@ async def google_auth(
 )
 async def refresh_token(
     payload: RefreshTokenRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
+    ip = get_client_ip(request)
+    await check_rate_limit(
+        redis=redis,
+        key=f"rate_limit:refresh:ip:{ip}",
+        limit=20,
+        window_seconds=60,
+    )
     return await auth_service.verify_and_refresh_access_token(db, redis, payload)
 
 @router.post(
