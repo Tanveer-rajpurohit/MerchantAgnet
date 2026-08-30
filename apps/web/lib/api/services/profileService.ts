@@ -1,4 +1,4 @@
-import { api } from "../fetchClient";
+import { api } from "../utils/fetchClient";
 import type {
   ProfileResponse,
   UpdateProfilePayload,

@@ -1,5 +1,5 @@
-import { api } from "../fetchClient";
-import { tokenStorage } from "../tokenStorage";
+import { api } from "../utils/fetchClient";
+import { tokenStorage } from "../utils/tokenStorage";
 import type {
   AuthTokensResponse,
   AccessTokenResponse,

@@ -3,6 +3,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { satoshi, interTight, fontMono, instrumentSerif } from "./fonts";
 import ThemeProvider from "./components/ThemeProvider";
+import { QueryProvider } from "../providers/QueryProvider";
+import { AuthProvider } from "../context/AuthContext";
 
 export const metadata: Metadata = {
   title: {
@@ -57,7 +59,11 @@ export default function RootLayout({
       className={`${satoshi.variable} ${interTight.variable} ${fontMono.variable} ${instrumentSerif.variable}`}
     >
       <body className="font-satoshi antialiased">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <QueryProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
