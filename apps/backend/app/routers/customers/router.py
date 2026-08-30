@@ -21,6 +21,7 @@ router = APIRouter(prefix="/customers", tags=["Customers"])
 )
 async def list_customers(
     status_filter: ConnectionStatus | None = Query(None, alias="status"),
+    search: str | None = Query(None),
     cursor: datetime | None = Query(None),
     limit: int = Query(30, ge=1, le=100),
     current_user: User = Depends(get_current_merchant),
@@ -35,6 +36,7 @@ async def list_customers(
         db=db,
         merchant_id=current_user.merchant_profile.id,
         status_filter=status_filter,
+        search=search,
         cursor=cursor,
         limit=limit,
     )

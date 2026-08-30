@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import select
+from sqlalchemy import select, or_, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.user import User
 from app.models.customer_connection import CustomerConnection, ConnectionStatus
 
 async def get_by_id(
@@ -44,6 +45,7 @@ async def list_by_merchant(
     db: AsyncSession,
     merchant_id: uuid.UUID | str,
     status: ConnectionStatus | None = None,
+    search: str | None = None,
     cursor: datetime | None = None,
     limit: int = 30,
 ) -> list[CustomerConnection]:
@@ -51,16 +53,40 @@ async def list_by_merchant(
     query = (
         select(CustomerConnection)
         .options(selectinload(CustomerConnection.customer))
+        .join(User, CustomerConnection.customer_id == User.id)
         .where(CustomerConnection.merchant_id == m_id)
     )
 
     if status is not None:
         query = query.where(CustomerConnection.status == status)
 
+    if search and search.strip():
+        term = search.strip()
+        like_term = f"%{term}%"
+        query = query.where(
+            or_(
+                User.full_name.op("%")(term),
+                User.full_name.ilike(like_term),
+                User.phone_number.ilike(like_term),
+                User.email.ilike(like_term),
+                User.email.op("%")(term),
+            )
+        )
+
     if cursor is not None:
         query = query.where(CustomerConnection.updated_at < cursor)
 
-    query = query.order_by(CustomerConnection.updated_at.desc()).limit(limit + 1)
+    if search and search.strip():
+        term = search.strip()
+        score = func.greatest(
+            func.similarity(User.full_name, term),
+            func.similarity(User.email, term),
+        )
+        query = query.order_by(score.desc(), CustomerConnection.updated_at.desc())
+    else:
+        query = query.order_by(CustomerConnection.updated_at.desc())
+
+    query = query.limit(limit + 1)
     result = await db.execute(query)
     return list(result.scalars().all())
 

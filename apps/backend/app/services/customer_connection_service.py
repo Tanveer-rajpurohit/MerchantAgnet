@@ -33,6 +33,7 @@ async def list_merchant_customers(
     db: AsyncSession,
     merchant_id: uuid.UUID,
     status_filter: ConnectionStatus | None = None,
+    search: str | None = None,
     cursor: datetime | None = None,
     limit: int = 30,
 ) -> PaginatedCustomerConnectionResponse:
@@ -40,6 +41,7 @@ async def list_merchant_customers(
         db=db,
         merchant_id=merchant_id,
         status=status_filter,
+        search=search,
         cursor=cursor,
         limit=limit,
     )

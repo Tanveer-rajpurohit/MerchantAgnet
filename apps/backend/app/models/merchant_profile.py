@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
-from sqlalchemy import String, Boolean, DateTime, Text, ForeignKey
+from sqlalchemy import String, Boolean, DateTime, Text, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
@@ -15,6 +15,9 @@ if TYPE_CHECKING:
 
 class MerchantProfile(Base):
     __tablename__ = "merchant_profiles"
+    __table_args__ = (
+        Index("ix_merchant_profiles_business_name_trgm", "business_name", postgresql_using="gin", postgresql_ops={"business_name": "gin_trgm_ops"}),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
