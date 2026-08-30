@@ -21,6 +21,16 @@ else
 end
 """
 
+LUA_PEEK_WINDOW_SCRIPT = """
+local key = KEYS[1]
+local now = tonumber(ARGV[1])
+local window = tonumber(ARGV[2])
+local clear_before = now - window
+
+redis.call("ZREMRANGEBYSCORE", key, 0, clear_before)
+return redis.call("ZCARD", key)
+"""
+
 def get_client_ip(request: Request) -> str:
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
@@ -28,13 +38,14 @@ def get_client_ip(request: Request) -> str:
     real_ip = request.headers.get("x-real-ip")
     if real_ip:
         return real_ip.strip()
-    return request.client.host if request.client else "unknown"
+    return request.client.host if request.client else "127.0.0.1"
 
 async def check_rate_limit(
     redis: Redis,
     key: str,
     limit: int,
     window_seconds: int,
+    custom_message: str | None = None,
 ) -> None:
     now_ms = int(time.time() * 1000)
     window_ms = window_seconds * 1000
@@ -48,12 +59,39 @@ async def check_rate_limit(
         limit,
     )
     allowed = bool(result[0])
-    remaining = int(result[1])
 
     if not allowed:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many requests. Please slow down and try again.",
+            detail=custom_message or "Too many requests. Please slow down and try again.",
+            headers={
+                "Retry-After": str(window_seconds),
+                "X-RateLimit-Limit": str(limit),
+                "X-RateLimit-Remaining": "0",
+            },
+        )
+
+async def check_is_locked_out(
+    redis: Redis,
+    key: str,
+    limit: int,
+    window_seconds: int,
+    lockout_message: str,
+) -> None:
+    now_ms = int(time.time() * 1000)
+    window_ms = window_seconds * 1000
+
+    count = await redis.eval(
+        LUA_PEEK_WINDOW_SCRIPT,
+        1,
+        key,
+        now_ms,
+        window_ms,
+    )
+    if int(count) >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=lockout_message,
             headers={
                 "Retry-After": str(window_seconds),
                 "X-RateLimit-Limit": str(limit),

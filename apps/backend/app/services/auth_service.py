@@ -9,6 +9,7 @@ from app.core.security import (
     generate_refresh_token,
 )
 from app.core.google_auth import verify_google_id_token
+from app.core.rate_limiter import check_rate_limit, check_is_locked_out
 from app.models.user import User
 from app.repositories import user_repository
 from app.schemas.auth import (
@@ -69,15 +70,33 @@ async def login_user(
     redis: Redis,
     payload: LoginRequest,
 ) -> AuthTokensResponse:
+    email_key = payload.email.strip().lower()
+    failed_key = f"failed_logins:email:{email_key}"
+
+    await check_is_locked_out(
+        redis=redis,
+        key=failed_key,
+        limit=10,
+        window_seconds=300,
+        lockout_message="Too many failed login attempts. Please wait 5 minutes.",
+    )
+
     user = await user_repository.get_by_email(db, payload.email)
 
-    if not user or not user.password_hash:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-        )
-
-    if not verify_password(payload.password, user.password_hash):
+    if not user or not user.password_hash or not verify_password(payload.password, user.password_hash):
+        try:
+            await check_rate_limit(
+                redis=redis,
+                key=failed_key,
+                limit=10,
+                window_seconds=300,
+                custom_message="Too many failed login attempts. Please wait 5 minutes.",
+            )
+        except HTTPException:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many failed login attempts. Please wait 5 minutes.",
+            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -89,6 +108,7 @@ async def login_user(
             detail="Account has been deactivated",
         )
 
+    await redis.delete(failed_key)
     return await _create_session_tokens(redis, user)
 
 async def google_login_user(

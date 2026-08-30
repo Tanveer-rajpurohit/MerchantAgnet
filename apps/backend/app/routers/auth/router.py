@@ -58,12 +58,6 @@ async def login(
         limit=10,
         window_seconds=60,
     )
-    await check_rate_limit(
-        redis=redis,
-        key=f"rate_limit:login:email:{payload.email.strip().lower()}",
-        limit=5,
-        window_seconds=900,
-    )
     return await auth_service.login_user(db, redis, payload)
 
 @router.post(
