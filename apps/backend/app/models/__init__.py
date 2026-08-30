@@ -5,6 +5,7 @@ from app.models.user_settings import UserSettings
 from app.models.product import Product
 from app.models.expense import Expense
 from app.models.ai_info import AIInfo
+from app.models.customer_connection import CustomerConnection, ConnectionStatus
 
 __all__ = [
     "User",
@@ -15,4 +16,6 @@ __all__ = [
     "Product",
     "Expense",
     "AIInfo",
+    "CustomerConnection",
+    "ConnectionStatus",
 ]

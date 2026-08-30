@@ -90,8 +90,24 @@
         "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
     },
 
+    "customer_connections": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "merchant_id": "UUID NOT NULL REFERENCES merchant_profiles(id) ON DELETE CASCADE",
+        "customer_id": "UUID REFERENCES users(id) ON DELETE SET NULL",
+        "customer_name": "VARCHAR(255) NOT NULL",
+        "customer_phone": "VARCHAR(20) NOT NULL",
+        "status": "connection_status NOT NULL DEFAULT 'pending'",
+        "messages_used": "INTEGER NOT NULL DEFAULT 0",
+        "total_spent": "NUMERIC(10,2) NOT NULL DEFAULT 0",
+        "connected_at": "TIMESTAMPTZ",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()",
+        "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
+    },
+
     "enums": {
-        "user_role": ["merchant", "customer"]
+        "user_role": ["merchant", "customer"],
+        "connection_status": ["pending", "connected"],
+        
     }
 }
 ```

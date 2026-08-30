@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from app.models.product import Product
     from app.models.expense import Expense
     from app.models.ai_info import AIInfo
+    from app.models.customer_connection import CustomerConnection
 
 class MerchantProfile(Base):
     __tablename__ = "merchant_profiles"
@@ -87,6 +88,11 @@ class MerchantProfile(Base):
     )
     products: Mapped[list["Product"]] = relationship(
         "Product",
+        back_populates="merchant_profile",
+        cascade="all, delete-orphan",
+    )
+    customer_connections: Mapped[list["CustomerConnection"]] = relationship(
+        "CustomerConnection",
         back_populates="merchant_profile",
         cascade="all, delete-orphan",
     )
