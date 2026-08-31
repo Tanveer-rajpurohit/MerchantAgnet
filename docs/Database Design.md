@@ -45,7 +45,9 @@
         "razorpay_key_id_encrypted": "TEXT",
         "razorpay_key_secret_encrypted": "TEXT",
         "is_razorpay_active": "BOOLEAN NOT NULL DEFAULT false",
-        "onboarding_completed_at": "TIMESTAMPTZ"
+        "onboarding_completed_at": "TIMESTAMPTZ",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()",
+        "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
     },
 
     "user_settings": {
@@ -102,9 +104,61 @@
         "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
     },
 
+    "orders": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "merchant_id": "UUID NOT NULL REFERENCES merchant_profiles(id) ON DELETE CASCADE",
+        "customer_id": "UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE",
+        "customer_connection_id": "UUID REFERENCES customer_connections(id) ON DELETE SET NULL",
+        "total_amount": "NUMERIC(10,2) NOT NULL",
+        "paid_amount": "NUMERIC(10,2) NOT NULL DEFAULT 0",
+        "status": "order_status NOT NULL DEFAULT 'unpaid'",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()",
+        "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
+    },
+
+    "order_items": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "order_id": "UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE",
+        "product_id": "UUID REFERENCES products(id) ON DELETE SET NULL",
+        "product_name_snapshot": "VARCHAR(255) NOT NULL",
+        "quantity": "INTEGER NOT NULL",
+        "unit_price_snapshot": "NUMERIC(10,2) NOT NULL",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
+    },
+
+    "order_status_history": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "order_id": "UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE",
+        "previous_status": "order_status",
+        "new_status": "order_status NOT NULL",
+        "changed_by": "actor_type NOT NULL",
+        "reason": "TEXT",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
+    },
+
+    "conversations": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "customer_connection_id": "UUID UNIQUE NOT NULL REFERENCES customer_connections(id) ON DELETE CASCADE",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()",
+        "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
+    },
+
+    "messages": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "conversation_id": "UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE",
+        "sender_type": "sender_type NOT NULL",
+        "content": "TEXT NOT NULL",
+        "status": "send_status NOT NULL DEFAULT 'pending'",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
+    },
+
     "enums": {
         "user_role": ["merchant", "customer"],
-        "connection_status": ["pending", "connected"]
+        "connection_status": ["pending", "connected"],
+        "order_status": ["unpaid", "paid", "cancelled"],
+        "actor_type": ["merchant", "customer", "system", "ai_agent"],
+        "sender_type": ["customer", "agent", "merchant"],
+        "send_status": ["pending", "sent", "failed"]
     }
 }
 ```

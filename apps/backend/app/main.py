@@ -7,17 +7,18 @@ from app.db.session import engine
 from app.db.redis import init_redis_pool, close_redis_pool
 from app.routers.api_v1 import api_v1_router
 from app.routers.health.router import router as root_health_router
+from app.routers.websockets.router import router as websocket_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.execute(text("SELECT 1"))
-    
+
     redis = await init_redis_pool()
     await redis.ping()
-    
+
     yield
-    
+
     await engine.dispose()
     await close_redis_pool()
 
@@ -39,3 +40,4 @@ app.add_middleware(
 
 app.include_router(root_health_router)
 app.include_router(api_v1_router)
+app.include_router(websocket_router)

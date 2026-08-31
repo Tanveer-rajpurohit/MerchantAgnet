@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from app.models.merchant_profile import MerchantProfile
     from app.models.user_settings import UserSettings
     from app.models.customer_connection import CustomerConnection
+    from app.models.order import Order
 
 class UserRole(str, enum.Enum):
     merchant = "merchant"
@@ -107,4 +108,9 @@ class User(Base):
     customer_connections: Mapped[list["CustomerConnection"]] = relationship(
         "CustomerConnection",
         back_populates="customer",
+    )
+    orders: Mapped[list["Order"]] = relationship(
+        "Order",
+        back_populates="customer",
+        cascade="all, delete-orphan",
     )

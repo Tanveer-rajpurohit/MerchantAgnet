@@ -5,6 +5,13 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
 from app.models.customer_connection import CustomerConnection, ConnectionStatus
+from app.models.conversation import Conversation
+
+def connection_eager_options():
+    return [
+        selectinload(CustomerConnection.customer),
+        selectinload(CustomerConnection.conversation).selectinload(Conversation.messages),
+    ]
 
 async def get_by_id(
     db: AsyncSession,
@@ -14,7 +21,7 @@ async def get_by_id(
     c_id = uuid.UUID(str(connection_id)) if isinstance(connection_id, str) else connection_id
     query = (
         select(CustomerConnection)
-        .options(selectinload(CustomerConnection.customer))
+        .options(*connection_eager_options())
         .where(CustomerConnection.id == c_id)
     )
     if merchant_id is not None:
@@ -32,7 +39,7 @@ async def get_by_merchant_and_customer(
     c_id = uuid.UUID(str(customer_id)) if isinstance(customer_id, str) else customer_id
     query = (
         select(CustomerConnection)
-        .options(selectinload(CustomerConnection.customer))
+        .options(*connection_eager_options())
         .where(
             CustomerConnection.merchant_id == m_id,
             CustomerConnection.customer_id == c_id,
@@ -52,7 +59,7 @@ async def list_by_merchant(
     m_id = uuid.UUID(str(merchant_id)) if isinstance(merchant_id, str) else merchant_id
     query = (
         select(CustomerConnection)
-        .options(selectinload(CustomerConnection.customer))
+        .options(*connection_eager_options())
         .join(User, CustomerConnection.customer_id == User.id)
         .where(CustomerConnection.merchant_id == m_id)
     )
@@ -102,6 +109,12 @@ async def create_connection(
         status=status,
     )
     db.add(connection)
+    await db.flush()
+
+    conversation = Conversation(
+        customer_connection_id=connection.id,
+    )
+    db.add(conversation)
     await db.flush()
     await db.refresh(connection)
 

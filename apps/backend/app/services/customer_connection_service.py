@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User, UserRole
 from app.models.customer_connection import CustomerConnection, ConnectionStatus
 from app.repositories import customer_connection_repository
+from app.schemas.message import MessageResponse
 from app.schemas.customer import (
     CustomerConnectionCreateRequest,
     CustomerConnectionResponse,
@@ -13,6 +14,12 @@ from app.schemas.customer import (
 
 def to_response(connection: CustomerConnection) -> CustomerConnectionResponse:
     customer = connection.customer
+    conv = connection.conversation
+    last_msg = None
+
+    if conv and conv.messages:
+        last_msg = MessageResponse.model_validate(conv.messages[-1])
+
     return CustomerConnectionResponse(
         id=connection.id,
         merchant_id=connection.merchant_id,
@@ -24,6 +31,8 @@ def to_response(connection: CustomerConnection) -> CustomerConnectionResponse:
         status=connection.status,
         messages_used=connection.messages_used,
         total_spent=connection.total_spent,
+        conversation_id=conv.id if conv else None,
+        last_message=last_msg,
         connected_at=connection.connected_at,
         created_at=connection.created_at,
         updated_at=connection.updated_at,

@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 from app.models.customer_connection import ConnectionStatus
+from app.schemas.message import MessageResponse
 
 class CustomerConnectionCreateRequest(BaseModel):
     merchant_id: uuid.UUID
@@ -19,6 +20,8 @@ class CustomerConnectionResponse(BaseModel):
     status: ConnectionStatus
     messages_used: int
     total_spent: Decimal
+    conversation_id: uuid.UUID | None = None
+    last_message: MessageResponse | None = None
     connected_at: datetime | None
     created_at: datetime
     updated_at: datetime

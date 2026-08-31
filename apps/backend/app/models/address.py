@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, func
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Index, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
@@ -11,6 +11,10 @@ if TYPE_CHECKING:
 
 class Address(Base):
     __tablename__ = "addresses"
+    __table_args__ = (
+        Index("ix_addresses_city_trgm", "city", postgresql_using="gin", postgresql_ops={"city": "gin_trgm_ops"}),
+        Index("ix_addresses_line1_trgm", "line1", postgresql_using="gin", postgresql_ops={"line1": "gin_trgm_ops"}),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

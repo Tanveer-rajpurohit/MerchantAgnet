@@ -11,6 +11,8 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.merchant_profile import MerchantProfile
     from app.models.user import User
+    from app.models.order import Order
+    from app.models.conversation import Conversation
 
 class ConnectionStatus(str, enum.Enum):
     pending = "pending"
@@ -80,4 +82,14 @@ class CustomerConnection(Base):
     customer: Mapped["User"] = relationship(
         "User",
         back_populates="customer_connections",
+    )
+    orders: Mapped[list["Order"]] = relationship(
+        "Order",
+        back_populates="customer_connection",
+    )
+    conversation: Mapped["Conversation | None"] = relationship(
+        "Conversation",
+        back_populates="customer_connection",
+        uselist=False,
+        cascade="all, delete-orphan",
     )

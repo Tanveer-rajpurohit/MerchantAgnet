@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
-from sqlalchemy import String, Boolean, DateTime, Text, ForeignKey, Index
+from sqlalchemy import String, Boolean, DateTime, Text, ForeignKey, Index, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
@@ -12,11 +12,13 @@ if TYPE_CHECKING:
     from app.models.expense import Expense
     from app.models.ai_info import AIInfo
     from app.models.customer_connection import CustomerConnection
+    from app.models.order import Order
 
 class MerchantProfile(Base):
     __tablename__ = "merchant_profiles"
     __table_args__ = (
         Index("ix_merchant_profiles_business_name_trgm", "business_name", postgresql_using="gin", postgresql_ops={"business_name": "gin_trgm_ops"}),
+        Index("ix_merchant_profiles_business_type_trgm", "business_type", postgresql_using="gin", postgresql_ops={"business_type": "gin_trgm_ops"}),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -73,6 +75,17 @@ class MerchantProfile(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
     user: Mapped["User"] = relationship(
         "User",
@@ -96,6 +109,11 @@ class MerchantProfile(Base):
     )
     customer_connections: Mapped[list["CustomerConnection"]] = relationship(
         "CustomerConnection",
+        back_populates="merchant_profile",
+        cascade="all, delete-orphan",
+    )
+    orders: Mapped[list["Order"]] = relationship(
+        "Order",
         back_populates="merchant_profile",
         cascade="all, delete-orphan",
     )
