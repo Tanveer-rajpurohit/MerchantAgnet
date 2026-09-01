@@ -1,74 +1,82 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Plus, Search } from "lucide-react";
-import type { ProductRow } from "../../types/onboarding";
+import {
+  useProducts,
+  useCreateProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+  useExpenses,
+  useCreateExpense,
+  useUpdateExpense,
+  useDeleteExpense,
+} from "../../../hooks";
 import {
   ProductTable,
   ProductMobileList,
   AddProductModal,
-  type ProductFormData,
+  EditProductModal,
 } from "../../components/app/products";
+import {
+  ExpenseTable,
+  ExpenseMobileList,
+  AddExpenseModal,
+  EditExpenseModal,
+} from "../../components/app/expenses";
+import type { ProductResponse } from "../../../types/product";
+import type { ExpenseResponse } from "../../../types/expense";
 
-const generateId = () => Math.random().toString(36).slice(2, 9);
+type InventoryTab = "products" | "expenses";
 
-const INITIAL_PRODUCTS: ProductRow[] = [
-  {
-    id: generateId(),
-    name: "Maggi 12-pack",
-    costPrice: "120",
-    sellingPrice: "145",
-    currentStock: "48",
-    lowStockAlert: "10",
-  },
-  {
-    id: generateId(),
-    name: "Amul Milk 1L",
-    costPrice: "58",
-    sellingPrice: "62",
-    currentStock: "30",
-    lowStockAlert: "15",
-  },
-  {
-    id: generateId(),
-    name: "Tata Salt 1kg",
-    costPrice: "22",
-    sellingPrice: "28",
-    currentStock: "60",
-    lowStockAlert: "20",
-  },
-  {
-    id: generateId(),
-    name: "Parle-G Biscuit",
-    costPrice: "8",
-    sellingPrice: "10",
-    currentStock: "12",
-    lowStockAlert: "15",
-  },
-];
+export default function ProductsAndExpensesPage() {
+  const [activeTab, setActiveTab] = useState<InventoryTab>("products");
+  const [productSearch, setProductSearch] = useState("");
+  const [expenseSearch, setExpenseSearch] = useState("");
 
-export default function ProductsPage() {
-  const [products, setProducts] = useState<ProductRow[]>(INITIAL_PRODUCTS);
-  const [search, setSearch] = useState("");
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductResponse | null>(null);
 
-  const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<ExpenseResponse | null>(null);
 
-  const handleAddProduct = (data: ProductFormData) => {
-    setProducts((prev) => [...prev, { id: generateId(), ...data }]);
-  };
+  const { data: products = [], isLoading: isProductsLoading } = useProducts();
+  const createProductMutation = useCreateProduct();
+  const updateProductMutation = useUpdateProduct();
+  const deleteProductMutation = useDeleteProduct();
 
-  const handleDelete = (id: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-  };
+  const { data: expenses = [], isLoading: isExpensesLoading } = useExpenses();
+  const createExpenseMutation = useCreateExpense();
+  const updateExpenseMutation = useUpdateExpense();
+  const deleteExpenseMutation = useDeleteExpense();
 
-  const handleChange = (id: string, field: keyof ProductRow, value: string) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)),
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) =>
+      p.product_name.toLowerCase().includes(productSearch.toLowerCase()),
     );
-  };
+  }, [products, productSearch]);
+
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter((e) =>
+      e.category.toLowerCase().includes(expenseSearch.toLowerCase()) ||
+      (e.notes && e.notes.toLowerCase().includes(expenseSearch.toLowerCase())),
+    );
+  }, [expenses, expenseSearch]);
+
+  const totalExpenseSum = useMemo(() => {
+    return expenses.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+  }, [expenses]);
+
+  const lowStockCount = useMemo(() => {
+    return products.filter(
+      (p) => p.low_stock_alert && p.current_stock <= p.low_stock_alert,
+    ).length;
+  }, [products]);
+
+  const tabs: { id: InventoryTab; label: string; count: number }[] = [
+    { id: "products", label: "Products Catalog", count: products.length },
+    { id: "expenses", label: "Operating Expenses", count: expenses.length },
+  ];
 
   return (
     <div className="w-full h-full overflow-y-auto font-intert">
@@ -76,54 +84,185 @@ export default function ProductsPage() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-instrument text-primary tracking-tight">
-              Products
+              Catalog & Operating Expenses
             </h1>
             <p className="text-sm text-muted font-intert mt-1">
-              Your catalog - this is what the agent reads from when it creates
-              payment links and answers stock questions.
+              Manage inventory items for AI commerce and track fixed & variable overhead costs.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="relative flex-1 sm:flex-initial">
-              <Search
-                size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-              />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search products..."
-                className="w-full sm:w-48 pl-8 pr-3 py-2.5 sm:py-2 text-sm rounded-lg border border-border bg-surface text-primary placeholder:text-muted focus:outline-none focus:border-brand/50"
-              />
-            </div>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 sm:py-2 rounded-lg bg-brand text-white text-sm font-medium hover:opacity-90 transition-opacity shrink-0 cursor-pointer"
-            >
-              <Plus size={14} />
-              <span className="hidden sm:inline">Add Product</span>
-            </button>
+            {activeTab === "products" ? (
+              <>
+                <div className="relative flex-1 sm:flex-initial">
+                  <Search
+                    size={14}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+                  />
+                  <input
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    placeholder="Search products..."
+                    className="w-full sm:w-56 pl-8 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-border bg-surface text-primary placeholder:text-muted focus:outline-none focus:border-brand/50 shadow-xs"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddProductModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl btn-brand-solid text-xs sm:text-sm font-medium shadow-xs shrink-0 cursor-pointer"
+                >
+                  <Plus size={14} />
+                  <span>Add Product</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="relative flex-1 sm:flex-initial">
+                  <Search
+                    size={14}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+                  />
+                  <input
+                    value={expenseSearch}
+                    onChange={(e) => setExpenseSearch(e.target.value)}
+                    placeholder="Search expenses..."
+                    className="w-full sm:w-56 pl-8 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-border bg-surface text-primary placeholder:text-muted focus:outline-none focus:border-brand/50 shadow-xs"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddExpenseModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl btn-brand-solid text-xs sm:text-sm font-medium shadow-xs shrink-0 cursor-pointer"
+                >
+                  <Plus size={14} />
+                  <span>Add Expense</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        <ProductMobileList
-          products={filtered}
-          handleDelete={handleDelete}
-          handleChange={handleChange}
-        />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <p className="text-xs text-muted uppercase tracking-wide mb-1.5">
+              Total Catalog Items
+            </p>
+            <p className="text-2xl font-instrument text-primary">{products.length}</p>
+          </div>
 
-        <ProductTable
-          products={filtered}
-          handleChange={handleChange}
-          handleDelete={handleDelete}
-        />
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <p className="text-xs text-muted uppercase tracking-wide mb-1.5">
+              Low Stock Alerts
+            </p>
+            <p className={`text-2xl font-instrument ${lowStockCount > 0 ? "text-warning" : "text-primary"}`}>
+              {lowStockCount}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <p className="text-xs text-muted uppercase tracking-wide mb-1.5">
+              Logged Expenses
+            </p>
+            <p className="text-2xl font-instrument text-primary">{expenses.length}</p>
+          </div>
+
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <p className="text-xs text-muted uppercase tracking-wide mb-1.5">
+              Monthly Overhead
+            </p>
+            <p className="text-2xl font-instrument text-primary">
+              ₹{totalExpenseSum.toLocaleString("en-IN")}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 mb-6 border-b border-border">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2.5 text-xs sm:text-sm font-medium font-intert border-b-2 -mb-px transition-colors whitespace-nowrap cursor-pointer flex items-center gap-2 ${
+                activeTab === tab.id
+                  ? "border-brand text-primary font-semibold"
+                  : "border-transparent text-muted hover:text-secondary"
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-surface-muted text-muted font-normal">
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "products" ? (
+          isProductsLoading ? (
+            <div className="flex justify-center py-16">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+            </div>
+          ) : (
+            <>
+              <ProductMobileList
+                products={filteredProducts}
+                onEdit={(p) => setEditingProduct(p)}
+                onDelete={(id) => deleteProductMutation.mutate(id)}
+              />
+              <ProductTable
+                products={filteredProducts}
+                onEdit={(p) => setEditingProduct(p)}
+                onDelete={(id) => deleteProductMutation.mutate(id)}
+              />
+            </>
+          )
+        ) : isExpensesLoading ? (
+          <div className="flex justify-center py-16">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+          </div>
+        ) : (
+          <>
+            <ExpenseMobileList
+              expenses={filteredExpenses}
+              onEdit={(e) => setEditingExpense(e)}
+              onDelete={(id) => deleteExpenseMutation.mutate(id)}
+            />
+            <ExpenseTable
+              expenses={filteredExpenses}
+              onEdit={(e) => setEditingExpense(e)}
+              onDelete={(id) => deleteExpenseMutation.mutate(id)}
+            />
+          </>
+        )}
       </div>
 
       <AddProductModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onAdd={handleAddProduct}
+        isOpen={showAddProductModal}
+        onClose={() => setShowAddProductModal(false)}
+        onAdd={(payload) => createProductMutation.mutateAsync(payload)}
+        isPending={createProductMutation.isPending}
+      />
+
+      <EditProductModal
+        product={editingProduct}
+        isOpen={Boolean(editingProduct)}
+        onClose={() => setEditingProduct(null)}
+        onUpdate={(id, payload) => updateProductMutation.mutateAsync({ id, payload })}
+        isPending={updateProductMutation.isPending}
+      />
+
+      <AddExpenseModal
+        isOpen={showAddExpenseModal}
+        onClose={() => setShowAddExpenseModal(false)}
+        onAdd={(payload) => createExpenseMutation.mutateAsync(payload)}
+        isPending={createExpenseMutation.isPending}
+      />
+
+      <EditExpenseModal
+        expense={editingExpense}
+        isOpen={Boolean(editingExpense)}
+        onClose={() => setEditingExpense(null)}
+        onUpdate={(id, payload) => updateExpenseMutation.mutateAsync({ id, payload })}
+        isPending={updateExpenseMutation.isPending}
       />
     </div>
   );

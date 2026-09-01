@@ -17,5 +17,20 @@ export const queryKeys = {
   },
   expenses: {
     all: ["expenses"] as const,
+    detail: (id: string) => ["expenses", id] as const,
+  },
+  shops: {
+    all: ["shops"] as const,
+    list: (filters?: Record<string, unknown>) => ["shops", "list", filters] as const,
+    detail: (id: string) => ["shops", "detail", id] as const,
+  },
+  customers: {
+    all: ["customers"] as const,
+    list: (filters?: Record<string, unknown>) => ["customers", "list", filters] as const,
+    detail: (id: string) => ["customers", "detail", id] as const,
+  },
+  messages: {
+    list: (connectionId: string, filters?: Record<string, unknown>) =>
+      ["messages", "list", connectionId, filters] as const,
   },
 } as const;

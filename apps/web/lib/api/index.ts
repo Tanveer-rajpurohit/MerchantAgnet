@@ -5,3 +5,8 @@ export { openGoogleSignInPopup } from "./utils/googleAuth";
 export { authService } from "./services/authService";
 export { profileService } from "./services/profileService";
 export { onboardingService } from "./services/onboardingService";
+export { shopService } from "./services/shopService";
+export { customerService } from "./services/customerService";
+export { messageService } from "./services/messageService";
+export { productService } from "./services/productService";
+export { expenseService } from "./services/expenseService";

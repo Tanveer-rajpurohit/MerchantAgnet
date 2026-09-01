@@ -1,17 +1,19 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowUp, Lock, Paperclip, X } from "lucide-react";
-import type { Customer, ChatMessage } from "../../../types/customer";
-import { MESSAGE_LIMIT } from "./data";
+import { ArrowLeft, ArrowUp, X, CheckCircle2, Clock } from "lucide-react";
+import { useCustomerConnectionDetail } from "../../../../hooks/useCustomerConnections";
+import { useMessages } from "../../../../hooks/useMessages";
+import type { CustomerConnectionResponse } from "../../../../types/customer";
+import type { MessageResponse } from "../../../../types/message";
 
 interface ChatViewProps {
-  customer: Customer;
-  messages: ChatMessage[];
+  connectionId: string;
 }
 
 function getInitials(name: string): string {
+  if (!name) return "C";
   return name
     .split(" ")
     .map((w) => w[0])
@@ -24,105 +26,128 @@ function CustomerProfilePopup({
   customer,
   onClose,
 }: {
-  customer: Customer;
+  customer: CustomerConnectionResponse;
   onClose: () => void;
 }) {
-  const joinedDate = "Aug 2026";
+  const isConnected = customer.status === "connected";
+  const formattedDate = new Date(customer.created_at).toLocaleDateString("en-IN", {
+    month: "short",
+    year: "numeric",
+  });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-0 sm:px-4">
-      <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-xl border border-border bg-surface p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 font-intert">
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-instrument text-primary">
-            Customer Details
+            Customer Profile
           </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-muted hover:text-primary hover:bg-surface-muted transition-colors"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-muted hover:text-primary hover:bg-surface-muted transition-colors cursor-pointer"
           >
             <X size={16} />
           </button>
         </div>
 
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-12 h-12 rounded-full bg-surface-muted flex items-center justify-center text-sm font-medium text-secondary">
-            {getInitials(customer.name)}
+          <div className="w-12 h-12 rounded-full bg-surface-muted flex items-center justify-center text-sm font-semibold text-secondary">
+            {getInitials(customer.customer_name)}
           </div>
           <div>
-            <p className="text-sm font-medium text-primary">{customer.name}</p>
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium border border-emerald-500/20 shrink-0">
+            <p className="text-sm font-semibold text-primary">{customer.customer_name}</p>
+            {isConnected ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium border border-emerald-500/20">
+                <CheckCircle2 size={10} />
                 <span>Connected</span>
-            </span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-medium border border-amber-500/20">
+                <Clock size={10} />
+                <span>Pending</span>
+              </span>
+            )}
           </div>
         </div>
 
         <div className="space-y-3">
           <div className="p-3 rounded-xl border border-border bg-bg">
-            <span className="text-[11px] text-muted font-intert">Phone</span>
-            <p className="text-sm font-medium font-intert text-primary mt-0.5">
-              {customer.phone}
+            <span className="text-[11px] text-muted">Phone Number</span>
+            <p className="text-sm font-medium text-primary mt-0.5">
+              {customer.customer_phone || "Not provided"}
             </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-xl border border-border bg-bg">
-              <span className="text-[11px] text-muted font-intert">
-                Total Spent
-              </span>
-              <p className="text-sm font-medium font-intert text-primary mt-0.5">
-                {customer.totalSpent}
-              </p>
-            </div>
-            <div className="p-3 rounded-xl border border-border bg-bg">
-              <span className="text-[11px] text-muted font-intert">
-                Last Active
-              </span>
-              <p className="text-sm font-medium font-intert text-primary mt-0.5">
-                {customer.lastActivity}
-              </p>
-            </div>
           </div>
 
           <div className="p-3 rounded-xl border border-border bg-bg">
-            <span className="text-[11px] text-muted font-intert">
-              Customer Since
-            </span>
-            <p className="text-sm font-medium font-intert text-primary mt-0.5">
-              {joinedDate}
+            <span className="text-[11px] text-muted">Email Address</span>
+            <p className="text-sm font-medium text-primary mt-0.5 truncate">
+              {customer.customer_email || "Not provided"}
             </p>
           </div>
 
-          {customer.status === "Pending" && (
-            <div className="p-3 rounded-xl border border-amber-500/20 bg-amber-500/5">
-              <span className="text-[11px] text-amber-600 dark:text-amber-400 font-intert">
-                Messages Used
-              </span>
-              <p className="text-sm font-medium font-intert text-primary mt-0.5">
-                {customer.messagesUsed} of {MESSAGE_LIMIT}
-              </p>
-            </div>
-          )}
+          <div className="p-3 rounded-xl border border-border bg-bg">
+            <span className="text-[11px] text-muted">Customer Since</span>
+            <p className="text-sm font-medium text-primary mt-0.5">
+              {formattedDate}
+            </p>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-export function ChatView({ customer, messages }: ChatViewProps) {
+export function ChatView({ connectionId }: ChatViewProps) {
   const [input, setInput] = useState("");
-  const [localMessages, setLocalMessages] = useState<ChatMessage[]>(messages);
+  const [isSending, setIsSending] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const prevScrollHeightRef = useRef<number>(0);
+  const isInitialLoadRef = useRef<boolean>(true);
 
-  const remaining = MESSAGE_LIMIT - customer.messagesUsed;
-  const isBlocked = customer.status === "Pending" && remaining <= 0;
+  const { data: customer, isLoading: isCustomerLoading } =
+    useCustomerConnectionDetail(connectionId);
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  const {
+    messages,
+    isLoading: isMessagesLoading,
+    isLoadingMore,
+    hasMore,
+    loadOlderMessages,
+    appendLiveMessage,
+  } = useMessages(connectionId);
+
+  const isConnected = customer?.status === "connected";
+
+  const handleScroll = () => {
+    const container = scrollContainerRef.current;
+    if (!container || !hasMore || isLoadingMore) return;
+
+    if (container.scrollTop <= 40) {
+      prevScrollHeightRef.current = container.scrollHeight;
+      loadOlderMessages();
     }
-  }, [localMessages]);
+  };
+
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    if (isInitialLoadRef.current && messages.length > 0) {
+      isInitialLoadRef.current = false;
+      container.scrollTop = container.scrollHeight;
+      return;
+    }
+
+    if (prevScrollHeightRef.current > 0) {
+      const heightDiff = container.scrollHeight - prevScrollHeightRef.current;
+      container.scrollTop += heightDiff;
+      prevScrollHeightRef.current = 0;
+    }
+  }, [messages]);
 
   const handleInput = (val: string) => {
     setInput(val);
@@ -135,16 +160,23 @@ export function ChatView({ customer, messages }: ChatViewProps) {
 
   const handleSend = () => {
     const trimmed = input.trim();
-    if (!trimmed || isBlocked) return;
+    if (!trimmed || isSending) return;
 
-    const newMsg: ChatMessage = {
-      id: `local-${Date.now()}`,
-      sender: "merchant",
-      text: trimmed,
-      time: "Just now",
+    setIsSending(true);
+
+    const optimisticMsg: MessageResponse = {
+      id: `temp-${Date.now()}`,
+      conversation_id: customer?.conversation_id || "temp-conv",
+      sender_type: "merchant",
+      content: trimmed,
+      status: "sent",
+      created_at: new Date().toISOString(),
     };
-    setLocalMessages((prev) => [...prev, newMsg]);
+
+    appendLiveMessage(optimisticMsg);
     setInput("");
+    setIsSending(false);
+
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -158,132 +190,139 @@ export function ChatView({ customer, messages }: ChatViewProps) {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3.5 px-4 sm:px-6 py-[9px] border-b border-border bg-surface shrink-0">
+    <div className="flex flex-col h-full bg-bg font-intert overflow-hidden">
+      <div className="h-14 flex items-center gap-3.5 px-4 sm:px-6 border-b border-border bg-surface shrink-0">
         <Link
           href="/customers"
           className="flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-bg hover:bg-surface-muted text-muted hover:text-primary transition-colors cursor-pointer shrink-0"
-          title="Back to Stores"
+          title="Back to Customers"
         >
           <ArrowLeft size={14} />
         </Link>
 
-        <button
-          type="button"
-          onClick={() => setShowProfile(true)}
-          className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
-        >
-          <div className="w-9 h-9 rounded-full bg-surface-muted flex items-center justify-center shrink-0 text-xs font-medium text-secondary">
-            {getInitials(customer.name)}
-          </div>
-
-          <div className="min-w-0 text-left">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-primary truncate">
-                {customer.name}
-              </p>
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium border border-emerald-500/20 shrink-0">
-                <span>Connected</span>
-              </span>
+        {isCustomerLoading || !customer ? (
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-surface-muted animate-pulse shrink-0" />
+            <div className="space-y-1">
+              <div className="w-24 h-3.5 bg-surface-muted rounded-sm animate-pulse" />
+              <div className="w-16 h-2.5 bg-surface-muted rounded-sm animate-pulse" />
             </div>
-            <p className="text-xs text-muted truncate">
-              {customer.phone}
-              {customer.totalSpent !== "₹0" &&
-                ` · ${customer.totalSpent} spent`}
-            </p>
           </div>
-        </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowProfile(true)}
+            className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity text-left"
+          >
+            <div className="w-8 h-8 rounded-full bg-surface-muted flex items-center justify-center shrink-0 text-xs font-semibold text-secondary">
+              {getInitials(customer.customer_name)}
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-primary truncate leading-none">
+                  {customer.customer_name}
+                </p>
+                {isConnected ? (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium border border-emerald-500/20 shrink-0">
+                    <CheckCircle2 size={10} />
+                    <span>Connected</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-medium border border-amber-500/20 shrink-0">
+                    <Clock size={10} />
+                    <span>Pending</span>
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-muted truncate mt-0.5 leading-none">
+                {customer.customer_phone || customer.customer_email || "No contact info"}
+              </p>
+            </div>
+          </button>
+        )}
       </div>
 
       <div
-        ref={scrollRef}
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
         className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-3"
       >
-        {localMessages.length === 0 ? (
+        {isLoadingMore && (
+          <div className="flex justify-center py-2">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+          </div>
+        )}
+
+        {(isCustomerLoading || isMessagesLoading) && (
+          <div className="flex justify-center py-12">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+          </div>
+        )}
+
+        {!isCustomerLoading && !isMessagesLoading && messages.length === 0 && (
           <div className="flex items-center justify-center h-full">
             <p className="text-sm text-muted font-intert">
               No messages yet. Start the conversation.
             </p>
           </div>
-        ) : (
-          localMessages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.sender === "merchant" ? "justify-end" : "justify-start"}`}
-            >
+        )}
+
+        {!isCustomerLoading && !isMessagesLoading && messages.length > 0 &&
+          messages.map((msg) => {
+            const isMerchant = msg.sender_type === "merchant";
+            return (
               <div
-                className={`max-w-[75%] sm:max-w-[60%] px-3.5 py-2.5 rounded-2xl ${
-                  msg.sender === "merchant"
-                    ? "bg-brand text-white rounded-br-md"
-                    : "bg-surface border border-border text-primary rounded-bl-md"
-                }`}
+                key={msg.id}
+                className={`flex ${isMerchant ? "justify-end" : "justify-start"}`}
               >
-                <p className="text-sm leading-relaxed break-words">
-                  {msg.text}
-                </p>
-                <p
-                  className={`text-[10px] mt-1 ${
-                    msg.sender === "merchant" ? "text-white/60" : "text-muted"
+                <div
+                  className={`max-w-[80%] sm:max-w-[65%] px-4 py-2.5 rounded-2xl text-xs sm:text-[13px] leading-relaxed ${
+                    isMerchant
+                      ? "bg-brand text-white rounded-br-xs"
+                      : "bg-surface border border-border text-primary rounded-bl-xs shadow-xs"
                   }`}
                 >
-                  {msg.time}
-                </p>
+                  <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  <span
+                    className={`block text-[9px] mt-1 ${
+                      isMerchant ? "text-white/70 text-right" : "text-muted"
+                    }`}
+                  >
+                    {new Date(msg.created_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))
-        )}
+            );
+          })}
       </div>
 
-      <div className="px-4 sm:px-6 py-3 border-t border-border bg-bg shrink-0">
-        {isBlocked ? (
-          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-surface-muted text-muted text-xs font-intert">
-            <Lock size={13} />
-            Message limit reached. This contact needs to make a purchase or
-            accept your connection request.
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-border bg-bg focus-within:border-brand/50 transition-all">
-            <div className="px-4 pt-3 pb-2">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => handleInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Type a message..."
-                rows={1}
-                className="w-full resize-none bg-transparent text-sm text-primary font-intert outline-none placeholder:text-muted/60 leading-relaxed max-h-[120px] overflow-y-auto"
-                style={{ minHeight: "24px" }}
-              />
-            </div>
-            <div className="flex items-center justify-between px-3 pb-3 pt-1">
-              <button
-                type="button"
-                title="Attach media"
-                className="flex items-center justify-center w-8 h-8 rounded-lg text-muted hover:text-secondary hover:bg-surface-muted transition-colors"
-              >
-                <Paperclip size={15} />
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={!input.trim()}
-                className="flex items-center justify-center w-8 h-8 rounded-lg btn-brand-solid disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 shadow-xs cursor-pointer"
-              >
-                <ArrowUp size={16} strokeWidth={2.5} />
-              </button>
-            </div>
-          </div>
-        )}
-        {customer.status === "Pending" && !isBlocked && (
-          <p className="text-[10px] text-muted font-intert mt-1.5 px-1">
-            {remaining} of {MESSAGE_LIMIT} messages remaining for this pending
-            contact.
-          </p>
-        )}
+      <div className="p-3 sm:p-4 border-t border-border bg-surface shrink-0">
+        <div className="flex items-end gap-2 max-w-4xl mx-auto">
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            value={input}
+            onChange={(e) => handleInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type a reply..."
+            className="flex-1 resize-none px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-border bg-bg text-primary placeholder:text-muted focus:outline-none focus:border-brand/50 shadow-xs max-h-32"
+          />
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={!input.trim()}
+            className="w-10 h-10 rounded-xl btn-brand-solid flex items-center justify-center shrink-0 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          >
+            <ArrowUp size={16} />
+          </button>
+        </div>
       </div>
 
-      {showProfile && (
+      {showProfile && customer && (
         <CustomerProfilePopup
           customer={customer}
           onClose={() => setShowProfile(false)}
