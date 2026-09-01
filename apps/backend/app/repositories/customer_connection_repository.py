@@ -135,3 +135,19 @@ async def get_or_create_connection(
         customer_id=customer_id,
         status=ConnectionStatus.pending,
     )
+
+async def update_status(
+    db: AsyncSession,
+    connection_id: uuid.UUID,
+    merchant_id: uuid.UUID,
+    status: ConnectionStatus,
+) -> CustomerConnection | None:
+    connection = await get_by_id(db, connection_id=connection_id, merchant_id=merchant_id)
+    if not connection:
+        return None
+    connection.status = status
+    if status == ConnectionStatus.connected and connection.connected_at is None:
+        connection.connected_at = datetime.utcnow()
+    connection.updated_at = datetime.utcnow()
+    await db.flush()
+    return await get_by_id(db, connection_id=connection_id, merchant_id=merchant_id)

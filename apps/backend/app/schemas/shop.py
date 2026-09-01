@@ -30,6 +30,8 @@ class ShopDetail(ShopListItem):
     upi_vpa: str | None = None
     preferred_language: str
     products: list[ProductResponse] = []
+    customer_connection_id: uuid.UUID | None = None
+    conversation_id: uuid.UUID | None = None
     model_config = ConfigDict(from_attributes=True)
 
 class PaginatedShopResponse(BaseModel):

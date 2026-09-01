@@ -76,3 +76,23 @@ async def create_connection(
         current_user=current_user,
         payload=payload,
     )
+
+@router.patch(
+    "/{connection_id}/accept",
+    response_model=CustomerConnectionResponse,
+)
+async def accept_connection(
+    connection_id: uuid.UUID,
+    current_user: User = Depends(get_current_merchant),
+    db: AsyncSession = Depends(get_db),
+):
+    if not current_user.merchant_profile:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Merchant profile not found",
+        )
+    return await customer_connection_service.accept_connection(
+        db=db,
+        merchant_id=current_user.merchant_profile.id,
+        connection_id=connection_id,
+    )

@@ -102,3 +102,21 @@ async def create_connection(
         customer_id=target_customer_id,
     )
     return to_response(connection)
+
+async def accept_connection(
+    db: AsyncSession,
+    merchant_id: uuid.UUID,
+    connection_id: uuid.UUID,
+) -> CustomerConnectionResponse:
+    connection = await customer_connection_repository.update_status(
+        db=db,
+        connection_id=connection_id,
+        merchant_id=merchant_id,
+        status=ConnectionStatus.connected,
+    )
+    if not connection:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Customer connection not found",
+        )
+    return to_response(connection)

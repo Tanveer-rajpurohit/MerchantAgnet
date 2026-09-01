@@ -3,7 +3,8 @@ from datetime import datetime
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.merchant_profile import MerchantProfile
-from app.repositories import shop_repository
+from app.models.user import User
+from app.repositories import shop_repository, customer_connection_repository
 from app.schemas.product import ProductResponse
 from app.schemas.shop import (
     ShopAddressResponse,
@@ -75,6 +76,7 @@ async def list_shops(
 async def get_shop_detail(
     db: AsyncSession,
     merchant_id: uuid.UUID,
+    current_user: User | None = None,
 ) -> ShopDetail:
     merchant = await shop_repository.get_by_id(db, merchant_id)
     if not merchant:
@@ -90,10 +92,26 @@ async def get_shop_detail(
         if p.is_active
     ]
 
+    customer_connection_id = None
+    conversation_id = None
+
+    if current_user is not None:
+        conn = await customer_connection_repository.get_by_merchant_and_customer(
+            db=db,
+            merchant_id=merchant.id,
+            customer_id=current_user.id,
+        )
+        if conn is not None:
+            customer_connection_id = conn.id
+            if conn.conversation is not None:
+                conversation_id = conn.conversation.id
+
     return ShopDetail(
         **list_item.model_dump(),
         business_description=merchant.business_description,
         upi_vpa=merchant.upi_vpa,
         preferred_language=merchant.preferred_language,
         products=active_products,
+        customer_connection_id=customer_connection_id,
+        conversation_id=conversation_id,
     )
