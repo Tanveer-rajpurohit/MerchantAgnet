@@ -1,54 +1,69 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, X, Search, ChevronDown, UserCheck } from "lucide-react";
-import type { Order, OrderItem } from "../../../types/order";
-import { CATALOG_SUGGESTIONS } from "./data";
-
-interface CustomerOption {
-  id: string;
-  name: string;
-  phone?: string;
-}
+import { Plus, Trash2, Search, ChevronDown, UserCheck } from "lucide-react";
+import { useCustomerConnections } from "../../../../hooks/useCustomerConnections";
+import { useProducts } from "../../../../hooks/useProducts";
+import type {
+  OrderResponse,
+  OrderCreatePayload,
+  OrderItemCreate,
+} from "../../../../types/order";
+import type { ProductResponse } from "../../../../types/product";
+import type { CustomerConnectionResponse } from "../../../../types/customer";
 
 interface OrderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (orderData: Omit<Order, "id" | "date"> & { id?: string }) => void;
-  initialOrder?: Order | null;
-  customers: CustomerOption[];
+  onSave: (payload: OrderCreatePayload) => Promise<void> | void;
+  initialOrder?: OrderResponse | null;
+  isPending?: boolean;
 }
 
-function OrderModalContent({
+export function OrderModal({
+  isOpen,
   onClose,
   onSave,
   initialOrder,
-  customers,
-}: Omit<OrderModalProps, "isOpen">) {
-  const initialMatch = initialOrder
-    ? customers.find((c) => c.id === initialOrder.customerId) || {
-        id: initialOrder.customerId,
-        name: initialOrder.customerName,
-        phone: initialOrder.customerPhone,
-      }
-    : null;
-
+  isPending = false,
+}: OrderModalProps) {
+  const [customerSearch, setCustomerSearch] = useState("");
   const [selectedCustomer, setSelectedCustomer] =
-    useState<CustomerOption | null>(initialMatch);
-  const [customerSearch, setCustomerSearch] = useState(
-    initialMatch ? initialMatch.name : "",
-  );
+    useState<CustomerConnectionResponse | null>(null);
   const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const itemsContainerRef = useRef<HTMLDivElement>(null);
 
-  const [items, setItems] = useState<OrderItem[]>(
-    initialOrder && initialOrder.items.length > 0
-      ? initialOrder.items.map((it) => ({ ...it }))
-      : [{ name: "", quantity: 1, unitPrice: 0 }],
-  );
-  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<
-    number | null
-  >(null);
+  const [items, setItems] = useState<OrderItemCreate[]>([
+    { product_name_snapshot: "", quantity: 1, unit_price_snapshot: 0 },
+  ]);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number | null>(null);
+
+  const { customers = [] } = useCustomerConnections({
+    search: customerSearch,
+  });
+
+  const { data: products = [] } = useProducts();
+
+  useEffect(() => {
+    if (initialOrder) {
+      setCustomerSearch(initialOrder.customer_name);
+      setItems(
+        initialOrder.items.map((it) => ({
+          product_id: it.product_id,
+          product_name_snapshot: it.product_name_snapshot,
+          quantity: it.quantity,
+          unit_price_snapshot: Number(it.unit_price_snapshot) || 0,
+        })),
+      );
+    } else {
+      setSelectedCustomer(null);
+      setCustomerSearch("");
+      setItems([
+        { product_name_snapshot: "", quantity: 1, unit_price_snapshot: 0 },
+      ]);
+    }
+  }, [initialOrder, isOpen]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -58,19 +73,24 @@ function OrderModalContent({
       ) {
         setIsCustomerDropdownOpen(false);
       }
+      if (
+        itemsContainerRef.current &&
+        !itemsContainerRef.current.contains(e.target as Node)
+      ) {
+        setActiveSuggestionIndex(null);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredCustomers = customers.filter(
-    (c) =>
-      c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-      (c.phone && c.phone.includes(customerSearch)),
-  );
+  if (!isOpen) return null;
 
   const handleAddItem = () => {
-    setItems((prev) => [...prev, { name: "", quantity: 1, unitPrice: 0 }]);
+    setItems((prev) => [
+      ...prev,
+      { product_name_snapshot: "", quantity: 1, unit_price_snapshot: 0 },
+    ]);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -81,7 +101,7 @@ function OrderModalContent({
 
   const handleItemChange = (
     index: number,
-    field: keyof OrderItem,
+    field: keyof OrderItemCreate,
     value: string | number,
   ) => {
     setItems((prev) =>
@@ -89,17 +109,18 @@ function OrderModalContent({
     );
   };
 
-  const handleSelectSuggestion = (
+  const handleSelectProduct = (
     index: number,
-    product: (typeof CATALOG_SUGGESTIONS)[number],
+    product: ProductResponse,
   ) => {
     setItems((prev) =>
       prev.map((it, i) =>
         i === index
           ? {
               ...it,
-              name: product.name,
-              unitPrice: product.price,
+              product_id: product.id,
+              product_name_snapshot: product.product_name,
+              unit_price_snapshot: Number(product.selling_price) || 0,
             }
           : it,
       ),
@@ -107,327 +128,310 @@ function OrderModalContent({
     setActiveSuggestionIndex(null);
   };
 
-  const total = items.reduce(
-    (acc, it) => acc + (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0),
+  const totalAmount = items.reduce(
+    (acc, it) =>
+      acc + (Number(it.quantity) || 0) * (Number(it.unit_price_snapshot) || 0),
     0,
   );
 
-  const handleSave = () => {
-    if (!selectedCustomer) return;
-    const validItems = items.filter((i) => i.name.trim() !== "");
+  const submitLabel = isPending ? "Saving..." : initialOrder ? "Save Changes" : "Create Order";
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const customerId = selectedCustomer?.customer_id || initialOrder?.customer_id;
+    if (!customerId) return;
+
+    const validItems = items.filter(
+      (it) => it.product_name_snapshot.trim() !== "",
+    );
     if (validItems.length === 0) return;
 
-    onSave({
-      id: initialOrder?.id,
-      customerId: selectedCustomer.id,
-      customerName: selectedCustomer.name,
-      customerPhone: selectedCustomer.phone || "",
-      items: validItems,
-      totalAmount: total,
-      paidAmount: initialOrder ? initialOrder.paidAmount : 0,
-      status: initialOrder ? initialOrder.status : "Unpaid",
+    await onSave({
+      customer_id: customerId,
+      customer_connection_id: selectedCustomer?.id || initialOrder?.customer_connection_id || undefined,
+      items: validItems.map((it) => ({
+        product_id: it.product_id || null,
+        product_name_snapshot: it.product_name_snapshot.trim(),
+        quantity: Number(it.quantity) || 1,
+        unit_price_snapshot: Number(it.unit_price_snapshot) || 0,
+      })),
+      status: initialOrder?.status || "unpaid",
+      created_by: "merchant",
     });
+
+    onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4 backdrop-blur-xs font-intert">
-      <div className="w-full sm:max-w-xl rounded-t-2xl sm:rounded-2xl border border-border bg-surface p-5 sm:p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div className="flex items-center justify-between pb-3.5 border-b border-border mb-4">
-          <div>
-            <h2 className="text-base font-semibold text-primary">
-              {initialOrder ? "Edit Order Items" : "Create New Customer Order"}
-            </h2>
-            <p className="text-xs text-muted">
-              {initialOrder
-                ? `Modifying order #${initialOrder.id} records`
-                : "Record goods bought by customer and calculate bill"}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-primary hover:bg-surface-muted transition-colors cursor-pointer"
-          >
-            <X size={16} />
-          </button>
-        </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto font-intert">
+      <div className="w-full max-w-2xl rounded-2xl border border-border bg-surface p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-auto">
+        <h2 className="text-lg font-instrument text-primary font-normal mb-1">
+          {initialOrder ? "Edit Order" : "Create New Order"}
+        </h2>
+        <p className="text-xs text-muted mb-5">
+          Select a customer and pick items from your catalog or enter custom products.
+        </p>
 
-        <div className="mb-4" ref={dropdownRef}>
-          <label className="text-xs font-medium text-primary block mb-1.5">
-            Select Customer
-          </label>
-          <div className="relative">
-            <div className="relative flex items-center">
-              <Search
-                size={13}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-              />
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div ref={dropdownRef} className="relative z-30">
+            <label className="text-xs text-muted block mb-1 font-normal">
+              Customer *
+            </label>
+            <div className="relative">
               <input
+                required
                 value={customerSearch}
                 onChange={(e) => {
                   setCustomerSearch(e.target.value);
                   setIsCustomerDropdownOpen(true);
-                  if (
-                    selectedCustomer &&
-                    selectedCustomer.name !== e.target.value
-                  ) {
+                  if (selectedCustomer && selectedCustomer.customer_name !== e.target.value) {
                     setSelectedCustomer(null);
                   }
                 }}
                 onFocus={() => setIsCustomerDropdownOpen(true)}
-                placeholder="Search by customer name or phone..."
-                className="w-full pl-8 pr-8 py-2 text-xs rounded-xl border border-border bg-bg text-primary focus:outline-none focus:border-brand/50"
+                placeholder="Search by customer name, phone, or email..."
+                className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm rounded-xl border border-border bg-bg text-primary placeholder:text-muted focus:outline-none focus:border-brand/50 shadow-xs"
+              />
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
               />
               <button
                 type="button"
-                onClick={() =>
-                  setIsCustomerDropdownOpen(!isCustomerDropdownOpen)
-                }
+                onClick={() => setIsCustomerDropdownOpen(!isCustomerDropdownOpen)}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary cursor-pointer"
               >
-                <ChevronDown size={13} />
+                <ChevronDown size={14} />
               </button>
             </div>
 
-            {selectedCustomer && (
-              <div className="mt-1.5 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand/10 border border-brand/20 text-brand text-xs">
-                <UserCheck size={12} />
-                <span className="font-medium">{selectedCustomer.name}</span>
-                {selectedCustomer.phone && (
-                  <span className="text-[11px] text-muted ml-1">
-                    ({selectedCustomer.phone})
-                  </span>
-                )}
-              </div>
-            )}
-
             {isCustomerDropdownOpen && (
-              <div className="absolute left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto bg-surface border border-border rounded-xl shadow-lg py-1">
-                {filteredCustomers.length === 0 ? (
-                  <div className="p-3 text-center text-xs text-muted">
-                    No customers found matching &quot;{customerSearch}&quot;
+              <div className="absolute z-50 w-full mt-1.5 py-1 bg-surface border border-border rounded-xl shadow-2xl max-h-44 overflow-y-auto">
+                {customers.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCustomer(c);
+                      setCustomerSearch(c.customer_name);
+                      setIsCustomerDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3.5 py-2 hover:bg-surface-muted transition-colors flex items-center justify-between gap-2 cursor-pointer ${
+                      selectedCustomer?.id === c.id ? "bg-brand/5 text-brand" : "text-primary"
+                    }`}
+                  >
+                    <div>
+                      <p className="text-xs font-normal">{c.customer_name}</p>
+                      <p className="text-[10px] text-muted">
+                        {c.customer_phone || c.customer_email || "No contact info"}
+                      </p>
+                    </div>
+                    {selectedCustomer?.id === c.id && (
+                      <UserCheck size={14} className="text-brand shrink-0" />
+                    )}
+                  </button>
+                ))}
+                {customers.length === 0 && (
+                  <div className="px-3.5 py-3 text-xs text-muted text-center">
+                    No customers found matching search.
                   </div>
-                ) : (
-                  filteredCustomers.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedCustomer(c);
-                        setCustomerSearch(c.name);
-                        setIsCustomerDropdownOpen(false);
-                      }}
-                      className={`w-full px-3 py-2 text-left text-xs transition-colors flex items-center justify-between cursor-pointer ${
-                        selectedCustomer?.id === c.id
-                          ? "bg-brand/10 text-brand font-medium"
-                          : "text-secondary hover:text-primary hover:bg-surface-muted"
-                      }`}
-                    >
-                      <span>{c.name}</span>
-                      {c.phone && (
-                        <span className="text-[11px] text-muted">
-                          {c.phone}
-                        </span>
-                      )}
-                    </button>
-                  ))
                 )}
               </div>
             )}
           </div>
-        </div>
 
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-medium text-primary">
-              Purchased Items
-            </label>
-            <button
-              type="button"
-              onClick={handleAddItem}
-              className="inline-flex items-center gap-1 text-xs link-brand cursor-pointer"
-            >
-              <Plus size={13} />
-              <span>Add Item</span>
-            </button>
-          </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs text-muted font-normal">Order Items *</label>
+              <button
+                type="button"
+                onClick={handleAddItem}
+                className="inline-flex items-center gap-1 text-xs text-brand hover:opacity-80 font-normal cursor-pointer"
+              >
+                <Plus size={13} />
+                <span>Add Item</span>
+              </button>
+            </div>
 
-          <div className="space-y-2.5">
-            {items.map((item, idx) => {
-              const rowSuggestions =
-                item.name.length >= 2
-                  ? CATALOG_SUGGESTIONS.filter((s) =>
-                      s.name.toLowerCase().includes(item.name.toLowerCase()),
+            <div className="grid grid-cols-12 gap-2 px-1 text-[11px] font-normal text-muted mb-1.5">
+              <div className="col-span-6">Item / Product</div>
+              <div className="col-span-2 text-center">Qty</div>
+              <div className="col-span-2 text-right">Price (₹)</div>
+              <div className="col-span-2 text-right">Subtotal</div>
+            </div>
+
+            <div ref={itemsContainerRef} className="space-y-2.5">
+              {items.map((it, idx) => {
+                const itemSubtotal = (Number(it.quantity) || 0) * (Number(it.unit_price_snapshot) || 0);
+                const queryStr = it.product_name_snapshot.trim().toLowerCase();
+                const filteredProducts = queryStr.length > 0
+                  ? (products || []).filter(
+                      (p) =>
+                        p.product_name.toLowerCase().includes(queryStr) ||
+                        (p.category && p.category.toLowerCase().includes(queryStr)),
                     )
-                  : [];
+                  : products || [];
 
-              return (
-                <div
-                  key={idx}
-                  className="p-2.5 rounded-xl border border-border bg-bg space-y-2"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        value={item.name}
-                        onChange={(e) => {
-                          handleItemChange(idx, "name", e.target.value);
-                          if (e.target.value.length >= 2) {
-                            setActiveSuggestionIndex(idx);
-                          } else {
-                            setActiveSuggestionIndex(null);
-                          }
-                        }}
-                        onFocus={() => {
-                          if (item.name.length >= 2) {
-                            setActiveSuggestionIndex(idx);
-                          }
-                        }}
-                        placeholder="Item name (e.g. Amul Milk, Atta...)"
-                        className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-surface text-primary focus:outline-none focus:border-brand/50"
-                      />
+                const isThisActive = activeSuggestionIndex === idx;
 
-                      {activeSuggestionIndex === idx &&
-                        rowSuggestions.length > 0 && (
-                          <div className="absolute left-0 right-0 z-40 mt-1 max-h-36 overflow-y-auto bg-surface border border-border rounded-xl shadow-lg py-1">
-                            {rowSuggestions.map((sug) => (
+                return (
+                  <div
+                    key={idx}
+                    className={`grid grid-cols-12 gap-2 items-center relative ${
+                      isThisActive ? "z-40" : "z-10"
+                    }`}
+                  >
+                    <div className="col-span-6 relative">
+                      <div className="relative">
+                        <input
+                          required
+                          value={it.product_name_snapshot}
+                          onChange={(e) => {
+                            handleItemChange(idx, "product_name_snapshot", e.target.value);
+                            setActiveSuggestionIndex(idx);
+                          }}
+                          onFocus={() => setActiveSuggestionIndex(idx)}
+                          placeholder="Search catalog or type custom item..."
+                          className="w-full pl-3 pr-7 py-2 text-xs rounded-xl border border-border bg-bg text-primary placeholder:text-muted focus:outline-none focus:border-brand/50 shadow-xs font-normal"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveSuggestionIndex(
+                              isThisActive ? null : idx,
+                            )
+                          }
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-primary cursor-pointer"
+                          title="Browse catalog"
+                        >
+                          <ChevronDown size={13} />
+                        </button>
+                      </div>
+
+                      {isThisActive && (
+                        <div className="absolute z-50 left-0 top-full mt-1.5 w-full sm:w-80 bg-surface border border-border rounded-xl shadow-2xl max-h-44 overflow-y-auto py-1 animate-in fade-in zoom-in-95 duration-100">
+                          {filteredProducts.length > 0 && (
+                            <div className="px-3 py-1 text-[10px] font-normal text-muted uppercase tracking-wider">
+                              Catalog Products
+                            </div>
+                          )}
+
+                          {filteredProducts.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => handleSelectProduct(idx, p)}
+                              className="w-full text-left px-3 py-2 hover:bg-surface-muted text-xs flex items-center justify-between gap-2 border-b border-border/40 last:border-b-0 cursor-pointer"
+                            >
+                              <div className="min-w-0">
+                                <p className="font-normal text-primary truncate">
+                                  {p.product_name}
+                                </p>
+                                {p.category && (
+                                  <p className="text-[10px] text-muted truncate">
+                                    {p.category}
+                                  </p>
+                                )}
+                              </div>
+                              <span className="text-brand font-mono font-normal shrink-0">
+                                ₹{Number(p.selling_price).toLocaleString("en-IN")}
+                              </span>
+                            </button>
+                          ))}
+
+                          {queryStr.length > 0 && (
+                            <div className="p-1.5 border-t border-border/50 bg-bg/50">
                               <button
-                                key={sug.name}
                                 type="button"
-                                onClick={() => handleSelectSuggestion(idx, sug)}
-                                className="w-full px-3 py-1.5 text-left text-xs text-secondary hover:text-primary hover:bg-surface-muted flex items-center justify-between cursor-pointer"
+                                onClick={() => setActiveSuggestionIndex(null)}
+                                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-surface-muted text-xs text-secondary hover:text-primary transition-colors flex items-center justify-between cursor-pointer"
                               >
-                                <span>{sug.name}</span>
-                                <span className="text-[11px] text-muted">
-                                  ₹{sug.price}
-                                </span>
+                                <span className="truncate font-normal">Use custom: "{it.product_name_snapshot}"</span>
+                                <span className="text-[10px] text-muted font-normal shrink-0">Custom</span>
                               </button>
-                            ))}
-                          </div>
-                        )}
+                            </div>
+                          )}
+
+                          {filteredProducts.length === 0 && queryStr.length === 0 && (
+                            <div className="px-3 py-3 text-xs text-muted text-center font-normal">
+                              No products in catalog yet. Type a custom name & price.
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
-                    {items.length > 1 && (
+                    <div className="col-span-2">
+                      <input
+                        required
+                        type="number"
+                        min="1"
+                        value={it.quantity}
+                        onChange={(e) => handleItemChange(idx, "quantity", e.target.value)}
+                        placeholder="1"
+                        className="w-full px-2.5 py-2 text-xs rounded-xl border border-border bg-bg text-primary focus:outline-none focus:border-brand/50 text-center shadow-xs font-normal"
+                      />
+                    </div>
+
+                    <div className="col-span-2">
+                      <input
+                        required
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={it.unit_price_snapshot}
+                        onChange={(e) => handleItemChange(idx, "unit_price_snapshot", e.target.value)}
+                        placeholder="0"
+                        className="w-full px-2.5 py-2 text-xs rounded-xl border border-border bg-bg text-primary focus:outline-none focus:border-brand/50 text-right shadow-xs font-mono font-normal"
+                      />
+                    </div>
+
+                    <div className="col-span-2 flex items-center justify-end gap-1.5">
+                      <span className="font-mono text-xs text-secondary font-normal">
+                        ₹{itemSubtotal.toLocaleString("en-IN")}
+                      </span>
                       <button
                         type="button"
                         onClick={() => handleRemoveItem(idx)}
-                        className="p-1.5 text-muted hover:text-red-500 rounded-lg transition-colors cursor-pointer"
-                        title="Remove Item"
+                        disabled={items.length <= 1}
+                        className="p-1.5 text-muted hover:text-danger disabled:opacity-20 transition-colors cursor-pointer shrink-0"
+                        title="Remove item"
                       >
                         <Trash2 size={13} />
                       </button>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="text-[10px] text-muted block mb-0.5">
-                        Qty
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={item.quantity}
-                        onChange={(e) =>
-                          handleItemChange(
-                            idx,
-                            "quantity",
-                            Math.max(1, parseInt(e.target.value, 10) || 1),
-                          )
-                        }
-                        className="w-full px-2.5 py-1 text-xs rounded-lg border border-border bg-surface text-primary focus:outline-none focus:border-brand/50"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] text-muted block mb-0.5">
-                        Price (₹)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={item.unitPrice || ""}
-                        onChange={(e) =>
-                          handleItemChange(
-                            idx,
-                            "unitPrice",
-                            parseFloat(e.target.value) || 0,
-                          )
-                        }
-                        placeholder="0"
-                        className="w-full px-2.5 py-1 text-xs rounded-lg border border-border bg-surface text-primary focus:outline-none focus:border-brand/50"
-                      />
-                    </div>
-
-                    <div className="text-right flex flex-col justify-end pb-1 pr-1">
-                      <span className="text-[10px] text-muted block">
-                        Line Total
-                      </span>
-                      <span className="text-xs font-medium text-primary">
-                        ₹
-                        {(item.quantity * item.unitPrice).toLocaleString(
-                          "en-IN",
-                        )}
-                      </span>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-surface-muted mb-5 border border-border">
-          <div>
-            <span className="text-xs text-muted font-intert block">
-              Total Bill
-            </span>
-            <span className="text-[11px] text-muted">
-              {items.filter((i) => i.name.trim()).length} unique items
+          <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-bg relative z-0">
+            <span className="text-xs text-muted font-normal">Total Amount:</span>
+            <span className="text-xl font-instrument text-primary font-normal">
+              ₹{totalAmount.toLocaleString("en-IN")}
             </span>
           </div>
-          <span className="text-xl font-instrument text-primary">
-            ₹{total.toLocaleString("en-IN")}
-          </span>
-        </div>
 
-        <div className="flex items-center gap-2 justify-end pt-2 border-t border-border">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-medium text-secondary hover:bg-surface-muted transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!selectedCustomer || total === 0}
-            className="px-5 py-2 rounded-xl btn-brand-solid text-xs font-medium transition-opacity disabled:opacity-40 disabled:cursor-default cursor-pointer"
-          >
-            {initialOrder ? "Save Changes" : "Create Order"}
-          </button>
-        </div>
+          <div className="flex items-center gap-2 justify-end pt-2 relative z-0">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isPending}
+              className="px-4 py-2 rounded-xl text-sm text-secondary hover:bg-surface-muted transition-colors cursor-pointer font-normal"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isPending || (!selectedCustomer && !initialOrder) || totalAmount <= 0}
+              className="px-4 py-2 rounded-xl btn-brand-solid text-sm font-medium shadow-xs disabled:opacity-50 cursor-pointer"
+            >
+              {submitLabel}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
-  );
-}
-
-export function OrderModal({
-  isOpen,
-  onClose,
-  onSave,
-  initialOrder,
-  customers,
-}: OrderModalProps) {
-  if (!isOpen) return null;
-
-  return (
-    <OrderModalContent
-      key={initialOrder?.id ?? "new"}
-      onClose={onClose}
-      onSave={onSave}
-      initialOrder={initialOrder}
-      customers={customers}
-    />
   );
 }

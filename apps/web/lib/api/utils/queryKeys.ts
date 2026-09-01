@@ -33,4 +33,10 @@ export const queryKeys = {
     list: (connectionId: string, filters?: Record<string, unknown>) =>
       ["messages", "list", connectionId, filters] as const,
   },
+  orders: {
+    all: ["orders"] as const,
+    list: (filters?: Record<string, unknown>) => ["orders", "list", filters] as const,
+    detail: (id: string) => ["orders", "detail", id] as const,
+    myOrders: (filters?: Record<string, unknown>) => ["orders", "my-orders", filters] as const,
+  },
 } as const;

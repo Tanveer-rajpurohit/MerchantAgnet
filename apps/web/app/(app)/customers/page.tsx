@@ -1,15 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useCustomerConnections,
   useAcceptCustomerConnection,
 } from "../../../hooks/useCustomerConnections";
+import { useSocketStore } from "../../../stores/useSocketStore";
 import { ContactList } from "../../components/app/customers";
 
 export default function CustomersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  useEffect(() => {
+    useSocketStore.getState().disconnect();
+  }, []);
 
   const {
     customers,

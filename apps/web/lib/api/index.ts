@@ -10,3 +10,4 @@ export { customerService } from "./services/customerService";
 export { messageService } from "./services/messageService";
 export { productService } from "./services/productService";
 export { expenseService } from "./services/expenseService";
+export { orderService } from "./services/orderService";

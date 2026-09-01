@@ -38,7 +38,7 @@ export default function Navbar() {
   const navPaddingY = 12 - progress * 4;
   const navPaddingX = 24 - progress * 6;
 
-  const appDestination = !isAuthenticated ? "/login" : (user?.role === "merchant" ? (isOnboarded ? "/chat" : "/onboarding") : "/user");
+  const appDestination = !isAuthenticated ? "/login" : user?.role === "merchant" ? (isOnboarded ? "/chat" : "/onboarding") : "/user";
 
   return (
     <header className="fixed top-0 left-0 right-0 z-40 pointer-events-none">

@@ -7,8 +7,10 @@ export {
   useCustomerConnections,
   useCustomerConnectionDetail,
   useCreateCustomerConnection,
+  useAcceptCustomerConnection,
 } from "./useCustomerConnections";
 export { useMessages } from "./useMessages";
+export { useRealtimeChat } from "./useRealtimeChat";
 export {
   useProducts,
   useProduct,
@@ -23,4 +25,11 @@ export {
   useUpdateExpense,
   useDeleteExpense,
 } from "./useExpenses";
+export {
+  useOrders,
+  useCustomerOrders,
+  useOrderDetail,
+  useCreateOrder,
+  useUpdateOrder,
+} from "./useOrders";
 export { queryKeys } from "../lib/api/utils/queryKeys";

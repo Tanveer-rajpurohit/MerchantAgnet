@@ -6,10 +6,11 @@ import { AgentOrb } from "../app/utils";
 import { useAuth } from "../../../context/AuthContext";
 import { useShopDetail } from "../../../hooks/useShops";
 import { useMessages } from "../../../hooks/useMessages";
+import { useRealtimeChat } from "../../../hooks/useRealtimeChat";
+import { useSocketStore } from "../../../stores/useSocketStore";
 import { useCreateCustomerConnection } from "../../../hooks/useCustomerConnections";
 import { LoginToChatCard } from "./LoginToChatCard";
 import type { ShopListItem } from "../../../types/shop";
-import type { MessageResponse } from "../../../types/message";
 import type { CustomerConnectionResponse } from "../../../types/customer";
 
 interface ShopChatViewProps {
@@ -33,8 +34,6 @@ export function ShopChatView({ shop, onBack }: ShopChatViewProps) {
 
   const connectionId =
     createdConnection?.id || detail?.customer_connection_id || null;
-  const conversationId =
-    createdConnection?.conversation_id || detail?.conversation_id || null;
 
   const {
     messages,
@@ -42,8 +41,13 @@ export function ShopChatView({ shop, onBack }: ShopChatViewProps) {
     isLoadingMore,
     hasMore,
     loadOlderMessages,
-    appendLiveMessage,
   } = useMessages(connectionId);
+
+  const { isConnected } = useRealtimeChat({
+    connectionId,
+    role: "customer",
+    enabled: Boolean(connectionId),
+  });
 
   const createConnectionMutation = useCreateCustomerConnection();
 
@@ -105,23 +109,19 @@ export function ShopChatView({ shop, onBack }: ShopChatViewProps) {
     setIsSending(true);
     setInput("");
 
-    const optimisticMsg: MessageResponse = {
-      id: `temp-${Date.now()}`,
-      conversation_id: conversationId || "pending",
-      sender_type: "customer",
-      content: text,
-      status: "sent",
-      created_at: new Date().toISOString(),
-    };
-
-    appendLiveMessage(optimisticMsg);
-
     try {
-      if (!connectionId) {
+      let targetConnectionId = connectionId;
+      if (!targetConnectionId) {
         const created = await createConnectionMutation.mutateAsync({
           merchant_id: shop.id,
         });
         setCreatedConnection(created);
+        targetConnectionId = created.id;
+        useSocketStore.getState().connect(created.id, "customer");
+      }
+
+      if (targetConnectionId) {
+        useSocketStore.getState().sendMessage(text, "customer");
       }
     } catch {
       setInput(text);
@@ -165,10 +165,28 @@ export function ShopChatView({ shop, onBack }: ShopChatViewProps) {
           </div>
         </div>
 
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand/10 text-brand text-[10px] font-medium">
-          <AgentOrb size={11} className="text-brand not-italic" />
-          <span>Active Copilot</span>
-        </span>
+        <div className="flex items-center gap-2">
+          {connectionId && (
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium border ${
+                isConnected
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isConnected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+                }`}
+              />
+              <span>{isConnected ? "Live Chat" : "Connecting"}</span>
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand/10 text-brand text-[10px] font-medium">
+            <AgentOrb size={11} className="text-brand not-italic" />
+            <span>Active Copilot</span>
+          </span>
+        </div>
       </div>
 
       <div
@@ -205,9 +223,12 @@ export function ShopChatView({ shop, onBack }: ShopChatViewProps) {
           {!isDetailLoading && !isMessagesLoading && messages.length > 0 &&
             messages.map((m) => {
               const isCustomer = m.sender_type === "customer";
+              const isAgent = m.sender_type === "agent";
               const bubbleStyle = isCustomer
                 ? "bg-brand text-white rounded-2xl rounded-br-xs px-4 py-2.5 text-xs sm:text-[13px]"
-                : "bg-surface border border-border text-primary rounded-2xl rounded-bl-xs p-4 text-xs sm:text-[13px] shadow-xs";
+                : isAgent
+                  ? "bg-surface border border-brand/25 text-primary rounded-2xl rounded-bl-xs p-4 text-xs sm:text-[13px] shadow-xs"
+                  : "bg-surface border border-border text-primary rounded-2xl rounded-bl-xs p-4 text-xs sm:text-[13px] shadow-xs";
 
               return (
                 <div
@@ -218,7 +239,9 @@ export function ShopChatView({ shop, onBack }: ShopChatViewProps) {
                     {!isCustomer && (
                       <div className="flex items-center gap-1.5 text-[11px] text-brand font-semibold mb-1">
                         <AgentOrb size={12} className="not-italic text-brand" />
-                        <span>{shop.business_name}</span>
+                        <span>
+                          {isAgent ? `AI Copilot • ${shop.business_name}` : `${shop.business_name} (Merchant)`}
+                        </span>
                       </div>
                     )}
                     <p className="whitespace-pre-wrap break-words">{m.content}</p>

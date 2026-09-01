@@ -1,57 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ShoppingBag,
-  ExternalLink,
-  MessageSquare,
-  Receipt,
-} from "lucide-react";
+import { ShoppingBag, MessageSquare } from "lucide-react";
+import { useCustomerOrders } from "../../../../hooks/useOrders";
 import { StatusBadge } from "../../../components/app/utils";
+import type { OrderStatus } from "../../../../types/order";
 
-const CUSTOMER_ORDERS = [
-  {
-    id: "ord-9821",
-    storeName: "Sharma Kirana Store",
-    date: "Today, 4:30 PM",
-    items: [
-      { name: "Aashirvaad Atta 5kg", qty: 1, price: 245 },
-      { name: "Amul Milk 1L", qty: 2, price: 62 },
-    ],
-    total: 369,
-    status: "Paid" as const,
-    variant: "success" as const,
-    paymentLink: "https://rzp.io/l/test_ord9821",
-  },
-  {
-    id: "ord-8819",
-    storeName: "Sharma Kirana Store",
-    date: "26 Aug 2026",
-    items: [
-      { name: "Maggi 12-pack", qty: 2, price: 145 },
-      { name: "Tata Salt 1kg", qty: 1, price: 28 },
-    ],
-    total: 318,
-    status: "Paid" as const,
-    variant: "success" as const,
-    paymentLink: "https://rzp.io/l/test_ord8819",
-  },
-  {
-    id: "ord-7104",
-    storeName: "Gupta Daily Provisions",
-    date: "22 Aug 2026",
-    items: [
-      { name: "Fortune Sunflower Oil 1L", qty: 1, price: 160 },
-      { name: "Parle-G Biscuit", qty: 5, price: 10 },
-    ],
-    total: 210,
-    status: "Settled" as const,
-    variant: "success" as const,
-    paymentLink: "https://rzp.io/l/test_ord7104",
-  },
-];
+function getStatusBadgeVariant(
+  status: OrderStatus,
+): "success" | "warning" | "danger" | "neutral" {
+  if (status === "paid") return "success";
+  if (status === "unpaid") return "warning";
+  if (status === "cancelled") return "danger";
+  return "neutral";
+}
+
+function formatStatusLabel(status: OrderStatus): string {
+  if (status === "paid") return "Paid";
+  if (status === "unpaid") return "Unpaid";
+  if (status === "cancelled") return "Cancelled";
+  if (status === "partially_paid") return "Partially Paid";
+  return status;
+}
 
 export default function UserOrdersPage() {
+  const { data, isLoading } = useCustomerOrders();
+  const orders = data?.items || [];
+
   return (
     <div className="w-full h-full overflow-y-auto font-intert">
       <div className="max-w-4xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
@@ -64,77 +39,99 @@ export default function UserOrdersPage() {
           </p>
         </div>
 
-        <div className="space-y-4">
-          {CUSTOMER_ORDERS.map((ord) => (
-            <div
-              key={ord.id}
-              className="p-5 rounded-2xl border border-border bg-surface shadow-xs"
+        {isLoading ? (
+          <div className="flex justify-center py-16">
+            <div className="h-7 w-7 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="py-16 text-center border border-border rounded-2xl bg-surface">
+            <p className="text-sm font-medium text-primary">No orders placed yet</p>
+            <p className="text-xs text-muted mt-1">
+              Start a chat with any local store to place your first automated grocery order.
+            </p>
+            <Link
+              href="/shops"
+              className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-xl btn-brand-solid text-xs font-medium cursor-pointer"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
-                    <ShoppingBag size={14} />
+              <MessageSquare size={13} />
+              <span>Browse Local Shops</span>
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {orders.map((ord) => {
+              const total = Number(ord.total_amount) || 0;
+              const formattedDate = new Date(ord.created_at).toLocaleDateString("en-IN", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              });
+
+              return (
+                <div
+                  key={ord.id}
+                  className="p-5 rounded-2xl border border-border bg-surface shadow-xs"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border mb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
+                        <ShoppingBag size={14} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-primary">
+                          {ord.store_name}
+                        </h3>
+                        <p className="text-[11px] text-muted">
+                          Order #{ord.id.slice(0, 8)} · {formattedDate}
+                        </p>
+                      </div>
+                    </div>
+                    <StatusBadge
+                      label={formatStatusLabel(ord.status)}
+                      variant={getStatusBadgeVariant(ord.status)}
+                    />
                   </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-primary">
-                      {ord.storeName}
-                    </h3>
-                    <p className="text-[11px] text-muted">
-                      Order #{ord.id} · {ord.date}
-                    </p>
+
+                  <div className="divide-y divide-border-subtle mb-4">
+                    {ord.items.map((it) => (
+                      <div
+                        key={it.id}
+                        className="py-2 flex items-center justify-between text-xs"
+                      >
+                        <span className="text-secondary font-medium">
+                          {it.product_name_snapshot}{" "}
+                          <span className="text-muted">× {it.quantity}</span>
+                        </span>
+                        <span className="text-primary font-medium">
+                          ₹{(Number(it.unit_price_snapshot) * it.quantity).toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-border">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted">Total:</span>
+                      <span className="text-base font-instrument text-primary font-semibold">
+                        ₹{total.toLocaleString("en-IN")}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href="/shops"
+                        className="px-3.5 py-1.5 rounded-xl btn-brand-solid text-xs font-medium flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <MessageSquare size={12} />
+                        <span>Order Again</span>
+                      </Link>
+                    </div>
                   </div>
                 </div>
-                <StatusBadge label={ord.status} variant={ord.variant} />
-              </div>
-
-              <div className="divide-y divide-border-subtle mb-4">
-                {ord.items.map((it, idx) => (
-                  <div
-                    key={idx}
-                    className="py-2 flex items-center justify-between text-xs"
-                  >
-                    <span className="text-secondary font-medium">
-                      {it.name} <span className="text-muted">× {it.qty}</span>
-                    </span>
-                    <span className="text-primary font-medium">
-                      ₹{it.price * it.qty}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-border">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-muted">Total Paid:</span>
-                  <span className="text-base font-instrument text-primary">
-                    ₹{ord.total}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <a
-                    href={ord.paymentLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 rounded-xl border border-border bg-bg hover:bg-surface-muted text-xs font-medium text-secondary hover:text-primary transition-colors flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Receipt size={12} />
-                    <span>View Receipt</span>
-                    <ExternalLink size={11} />
-                  </a>
-
-                  <Link
-                    href="/user"
-                    className="px-3 py-1.5 rounded-xl btn-brand-solid text-xs font-medium flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <MessageSquare size={12} />
-                    <span>Order Again</span>
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

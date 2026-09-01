@@ -12,15 +12,26 @@ import type {
 import type { ShopDetail } from "../types/shop";
 
 export function useCustomerConnections(params?: GetCustomerConnectionsParams) {
-  const store = useCustomerDirectoryStore();
+  const customers = useCustomerDirectoryStore((s) => s.customers);
+  const hasMore = useCustomerDirectoryStore((s) => s.hasMore);
+  const nextCursor = useCustomerDirectoryStore((s) => s.nextCursor);
+  const isStoreLoading = useCustomerDirectoryStore((s) => s.isLoading);
+  const isLoadingMore = useCustomerDirectoryStore((s) => s.isLoadingMore);
+  const searchQuery = useCustomerDirectoryStore((s) => s.searchQuery);
+  const statusFilter = useCustomerDirectoryStore((s) => s.statusFilter);
+  const setFilters = useCustomerDirectoryStore((s) => s.setFilters);
+  const setInitialCustomers = useCustomerDirectoryStore((s) => s.setInitialCustomers);
+  const appendMoreCustomers = useCustomerDirectoryStore((s) => s.appendMoreCustomers);
+  const setLoadingMore = useCustomerDirectoryStore((s) => s.setLoadingMore);
+
   const search = params?.search || "";
   const status = params?.status || "all";
 
   useEffect(() => {
-    if (search !== store.searchQuery || status !== store.statusFilter) {
-      store.setFilters(search, status);
+    if (search !== searchQuery || status !== statusFilter) {
+      setFilters(search, status);
     }
-  }, [search, status]);
+  }, [search, status, searchQuery, statusFilter, setFilters]);
 
   const query = useQuery({
     queryKey: queryKeys.customers.list({
@@ -37,41 +48,41 @@ export function useCustomerConnections(params?: GetCustomerConnectionsParams) {
 
   useEffect(() => {
     if (query.data) {
-      store.setInitialCustomers(
+      setInitialCustomers(
         query.data.items,
         query.data.next_cursor || null,
         query.data.has_more,
       );
     }
-  }, [query.data]);
+  }, [query.data, setInitialCustomers]);
 
   const loadMoreCustomers = useCallback(async () => {
-    if (!store.hasMore || !store.nextCursor || store.isLoadingMore) {
+    if (!hasMore || !nextCursor || isLoadingMore) {
       return;
     }
-    store.setLoadingMore(true);
+    setLoadingMore(true);
     try {
       const response = await customerService.getConnections({
         search: search.trim() || undefined,
         status: status === "all" ? undefined : status,
-        cursor: store.nextCursor,
+        cursor: nextCursor,
       });
-      store.appendMoreCustomers(
+      appendMoreCustomers(
         response.items,
         response.next_cursor || null,
         response.has_more,
       );
     } catch {
-      store.setLoadingMore(false);
+      setLoadingMore(false);
     }
-  }, [search, status, store.hasMore, store.nextCursor, store.isLoadingMore]);
+  }, [search, status, hasMore, nextCursor, isLoadingMore, setLoadingMore, appendMoreCustomers]);
 
   return {
-    customers: store.customers,
-    hasMore: store.hasMore,
-    nextCursor: store.nextCursor,
-    isLoading: query.isLoading || store.isLoading,
-    isLoadingMore: store.isLoadingMore,
+    customers,
+    hasMore,
+    nextCursor,
+    isLoading: query.isLoading || isStoreLoading,
+    isLoadingMore,
     isError: query.isError,
     error: query.error,
     refetch: query.refetch,
@@ -110,12 +121,12 @@ export function useCreateCustomerConnection() {
 
 export function useAcceptCustomerConnection() {
   const queryClient = useQueryClient();
-  const store = useCustomerDirectoryStore();
+  const updateCustomer = useCustomerDirectoryStore((s) => s.updateCustomer);
 
   return useMutation<CustomerConnectionResponse, unknown, string>({
     mutationFn: (connectionId) => customerService.acceptConnection(connectionId),
     onSuccess: (updated) => {
-      store.updateCustomer(updated);
+      updateCustomer(updated);
       queryClient.setQueryData(queryKeys.customers.detail(updated.id), updated);
       queryClient.invalidateQueries({ queryKey: queryKeys.customers.all });
     },

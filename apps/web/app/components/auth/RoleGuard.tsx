@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -9,13 +9,22 @@ interface RoleGuardProps {
   allowedRole: "merchant" | "customer";
 }
 
+const subscribe = () => () => {};
+const getSnapshot = () => true;
+const getServerSnapshot = () => false;
+
+function useIsMounted() {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
 export function RoleGuard({ children, allowedRole }: RoleGuardProps) {
+  const mounted = useIsMounted();
   const { user, isAuthenticated, isLoading, isOnboarded } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (isLoading) return;
+    if (!mounted || isLoading) return;
 
     if (!isAuthenticated) {
       router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
@@ -29,9 +38,9 @@ export function RoleGuard({ children, allowedRole }: RoleGuardProps) {
         router.replace(isOnboarded ? "/chat" : "/onboarding");
       }
     }
-  }, [isAuthenticated, isLoading, user, allowedRole, isOnboarded, router, pathname]);
+  }, [mounted, isAuthenticated, isLoading, user, allowedRole, isOnboarded, router, pathname]);
 
-  if (isLoading) {
+  if (!mounted || isLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-bg">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />

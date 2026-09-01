@@ -60,25 +60,17 @@ export const useMessageStore = create<MessageState>((set) => ({
     nextCursor: string | null,
     hasMore: boolean,
   ) =>
-    set((state) => {
-      const existingIds = new Set(state.messages.map((m) => m.id));
-      const freshOlder = olderMessages.filter((m) => !existingIds.has(m.id));
-      return {
-        messages: [...freshOlder, ...state.messages],
-        nextCursor,
-        hasMore,
-        isLoadingMore: false,
-      };
-    }),
+    set((state) => ({
+      messages: [...olderMessages, ...state.messages],
+      nextCursor,
+      hasMore,
+      isLoadingMore: false,
+    })),
 
   appendMessage: (message: MessageResponse) =>
     set((state) => {
-      const index = state.messages.findIndex((m) => m.id === message.id);
-      if (index >= 0) {
-        const updated = [...state.messages];
-        updated[index] = message;
-        return { messages: updated };
-      }
+      const exists = state.messages.some((m) => m.id === message.id);
+      if (exists) return state;
       return { messages: [...state.messages, message] };
     }),
 

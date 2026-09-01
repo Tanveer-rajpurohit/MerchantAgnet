@@ -5,8 +5,9 @@ import Link from "next/link";
 import { ArrowLeft, ArrowUp, X, CheckCircle2, Clock } from "lucide-react";
 import { useCustomerConnectionDetail } from "../../../../hooks/useCustomerConnections";
 import { useMessages } from "../../../../hooks/useMessages";
+import { useRealtimeChat } from "../../../../hooks/useRealtimeChat";
+import { useSocketStore } from "../../../../stores/useSocketStore";
 import type { CustomerConnectionResponse } from "../../../../types/customer";
-import type { MessageResponse } from "../../../../types/message";
 
 interface ChatViewProps {
   connectionId: string;
@@ -117,8 +118,13 @@ export function ChatView({ connectionId }: ChatViewProps) {
     isLoadingMore,
     hasMore,
     loadOlderMessages,
-    appendLiveMessage,
   } = useMessages(connectionId);
+
+  const { isConnected: isSocketConnected } = useRealtimeChat({
+    connectionId,
+    role: "merchant",
+    enabled: Boolean(connectionId),
+  });
 
   const isConnected = customer?.status === "connected";
 
@@ -163,18 +169,9 @@ export function ChatView({ connectionId }: ChatViewProps) {
     if (!trimmed || isSending) return;
 
     setIsSending(true);
-
-    const optimisticMsg: MessageResponse = {
-      id: `temp-${Date.now()}`,
-      conversation_id: customer?.conversation_id || "temp-conv",
-      sender_type: "merchant",
-      content: trimmed,
-      status: "sent",
-      created_at: new Date().toISOString(),
-    };
-
-    appendLiveMessage(optimisticMsg);
     setInput("");
+
+    useSocketStore.getState().sendMessage(trimmed, "merchant");
     setIsSending(false);
 
     if (textareaRef.current) {
@@ -241,6 +238,13 @@ export function ChatView({ connectionId }: ChatViewProps) {
             </div>
           </button>
         )}
+
+        {isSocketConnected && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium border border-emerald-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Live</span>
+          </span>
+        )}
       </div>
 
       <div
@@ -271,6 +275,7 @@ export function ChatView({ connectionId }: ChatViewProps) {
         {!isCustomerLoading && !isMessagesLoading && messages.length > 0 &&
           messages.map((msg) => {
             const isMerchant = msg.sender_type === "merchant";
+            const isAgent = msg.sender_type === "agent";
             return (
               <div
                 key={msg.id}
@@ -280,9 +285,16 @@ export function ChatView({ connectionId }: ChatViewProps) {
                   className={`max-w-[80%] sm:max-w-[65%] px-4 py-2.5 rounded-2xl text-xs sm:text-[13px] leading-relaxed ${
                     isMerchant
                       ? "bg-brand text-white rounded-br-xs"
-                      : "bg-surface border border-border text-primary rounded-bl-xs shadow-xs"
+                      : isAgent
+                        ? "bg-brand/5 border border-brand/20 text-primary rounded-bl-xs shadow-xs"
+                        : "bg-surface border border-border text-primary rounded-bl-xs shadow-xs"
                   }`}
                 >
+                  {isAgent && (
+                    <span className="block text-[10px] text-brand font-semibold mb-1">
+                      AI Copilot (Auto-reply)
+                    </span>
+                  )}
                   <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                   <span
                     className={`block text-[9px] mt-1 ${

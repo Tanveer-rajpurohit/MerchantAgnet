@@ -8,15 +8,26 @@ import { useShopDirectoryStore } from "../stores/useShopDirectoryStore";
 import type { ShopDetail } from "../types/shop";
 
 export function useShops(params?: GetShopsParams) {
-  const store = useShopDirectoryStore();
+  const shops = useShopDirectoryStore((s) => s.shops);
+  const hasMore = useShopDirectoryStore((s) => s.hasMore);
+  const nextCursor = useShopDirectoryStore((s) => s.nextCursor);
+  const isStoreLoading = useShopDirectoryStore((s) => s.isLoading);
+  const isLoadingMore = useShopDirectoryStore((s) => s.isLoadingMore);
+  const searchQuery = useShopDirectoryStore((s) => s.searchQuery);
+  const selectedCategory = useShopDirectoryStore((s) => s.selectedCategory);
+  const setFilters = useShopDirectoryStore((s) => s.setFilters);
+  const setInitialShops = useShopDirectoryStore((s) => s.setInitialShops);
+  const appendMoreShops = useShopDirectoryStore((s) => s.appendMoreShops);
+  const setLoadingMore = useShopDirectoryStore((s) => s.setLoadingMore);
+
   const search = params?.search || "";
   const category = params?.category || "All";
 
   useEffect(() => {
-    if (search !== store.searchQuery || category !== store.selectedCategory) {
-      store.setFilters(search, category);
+    if (search !== searchQuery || category !== selectedCategory) {
+      setFilters(search, category);
     }
-  }, [search, category]);
+  }, [search, category, searchQuery, selectedCategory, setFilters]);
 
   const query = useQuery({
     queryKey: queryKeys.shops.list({
@@ -33,41 +44,41 @@ export function useShops(params?: GetShopsParams) {
 
   useEffect(() => {
     if (query.data) {
-      store.setInitialShops(
+      setInitialShops(
         query.data.items,
         query.data.next_cursor || null,
         query.data.has_more,
       );
     }
-  }, [query.data]);
+  }, [query.data, setInitialShops]);
 
   const loadMoreShops = useCallback(async () => {
-    if (!store.hasMore || !store.nextCursor || store.isLoadingMore) {
+    if (!hasMore || !nextCursor || isLoadingMore) {
       return;
     }
-    store.setLoadingMore(true);
+    setLoadingMore(true);
     try {
       const response = await shopService.getShops({
         search: search.trim() || undefined,
         category: category === "All" ? undefined : category,
-        cursor: store.nextCursor,
+        cursor: nextCursor,
       });
-      store.appendMoreShops(
+      appendMoreShops(
         response.items,
         response.next_cursor || null,
         response.has_more,
       );
     } catch {
-      store.setLoadingMore(false);
+      setLoadingMore(false);
     }
-  }, [search, category, store.hasMore, store.nextCursor, store.isLoadingMore]);
+  }, [search, category, hasMore, nextCursor, isLoadingMore, setLoadingMore, appendMoreShops]);
 
   return {
-    shops: store.shops,
-    hasMore: store.hasMore,
-    nextCursor: store.nextCursor,
-    isLoading: query.isLoading || store.isLoading,
-    isLoadingMore: store.isLoadingMore,
+    shops,
+    hasMore,
+    nextCursor,
+    isLoading: query.isLoading || isStoreLoading,
+    isLoadingMore,
     isError: query.isError,
     error: query.error,
     refetch: query.refetch,

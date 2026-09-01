@@ -2,52 +2,76 @@
 
 import { useState, useMemo } from "react";
 import { Plus } from "lucide-react";
-import type { Order, OrderStatus } from "../../types/order";
+import {
+  useOrders,
+  useCreateOrder,
+  useUpdateOrder,
+} from "../../../hooks/useOrders";
+import type {
+  OrderResponse,
+  OrderStatus,
+  OrderCreatePayload,
+} from "../../../types/order";
 import { SearchInput } from "../../components/app/utils";
 import {
   OrderList,
   OrderModal,
   WhatsAppAIModal,
-  ORDERS as INITIAL_ORDERS,
-  AVAILABLE_CUSTOMERS,
 } from "../../components/app/orders";
 
 type OrderTab = "all" | OrderStatus;
 
+const TABS: { id: OrderTab; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "unpaid", label: "Unpaid" },
+  { id: "paid", label: "Paid" },
+  { id: "cancelled", label: "Cancelled" },
+];
+
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<OrderTab>("all");
 
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
-  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [editingOrder, setEditingOrder] = useState<OrderResponse | null>(null);
 
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
-  const [whatsAppTargetOrder, setWhatsAppTargetOrder] = useState<Order | null>(
-    null,
-  );
+  const [whatsAppTargetOrder, setWhatsAppTargetOrder] =
+    useState<OrderResponse | null>(null);
 
-  const filtered = useMemo(() => {
-    return orders.filter((o) => {
-      const matchesTab = tab === "all" ? true : o.status === tab;
-      const matchesSearch =
-        o.customerName.toLowerCase().includes(search.toLowerCase()) ||
-        o.items.some((it) =>
-          it.name.toLowerCase().includes(search.toLowerCase()),
-        );
-      return matchesTab && matchesSearch;
-    });
-  }, [orders, search, tab]);
+  const {
+    orders,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    loadMoreOrders,
+  } = useOrders({
+    status: tab === "all" ? undefined : tab,
+    search,
+  });
 
-  const totalOutstanding = orders
-    .filter((o) => o.status !== "Cancelled")
-    .reduce((sum, o) => sum + (o.totalAmount - o.paidAmount), 0);
+  const createOrderMutation = useCreateOrder();
+  const updateOrderMutation = useUpdateOrder();
 
-  const paidTotal = orders
-    .filter((o) => o.status === "Paid")
-    .reduce((sum, o) => sum + o.paidAmount, 0);
+  const totalOutstanding = useMemo(() => {
+    return orders
+      .filter((o) => o.status !== "cancelled")
+      .reduce(
+        (sum, o) =>
+          sum + (Number(o.total_amount) || 0) - (Number(o.paid_amount) || 0),
+        0,
+      );
+  }, [orders]);
 
-  const unpaidCount = orders.filter((o) => o.status === "Unpaid").length;
+  const paidTotal = useMemo(() => {
+    return orders.reduce((sum, o) => sum + (Number(o.paid_amount) || 0), 0);
+  }, [orders]);
+
+  const unpaidCount = useMemo(() => {
+    return orders.filter(
+      (o) => o.status === "unpaid" || o.status === "partially_paid",
+    ).length;
+  }, [orders]);
 
   const STATS = [
     {
@@ -59,75 +83,47 @@ export default function OrdersPage() {
     { label: "Total Orders", value: String(orders.length) },
   ];
 
-  const TABS: { id: OrderTab; label: string }[] = [
-    { id: "all", label: "All" },
-    { id: "Unpaid", label: "Unpaid" },
-    { id: "Paid", label: "Paid" },
-    { id: "Cancelled", label: "Cancelled" },
-  ];
-
   const handleOpenNewOrder = () => {
     setEditingOrder(null);
     setIsOrderModalOpen(true);
   };
 
-  const handleOpenEditOrder = (order: Order) => {
+  const handleOpenEditOrder = (order: OrderResponse) => {
     setEditingOrder(order);
     setIsOrderModalOpen(true);
   };
 
-  const handleSaveOrder = (
-    orderData: Omit<Order, "id" | "date"> & { id?: string },
-  ) => {
-    if (orderData.id) {
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === orderData.id
-            ? {
-                ...o,
-                items: orderData.items,
-                totalAmount: orderData.totalAmount,
-                paidAmount: orderData.paidAmount,
-                status: orderData.status,
-              }
-            : o,
-        ),
-      );
-    } else {
-      const newOrder: Order = {
-        id: `ord-${Date.now().toString().slice(-4)}`,
-        customerId: orderData.customerId,
-        customerName: orderData.customerName,
-        customerPhone: orderData.customerPhone,
-        items: orderData.items,
-        totalAmount: orderData.totalAmount,
-        paidAmount: 0,
-        status: "Unpaid",
-        date: new Date().toISOString().slice(0, 10),
-      };
-      setOrders((prev) => [newOrder, ...prev]);
-    }
-  };
-
-  const handleWhatsAppClick = (order: Order) => {
+  const handleWhatsAppClick = (order: OrderResponse) => {
     setWhatsAppTargetOrder(order);
     setIsWhatsAppModalOpen(true);
   };
 
-  const handleCancelOrder = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status: "Cancelled" } : o)),
-    );
+  const handleSaveOrder = async (orderData: OrderCreatePayload) => {
+    if (editingOrder) {
+      await updateOrderMutation.mutateAsync({
+        orderId: editingOrder.id,
+        payload: {
+          status: orderData.status,
+          paid_amount: orderData.paid_amount,
+        },
+      });
+    } else {
+      await createOrderMutation.mutateAsync(orderData);
+    }
   };
 
-  const handleMarkPaid = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId
-          ? { ...o, paidAmount: o.totalAmount, status: "Paid" }
-          : o,
-      ),
-    );
+  const handleCancelOrder = async (orderId: string) => {
+    await updateOrderMutation.mutateAsync({
+      orderId,
+      payload: { status: "cancelled", reason: "Cancelled by merchant" },
+    });
+  };
+
+  const handleMarkPaid = async (orderId: string, totalAmount: number) => {
+    await updateOrderMutation.mutateAsync({
+      orderId,
+      payload: { status: "paid", paid_amount: totalAmount },
+    });
   };
 
   return (
@@ -139,16 +135,16 @@ export default function OrdersPage() {
               Orders
             </h1>
             <p className="text-sm text-muted font-intert mt-1">
-              Track customer purchases, edit items, generate instant payment
-              links, and send bills directly over WhatsApp.
+              Track customer purchases, edit order items, and manage payment settlements.
             </p>
           </div>
           <button
+            type="button"
             onClick={handleOpenNewOrder}
-            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 rounded-lg bg-brand text-white text-sm font-medium hover:opacity-90 transition-opacity shrink-0 cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 rounded-xl btn-brand-solid text-xs sm:text-sm font-medium shadow-xs shrink-0 cursor-pointer"
           >
             <Plus size={14} />
-            New Order
+            <span>New Order</span>
           </button>
         </div>
 
@@ -173,10 +169,11 @@ export default function OrdersPage() {
             {TABS.map((t) => (
               <button
                 key={t.id}
+                type="button"
                 onClick={() => setTab(t.id)}
-                className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap cursor-pointer ${
+                className={`px-4 py-2.5 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap cursor-pointer ${
                   tab === t.id
-                    ? "border-brand text-primary"
+                    ? "border-brand text-primary font-semibold"
                     : "border-transparent text-muted hover:text-secondary"
                 }`}
               >
@@ -193,11 +190,15 @@ export default function OrdersPage() {
         </div>
 
         <OrderList
-          orders={filtered}
+          orders={orders}
+          isLoading={isLoading}
+          isLoadingMore={isLoadingMore}
+          hasMore={hasMore}
+          onLoadMore={loadMoreOrders}
           onEditOrder={handleOpenEditOrder}
-          onWhatsAppClick={handleWhatsAppClick}
           onCancelOrder={handleCancelOrder}
           onMarkPaid={handleMarkPaid}
+          onWhatsAppClick={handleWhatsAppClick}
         />
       </div>
 
@@ -206,7 +207,7 @@ export default function OrdersPage() {
         onClose={() => setIsOrderModalOpen(false)}
         onSave={handleSaveOrder}
         initialOrder={editingOrder}
-        customers={AVAILABLE_CUSTOMERS}
+        isPending={createOrderMutation.isPending || updateOrderMutation.isPending}
       />
 
       <WhatsAppAIModal

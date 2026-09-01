@@ -8,13 +8,23 @@ import { useMessageStore } from "../stores/useMessageStore";
 import type { MessageResponse } from "../types/message";
 
 export function useMessages(connectionId?: string | null) {
-  const store = useMessageStore();
+  const messages = useMessageStore((s) => s.messages);
+  const storeConnectionId = useMessageStore((s) => s.connectionId);
+  const hasMore = useMessageStore((s) => s.hasMore);
+  const nextCursor = useMessageStore((s) => s.nextCursor);
+  const isStoreLoading = useMessageStore((s) => s.isLoading);
+  const isLoadingMore = useMessageStore((s) => s.isLoadingMore);
+  const setConnectionId = useMessageStore((s) => s.setConnectionId);
+  const setInitialMessages = useMessageStore((s) => s.setInitialMessages);
+  const prependOlderMessages = useMessageStore((s) => s.prependOlderMessages);
+  const appendMessage = useMessageStore((s) => s.appendMessage);
+  const setLoadingMore = useMessageStore((s) => s.setLoadingMore);
 
   useEffect(() => {
-    if (connectionId && connectionId !== store.connectionId) {
-      store.setConnectionId(connectionId);
+    if (connectionId && connectionId !== storeConnectionId) {
+      setConnectionId(connectionId);
     }
-  }, [connectionId, store.connectionId]);
+  }, [connectionId, storeConnectionId, setConnectionId]);
 
   const query = useQuery({
     queryKey: queryKeys.messages.list(connectionId || ""),
@@ -27,46 +37,46 @@ export function useMessages(connectionId?: string | null) {
 
   useEffect(() => {
     if (query.data && connectionId) {
-      store.setInitialMessages(
+      setInitialMessages(
         query.data.items,
         query.data.next_cursor || null,
         query.data.has_more,
       );
     }
-  }, [query.data, connectionId]);
+  }, [query.data, connectionId, setInitialMessages]);
 
   const loadOlderMessages = useCallback(async () => {
-    if (!connectionId || !store.hasMore || !store.nextCursor || store.isLoadingMore) {
+    if (!connectionId || !hasMore || !nextCursor || isLoadingMore) {
       return;
     }
-    store.setLoadingMore(true);
+    setLoadingMore(true);
     try {
       const response = await messageService.getMessages(connectionId, {
-        cursor: store.nextCursor,
+        cursor: nextCursor,
       });
-      store.prependOlderMessages(
+      prependOlderMessages(
         response.items,
         response.next_cursor || null,
         response.has_more,
       );
     } catch {
-      store.setLoadingMore(false);
+      setLoadingMore(false);
     }
-  }, [connectionId, store.hasMore, store.nextCursor, store.isLoadingMore]);
+  }, [connectionId, hasMore, nextCursor, isLoadingMore, setLoadingMore, prependOlderMessages]);
 
   const appendLiveMessage = useCallback(
     (message: MessageResponse) => {
-      store.appendMessage(message);
+      appendMessage(message);
     },
-    [],
+    [appendMessage],
   );
 
   return {
-    messages: store.messages,
-    hasMore: store.hasMore,
-    nextCursor: store.nextCursor,
-    isLoading: query.isLoading || store.isLoading,
-    isLoadingMore: store.isLoadingMore,
+    messages,
+    hasMore,
+    nextCursor,
+    isLoading: query.isLoading || isStoreLoading,
+    isLoadingMore,
     isError: query.isError,
     error: query.error,
     refetch: query.refetch,

@@ -1,52 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ChevronDown,
   ChevronUp,
-  Check,
   Edit2,
-  XCircle,
   CheckCircle2,
+  XCircle,
+  Check,
 } from "lucide-react";
-import type { Order, OrderStatus } from "../../../types/order";
+import type { OrderResponse, OrderStatus } from "../../../../types/order";
 import { StatusBadge } from "../utils";
 
 interface OrderListProps {
-  orders: Order[];
-  onEditOrder: (order: Order) => void;
-  onWhatsAppClick: (order: Order) => void;
+  orders: OrderResponse[];
+  onEditOrder: (order: OrderResponse) => void;
   onCancelOrder: (orderId: string) => void;
-  onMarkPaid: (orderId: string) => void;
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-  });
-}
-
-function formatCurrency(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
-}
-
-function getStatusVariant(
-  status: OrderStatus,
-): "success" | "warning" | "danger" {
-  if (status === "Paid") return "success";
-  if (status === "Unpaid") return "warning";
-  return "danger";
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  onMarkPaid: (orderId: string, totalAmount: number) => void;
+  onWhatsAppClick?: (order: OrderResponse) => void;
+  isLoading?: boolean;
+  isLoadingMore?: boolean;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 function WhatsAppIcon({ size = 14 }: { size?: number }) {
@@ -63,57 +38,97 @@ function WhatsAppIcon({ size = 14 }: { size?: number }) {
   );
 }
 
+function getInitials(name: string): string {
+  if (!name) return "O";
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function getStatusVariant(
+  status: OrderStatus,
+): "success" | "warning" | "danger" | "neutral" {
+  if (status === "paid") return "success";
+  if (status === "unpaid") return "warning";
+  if (status === "cancelled") return "danger";
+  return "neutral";
+}
+
+function formatStatusLabel(status: OrderStatus): string {
+  if (status === "paid") return "Paid";
+  if (status === "unpaid") return "Unpaid";
+  if (status === "cancelled") return "Cancelled";
+  if (status === "partially_paid") return "Partially Paid";
+  return status;
+}
+
 function OrderRow({
   order,
   onEditOrder,
-  onWhatsAppClick,
   onCancelOrder,
   onMarkPaid,
+  onWhatsAppClick,
 }: {
-  order: Order;
-  onEditOrder: (order: Order) => void;
-  onWhatsAppClick: (order: Order) => void;
+  order: OrderResponse;
+  onEditOrder: (order: OrderResponse) => void;
   onCancelOrder: (orderId: string) => void;
-  onMarkPaid: (orderId: string) => void;
+  onMarkPaid: (orderId: string, totalAmount: number) => void;
+  onWhatsAppClick?: (order: OrderResponse) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const remaining = order.totalAmount - order.paidAmount;
+
+  const total = Number(order.total_amount) || 0;
+  const paid = Number(order.paid_amount) || 0;
+  const remaining = Math.max(0, total - paid);
+
+  const formattedDate = new Date(order.created_at).toLocaleDateString("en-IN", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return (
-    <div className="border-b border-border last:border-0 font-intert">
+    <div className="border-b border-border last:border-b-0">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3.5 py-3.5 px-2 hover:bg-surface-muted/40 transition-colors cursor-pointer text-left"
+        className="w-full flex items-center gap-3.5 py-3.5 px-2 text-left hover:bg-surface-muted/40 transition-colors group cursor-pointer"
       >
         <div className="w-10 h-10 rounded-full bg-surface-muted flex items-center justify-center shrink-0 text-xs font-medium text-secondary">
-          {getInitials(order.customerName)}
+          {getInitials(order.customer_name)}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-medium text-primary truncate">
-              {order.customerName}
-            </p>
-            <span className="text-[11px] text-muted shrink-0">
-              {formatDate(order.date)}
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-2 mt-0.5">
-            <p className="text-xs text-muted truncate">
-              {order.items.length} {order.items.length === 1 ? "item" : "items"}{" "}
-              · {formatCurrency(order.totalAmount)}
-            </p>
-            <div className="flex items-center gap-2 shrink-0">
-              {remaining > 0 && order.status !== "Cancelled" && (
-                <span className="text-xs font-medium text-danger">
-                  {formatCurrency(remaining)} due
-                </span>
-              )}
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-sm font-semibold text-primary truncate font-intert">
+                {order.customer_name}
+              </span>
               <StatusBadge
-                label={order.status}
+                label={formatStatusLabel(order.status)}
                 variant={getStatusVariant(order.status)}
               />
+            </div>
+            <span className="text-[11px] text-muted shrink-0 font-intert">
+              {formattedDate}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 mt-0.5">
+            <p className="text-xs text-muted truncate font-intert">
+              Order #{order.id.slice(0, 8)} · {order.items.length}{" "}
+              {order.items.length === 1 ? "item" : "items"} · ₹{total.toLocaleString("en-IN")}
+            </p>
+            <div className="flex items-center gap-2 shrink-0">
+              {remaining > 0 && order.status !== "cancelled" && (
+                <span className="text-xs font-medium text-danger">
+                  ₹{remaining.toLocaleString("en-IN")} due
+                </span>
+              )}
               {expanded ? (
                 <ChevronUp size={14} className="text-muted" />
               ) : (
@@ -131,32 +146,21 @@ function OrderRow({
               <thead>
                 <tr className="border-b border-border bg-surface-muted text-left text-[11px] text-muted uppercase tracking-wide">
                   <th className="px-3 py-2 font-medium">Item Name</th>
-                  <th className="px-3 py-2 font-medium text-center">
-                    Quantity
-                  </th>
-                  <th className="px-3 py-2 font-medium text-right">
-                    Unit Price
-                  </th>
-                  <th className="px-3 py-2 font-medium text-right">
-                    Line Total
-                  </th>
+                  <th className="px-3 py-2 font-medium text-center">Quantity</th>
+                  <th className="px-3 py-2 font-medium text-right">Unit Price</th>
+                  <th className="px-3 py-2 font-medium text-right">Line Total</th>
                 </tr>
               </thead>
               <tbody>
                 {order.items.map((item, idx) => (
-                  <tr
-                    key={idx}
-                    className="border-b border-border last:border-0"
-                  >
-                    <td className="px-3 py-2 text-primary">{item.name}</td>
-                    <td className="px-3 py-2 text-secondary text-center">
-                      {item.quantity}
+                  <tr key={idx} className="border-b border-border last:border-0">
+                    <td className="px-3 py-2 text-primary">{item.product_name_snapshot}</td>
+                    <td className="px-3 py-2 text-secondary text-center">{item.quantity}</td>
+                    <td className="px-3 py-2 text-secondary text-right font-mono">
+                      ₹{Number(item.unit_price_snapshot).toLocaleString("en-IN")}
                     </td>
-                    <td className="px-3 py-2 text-secondary text-right">
-                      {formatCurrency(item.unitPrice)}
-                    </td>
-                    <td className="px-3 py-2 text-primary text-right font-intert">
-                      {formatCurrency(item.quantity * item.unitPrice)}
+                    <td className="px-3 py-2 text-primary text-right font-mono">
+                      ₹{(Number(item.unit_price_snapshot) * item.quantity).toLocaleString("en-IN")}
                     </td>
                   </tr>
                 ))}
@@ -169,38 +173,37 @@ function OrderRow({
               <span className="text-muted">
                 Total Bill:{" "}
                 <span className="text-primary font-medium">
-                  {formatCurrency(order.totalAmount)}
+                  ₹{total.toLocaleString("en-IN")}
                 </span>
               </span>
               <span className="text-muted">
                 Paid:{" "}
                 <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                  {formatCurrency(order.paidAmount)}
+                  ₹{paid.toLocaleString("en-IN")}
                 </span>
               </span>
-              {remaining > 0 && order.status !== "Cancelled" && (
+              {remaining > 0 && order.status !== "cancelled" && (
                 <span className="text-muted">
                   Balance Due:{" "}
                   <span className="text-danger font-semibold">
-                    {formatCurrency(remaining)}
+                    ₹{remaining.toLocaleString("en-IN")}
                   </span>
                 </span>
               )}
             </div>
 
-            {order.customerPhone && (
+            {order.customer_phone && (
               <span className="text-[11px] text-muted">
-                Phone:{" "}
-                <span className="text-secondary">{order.customerPhone}</span>
+                Phone: <span className="text-secondary">{order.customer_phone}</span>
               </span>
             )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {order.status !== "Cancelled" && remaining > 0 && (
+            {order.status !== "cancelled" && remaining > 0 && (
               <button
                 type="button"
-                onClick={() => onWhatsAppClick(order)}
+                onClick={() => onWhatsAppClick?.(order)}
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white text-xs font-medium transition-colors shadow-xs cursor-pointer"
               >
                 <WhatsAppIcon size={14} />
@@ -208,7 +211,18 @@ function OrderRow({
               </button>
             )}
 
-            {order.status !== "Paid" && order.status !== "Cancelled" && (
+            {order.status !== "paid" && order.status !== "cancelled" && (
+              <button
+                type="button"
+                onClick={() => onMarkPaid(order.id, total)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-medium transition-colors cursor-pointer"
+              >
+                <CheckCircle2 size={13} />
+                <span>Mark as Paid</span>
+              </button>
+            )}
+
+            {order.status !== "cancelled" && (
               <button
                 type="button"
                 onClick={() => onEditOrder(order)}
@@ -219,18 +233,7 @@ function OrderRow({
               </button>
             )}
 
-            {order.status !== "Paid" && order.status !== "Cancelled" && (
-              <button
-                type="button"
-                onClick={() => onMarkPaid(order.id)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-medium transition-colors cursor-pointer"
-              >
-                <CheckCircle2 size={13} />
-                <span>Mark as Paid</span>
-              </button>
-            )}
-
-            {order.status !== "Cancelled" && order.status !== "Paid" && (
+            {order.status !== "cancelled" && order.status !== "paid" && (
               <button
                 type="button"
                 onClick={() => onCancelOrder(order.id)}
@@ -241,7 +244,7 @@ function OrderRow({
               </button>
             )}
 
-            {order.status === "Paid" && (
+            {order.status === "paid" && (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                   <Check size={13} />
@@ -249,7 +252,7 @@ function OrderRow({
                 </span>
                 <button
                   type="button"
-                  onClick={() => onWhatsAppClick(order)}
+                  onClick={() => onWhatsAppClick?.(order)}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-surface hover:bg-surface-muted text-xs font-medium text-secondary cursor-pointer"
                 >
                   <WhatsAppIcon size={13} />
@@ -258,10 +261,8 @@ function OrderRow({
               </div>
             )}
 
-            {order.status === "Cancelled" && (
-              <span className="text-xs text-muted">
-                This order was cancelled.
-              </span>
+            {order.status === "cancelled" && (
+              <span className="text-xs text-muted">This order was cancelled.</span>
             )}
           </div>
         </div>
@@ -273,28 +274,69 @@ function OrderRow({
 export function OrderList({
   orders,
   onEditOrder,
-  onWhatsAppClick,
   onCancelOrder,
   onMarkPaid,
+  onWhatsAppClick,
+  isLoading = false,
+  isLoadingMore = false,
+  hasMore = false,
+  onLoadMore,
 }: OrderListProps) {
+  const bottomSentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!onLoadMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasMore && !isLoadingMore) {
+          onLoadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    const el = bottomSentinelRef.current;
+    if (el) observer.observe(el);
+
+    return () => {
+      if (el) observer.unobserve(el);
+    };
+  }, [hasMore, isLoadingMore, onLoadMore]);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-16">
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (orders.length === 0) {
+    return (
+      <div className="py-16 text-center border border-border rounded-xl bg-surface font-intert">
+        <p className="text-sm text-muted">No orders found.</p>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      {orders.length === 0 ? (
-        <div className="py-16 text-center border border-border rounded-xl bg-surface">
-          <p className="text-sm text-muted font-intert">No orders found.</p>
-        </div>
-      ) : (
-        orders.map((order) => (
-          <OrderRow
-            key={order.id}
-            order={order}
-            onEditOrder={onEditOrder}
-            onWhatsAppClick={onWhatsAppClick}
-            onCancelOrder={onCancelOrder}
-            onMarkPaid={onMarkPaid}
-          />
-        ))
-      )}
+    <div className="font-intert">
+      {orders.map((order) => (
+        <OrderRow
+          key={order.id}
+          order={order}
+          onEditOrder={onEditOrder}
+          onCancelOrder={onCancelOrder}
+          onMarkPaid={onMarkPaid}
+          onWhatsAppClick={onWhatsAppClick}
+        />
+      ))}
+
+      <div ref={bottomSentinelRef} className="py-3 flex justify-center">
+        {isLoadingMore && (
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+        )}
+      </div>
     </div>
   );
 }

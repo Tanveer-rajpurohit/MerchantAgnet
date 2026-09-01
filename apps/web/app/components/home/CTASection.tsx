@@ -5,7 +5,7 @@ import { useAuth } from "../../../context/AuthContext";
 
 export default function CTASection() {
   const { user, isAuthenticated, isOnboarded } = useAuth();
-  const destination = !isAuthenticated ? "/register" : (user?.role === "merchant" ? (isOnboarded ? "/dashboard" : "/onboarding") : "/user");
+  const destination = !isAuthenticated ? "/register" : user?.role === "merchant" ? (isOnboarded ? "/dashboard" : "/onboarding") : "/user";
 
   return (
     <section className="brand-glow w-full border-b border-border py-16 sm:py-24">

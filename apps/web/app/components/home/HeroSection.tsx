@@ -45,7 +45,7 @@ export default function HeroSection() {
     };
   }, []);
 
-  const destination = !isAuthenticated ? "/login" : (user?.role === "merchant" ? (isOnboarded ? "/chat" : "/onboarding") : "/user");
+  const destination = !isAuthenticated ? "/login" : user?.role === "merchant" ? (isOnboarded ? "/chat" : "/onboarding") : "/user";
 
   return (
     <section className="brand-glow w-full pt-28 sm:pt-36 pb-12 sm:pb-16 flex flex-col items-center border-b border-border">

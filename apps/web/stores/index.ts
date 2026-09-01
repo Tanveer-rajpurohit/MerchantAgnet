@@ -1,8 +1,10 @@
 export { useUIStore } from "./useUIStore";
 export { useOnboardingStore } from "./useOnboardingStore";
 export { useMessageStore } from "./useMessageStore";
+export { useSocketStore } from "./useSocketStore";
 export { useShopDirectoryStore } from "./useShopDirectoryStore";
 export { useCustomerDirectoryStore } from "./useCustomerDirectoryStore";
+export { useOrderDirectoryStore } from "./useOrderDirectoryStore";
 export type { UIState } from "./useUIStore";
 export type { OnboardingState, GoalsDraft } from "./useOnboardingStore";
 export type { MessageState } from "./useMessageStore";

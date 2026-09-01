@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, Check, Mail, Phone } from "lucide-react";
+import { Check, Mail, Phone } from "lucide-react";
 import { useProfile } from "../../../../hooks";
 
 export function PrivacySection() {

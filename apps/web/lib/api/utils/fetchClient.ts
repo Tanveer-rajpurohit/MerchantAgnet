@@ -149,18 +149,14 @@ export async function fetchClient<T>(
     }
 
     if (isRefreshing) {
-      try {
-        const newToken = await new Promise<string>((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        });
-        requestHeaders.set("Authorization", `Bearer ${newToken}`);
-        return await fetchClient<T>(endpoint, {
-          ...options,
-          headers: requestHeaders,
-        });
-      } catch (err) {
-        throw err;
-      }
+      const newToken = await new Promise<string>((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      });
+      requestHeaders.set("Authorization", `Bearer ${newToken}`);
+      return await fetchClient<T>(endpoint, {
+        ...options,
+        headers: requestHeaders,
+      });
     }
 
     isRefreshing = true;
