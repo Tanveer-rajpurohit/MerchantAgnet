@@ -11,7 +11,7 @@ class OrderItemCreate(BaseModel):
     unit_price_snapshot: Decimal = Field(..., ge=0)
 
 class OrderCreateRequest(BaseModel):
-    merchant_id: uuid.UUID
+    merchant_id: uuid.UUID | None = None
     customer_id: uuid.UUID | None = None
     customer_connection_id: uuid.UUID | None = None
     items: list[OrderItemCreate] = Field(..., min_length=1)

@@ -1,9 +1,10 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.user import User
 from app.models.order import Order, OrderItem, OrderStatusHistory, OrderStatus, ActorType
 from app.schemas.order import OrderItemCreate
 
@@ -40,11 +41,17 @@ async def list_by_merchant(
     merchant_id: uuid.UUID | str,
     status: OrderStatus | None = None,
     customer_id: uuid.UUID | str | None = None,
+    search: str | None = None,
     cursor: datetime | None = None,
     limit: int = 30,
 ) -> list[Order]:
     m_id = uuid.UUID(str(merchant_id)) if isinstance(merchant_id, str) else merchant_id
-    query = select(Order).options(*order_eager_options()).where(Order.merchant_id == m_id)
+    query = (
+        select(Order)
+        .options(*order_eager_options())
+        .join(User, Order.customer_id == User.id)
+        .where(Order.merchant_id == m_id)
+    )
 
     if status is not None:
         query = query.where(Order.status == status)
@@ -52,6 +59,18 @@ async def list_by_merchant(
     if customer_id is not None:
         c_id = uuid.UUID(str(customer_id)) if isinstance(customer_id, str) else customer_id
         query = query.where(Order.customer_id == c_id)
+
+    if search and search.strip():
+        term = search.strip()
+        like_term = f"%{term}%"
+        query = query.where(
+            or_(
+                User.full_name.ilike(like_term),
+                User.phone_number.ilike(like_term),
+                User.email.ilike(like_term),
+                Order.items.any(OrderItem.product_name_snapshot.ilike(like_term)),
+            )
+        )
 
     if cursor is not None:
         query = query.where(Order.created_at < cursor)

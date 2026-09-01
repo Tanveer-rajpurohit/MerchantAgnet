@@ -23,6 +23,7 @@ router = APIRouter(prefix="/orders", tags=["Orders"])
 async def list_merchant_orders(
     status_filter: OrderStatus | None = Query(None, alias="status"),
     customer_id: uuid.UUID | None = Query(None),
+    search: str | None = Query(None),
     cursor: datetime | None = Query(None),
     limit: int = Query(30, ge=1, le=100),
     current_user: User = Depends(get_current_merchant),
@@ -38,6 +39,7 @@ async def list_merchant_orders(
         merchant_id=current_user.merchant_profile.id,
         status_filter=status_filter,
         customer_id=customer_id,
+        search=search,
         cursor=cursor,
         limit=limit,
     )

@@ -46,11 +46,18 @@ async def create_order(
 
     if current_user is not None:
         if current_user.role == UserRole.merchant and current_user.merchant_profile:
-            merchant_id = current_user.merchant_profile.id
+            if merchant_id is None:
+                merchant_id = current_user.merchant_profile.id
             if changed_by not in (ActorType.merchant, ActorType.ai_agent, ActorType.system):
                 changed_by = ActorType.merchant
         elif current_user.role == UserRole.customer:
             changed_by = ActorType.customer
+
+    if merchant_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="merchant_id is required",
+        )
 
     target_customer_id = payload.customer_id
     connection_id = payload.customer_connection_id
@@ -110,6 +117,7 @@ async def list_merchant_orders(
     merchant_id: uuid.UUID,
     status_filter: OrderStatus | None = None,
     customer_id: uuid.UUID | None = None,
+    search: str | None = None,
     cursor: datetime | None = None,
     limit: int = 30,
 ) -> PaginatedOrderResponse:
@@ -118,6 +126,7 @@ async def list_merchant_orders(
         merchant_id=merchant_id,
         status=status_filter,
         customer_id=customer_id,
+        search=search,
         cursor=cursor,
         limit=limit,
     )
