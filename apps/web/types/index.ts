@@ -8,3 +8,4 @@ export * from "./customer";
 export * from "./product";
 export * from "./expense";
 export * from "./order";
+export * from "./razorpay";

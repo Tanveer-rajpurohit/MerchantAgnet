@@ -1,10 +1,18 @@
+"use client";
+
+import Link from "next/link";
 import { Check, ExternalLink, Plus } from "lucide-react";
+import { useRazorpay } from "../../../../hooks";
 
 interface PayoutsHeaderProps {
   onCreateLinkClick?: () => void;
 }
 
 export function PayoutsHeader({ onCreateLinkClick }: PayoutsHeaderProps) {
+  const { status } = useRazorpay();
+  const isConnected = Boolean(status?.is_connected);
+  const modeLabel = status?.mode === "live" ? "Live Mode" : "Test Mode";
+
   return (
     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6 font-intert">
       <div>
@@ -35,12 +43,21 @@ export function PayoutsHeader({ onCreateLinkClick }: PayoutsHeaderProps) {
             </svg>
           </div>
           <span className="text-xs font-medium text-secondary">
-            Razorpay Test Mode
+            {isConnected ? `Razorpay ${modeLabel}` : "Razorpay"}
           </span>
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium border border-emerald-500/20">
-            <Check size={9} />
-            Active
-          </span>
+          {isConnected ? (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium border border-emerald-500/20">
+              <Check size={9} />
+              Active
+            </span>
+          ) : (
+            <Link
+              href="/settings"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-medium border border-amber-500/20 hover:underline"
+            >
+              Setup Keys
+            </Link>
+          )}
           <a
             href="https://dashboard.razorpay.com"
             target="_blank"

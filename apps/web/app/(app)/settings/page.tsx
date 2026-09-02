@@ -1,23 +1,35 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AppearanceSection,
   StoreProfileSection,
   AIGoalsSection,
   RazorpaySection,
+  RazorpayModal,
+  DisconnectModal,
   PrivacySection,
   SessionSection,
 } from "../../components/app/settings";
 import { useAuth } from "../../../context/AuthContext";
+import { useRazorpay } from "../../../hooks";
 
 export default function SettingsPage() {
   const router = useRouter();
   const { logout } = useAuth();
+  const { status, disconnectKeys, isDisconnecting } = useRazorpay();
+  const [showRazorpayModal, setShowRazorpayModal] = useState(false);
+  const [showDisconnectModal, setShowDisconnectModal] = useState(false);
 
   const handleSignOut = () => {
     logout();
     router.push("/login");
+  };
+
+  const handleConfirmDisconnect = async () => {
+    await disconnectKeys();
+    setShowDisconnectModal(false);
   };
 
   return (
@@ -37,11 +49,28 @@ export default function SettingsPage() {
           <AppearanceSection />
           <StoreProfileSection />
           <AIGoalsSection />
-          <RazorpaySection />
+          <RazorpaySection
+            onOpenModal={() => setShowRazorpayModal(true)}
+            onOpenDisconnectModal={() => setShowDisconnectModal(true)}
+          />
           <PrivacySection />
           <SessionSection onSignOut={handleSignOut} />
         </div>
       </div>
+
+      <RazorpayModal
+        isOpen={showRazorpayModal}
+        onClose={() => setShowRazorpayModal(false)}
+        isUpdate={Boolean(status?.is_connected)}
+      />
+
+      <DisconnectModal
+        isOpen={showDisconnectModal}
+        onClose={() => setShowDisconnectModal(false)}
+        onConfirm={handleConfirmDisconnect}
+        isDisconnecting={isDisconnecting}
+        keyIdMasked={status?.key_id_masked || null}
+      />
     </div>
   );
 }

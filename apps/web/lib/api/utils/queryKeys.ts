@@ -39,4 +39,7 @@ export const queryKeys = {
     detail: (id: string) => ["orders", "detail", id] as const,
     myOrders: (filters?: Record<string, unknown>) => ["orders", "my-orders", filters] as const,
   },
+  razorpay: {
+    status: ["merchants", "razorpay", "status"] as const,
+  },
 } as const;

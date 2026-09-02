@@ -11,3 +11,4 @@ export { messageService } from "./services/messageService";
 export { productService } from "./services/productService";
 export { expenseService } from "./services/expenseService";
 export { orderService } from "./services/orderService";
+export { razorpayService } from "./services/razorpayService";

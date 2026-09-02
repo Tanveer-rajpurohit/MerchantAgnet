@@ -1,19 +1,37 @@
 "use client";
 
-import { Check, ExternalLink } from "lucide-react";
-import { RazorpayKeys } from "../../types/onboarding";
+import { useState } from "react";
+import { Check, ExternalLink, Loader2, AlertCircle } from "lucide-react";
+import { useRazorpay } from "../../../hooks";
+import type { RazorpayKeys } from "../../types/onboarding";
 
-export function Step2Razorpay({
-  keys,
-  setKeys,
-}: {
+interface Step2RazorpayProps {
   keys: RazorpayKeys;
   setKeys: (k: RazorpayKeys) => void;
-}) {
-  const handleConnect = () => {
-    if (keys.keyId.trim() && keys.keySecret.trim()) {
+}
+
+export function Step2Razorpay({ keys, setKeys }: Step2RazorpayProps) {
+  const { connectKeys, isConnecting } = useRazorpay();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleConnect = async () => {
+    if (!keys.keyId.trim() || !keys.keySecret.trim()) return;
+    setErrorMessage(null);
+
+    try {
+      await connectKeys({
+        key_id: keys.keyId.trim(),
+        key_secret: keys.keySecret.trim(),
+      });
       setKeys({ ...keys, connected: true });
+    } catch {
+      setErrorMessage("Invalid Key ID or Secret. Please verify keys in your Razorpay Dashboard.");
     }
+  };
+
+  const handleReset = () => {
+    setKeys({ keyId: "", keySecret: "", connected: false });
+    setErrorMessage(null);
   };
 
   return (
@@ -29,8 +47,8 @@ export function Step2Razorpay({
 
       {keys.connected ? (
         <div className="flex flex-col items-center gap-4 py-12">
-          <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center">
-            <Check size={28} className="text-success" />
+          <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center">
+            <Check size={28} className="text-emerald-500" />
           </div>
           <div className="text-center">
             <p className="font-intert text-primary font-medium text-lg">
@@ -42,10 +60,8 @@ export function Step2Razorpay({
           </div>
           <button
             type="button"
-            onClick={() =>
-              setKeys({ keyId: "", keySecret: "", connected: false })
-            }
-            className="text-xs font-intert text-muted hover:text-primary transition-colors"
+            onClick={handleReset}
+            className="text-xs font-intert text-muted hover:text-primary transition-colors cursor-pointer"
           >
             Reconnect with different keys
           </button>
@@ -76,6 +92,13 @@ export function Step2Razorpay({
             </a>
           </div>
 
+          {errorMessage && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-intert">
+              <AlertCircle size={14} className="shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="razorpayKeyId"
@@ -89,7 +112,10 @@ export function Step2Razorpay({
               autoComplete="off"
               placeholder="rzp_test_..."
               value={keys.keyId}
-              onChange={(e) => setKeys({ ...keys, keyId: e.target.value })}
+              onChange={(e) => {
+                setKeys({ ...keys, keyId: e.target.value });
+                if (errorMessage) setErrorMessage(null);
+              }}
               className="w-full bg-surface border border-border rounded-xl px-4 py-2.5 text-primary font-mono text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand transition-all"
             />
           </div>
@@ -107,7 +133,10 @@ export function Step2Razorpay({
               autoComplete="off"
               placeholder="Enter your key secret"
               value={keys.keySecret}
-              onChange={(e) => setKeys({ ...keys, keySecret: e.target.value })}
+              onChange={(e) => {
+                setKeys({ ...keys, keySecret: e.target.value });
+                if (errorMessage) setErrorMessage(null);
+              }}
               className="w-full bg-surface border border-border rounded-xl px-4 py-2.5 text-primary font-mono text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand transition-all"
             />
           </div>
@@ -115,14 +144,21 @@ export function Step2Razorpay({
           <button
             type="button"
             onClick={handleConnect}
-            disabled={!keys.keyId.trim() || !keys.keySecret.trim()}
-            className={`w-full py-3 rounded-xl font-medium font-intert text-sm transition-all ${
-              keys.keyId.trim() && keys.keySecret.trim()
+            disabled={!keys.keyId.trim() || !keys.keySecret.trim() || isConnecting}
+            className={`w-full py-3 rounded-xl font-medium font-intert text-sm transition-all flex items-center justify-center gap-2 ${
+              keys.keyId.trim() && keys.keySecret.trim() && !isConnecting
                 ? "btn-brand-solid shadow-xs cursor-pointer"
                 : "bg-surface-muted text-muted border border-border cursor-not-allowed opacity-90"
             }`}
           >
-            Connect Razorpay Test Account
+            {isConnecting ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Verifying credentials...</span>
+              </>
+            ) : (
+              <span>Connect Razorpay Test Account</span>
+            )}
           </button>
         </div>
       )}

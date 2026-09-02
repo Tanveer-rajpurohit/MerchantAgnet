@@ -32,4 +32,5 @@ export {
   useCreateOrder,
   useUpdateOrder,
 } from "./useOrders";
+export { useRazorpay } from "./useRazorpay";
 export { queryKeys } from "../lib/api/utils/queryKeys";

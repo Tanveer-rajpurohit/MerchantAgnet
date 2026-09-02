@@ -7,6 +7,7 @@ import { Bot, ArrowRight, ArrowLeft, AlertCircle } from "lucide-react";
 import { Step1BusinessProfile, Step2Razorpay, Step3Expenses, Step4Products, Step5Goals } from "./components";
 import { useOnboarding } from "../../hooks/useOnboarding";
 import { useProfile } from "../../hooks/useProfile";
+import { useRazorpay } from "../../hooks/useRazorpay";
 import { useAuth } from "../../context/AuthContext";
 import type { BusinessProfile, RazorpayKeys, ExpenseRow, ProductRow } from "../types/onboarding";
 
@@ -47,6 +48,7 @@ export default function OnboardingPage() {
     isSavingProducts,
     isCompleting,
   } = useOnboarding();
+  const { connectKeys: connectRazorpay } = useRazorpay();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [stepError, setStepError] = useState<string | null>(null);
@@ -236,6 +238,19 @@ export default function OnboardingPage() {
       } catch {
         setStepError("Failed to save business profile. Please try again.");
         return;
+      }
+    } else if (currentStep === 1) {
+      if (razorpayKeys.keyId.trim() && razorpayKeys.keySecret.trim() && !razorpayKeys.connected) {
+        try {
+          await connectRazorpay({
+            key_id: razorpayKeys.keyId.trim(),
+            key_secret: razorpayKeys.keySecret.trim(),
+          });
+          setRazorpayKeys({ ...razorpayKeys, connected: true });
+        } catch {
+          setStepError("Failed to connect Razorpay keys. Please verify credentials.");
+          return;
+        }
       }
     } else if (currentStep === 2) {
       const validExpenses = expenses

@@ -1,6 +1,34 @@
-import { CheckCircle2 } from "lucide-react";
+"use client";
 
-export function RazorpaySection() {
+import { CheckCircle2, AlertCircle, RefreshCw, KeyRound, Unlink } from "lucide-react";
+import { useRazorpay } from "../../../../hooks";
+
+interface RazorpaySectionProps {
+  onOpenModal: () => void;
+  onOpenDisconnectModal: () => void;
+}
+
+export function RazorpaySection({
+  onOpenModal,
+  onOpenDisconnectModal,
+}: RazorpaySectionProps) {
+  const { status, isLoading } = useRazorpay();
+
+  if (isLoading) {
+    return (
+      <section className="rounded-2xl border border-border bg-surface p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div className="h-6 w-40 bg-surface-muted rounded-lg animate-pulse" />
+          <div className="h-6 w-28 bg-surface-muted rounded-full animate-pulse" />
+        </div>
+        <div className="h-16 w-full bg-surface-muted rounded-xl animate-pulse" />
+      </section>
+    );
+  }
+
+  const isConnected = Boolean(status?.is_connected);
+  const modeLabel = status?.mode === "live" ? "Live Mode" : "Test Mode";
+
   return (
     <section className="rounded-2xl border border-border bg-surface p-6">
       <div className="flex items-start justify-between mb-5">
@@ -24,25 +52,74 @@ export function RazorpaySection() {
             Payment gateway connection for automated link generation.
           </p>
         </div>
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-medium font-intert border border-emerald-500/20">
-          <CheckCircle2 size={13} />
-          Connected (Test Mode)
-        </div>
+
+        {isConnected ? (
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-medium font-intert border border-emerald-500/20">
+            <CheckCircle2 size={13} />
+            Connected ({modeLabel})
+          </div>
+        ) : (
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-medium font-intert border border-amber-500/20">
+            <AlertCircle size={13} />
+            Not Connected
+          </div>
+        )}
       </div>
 
-      <div className="p-4 rounded-xl border border-border bg-bg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <span className="text-[11px] text-muted font-intert">
-            Active Key ID
-          </span>
-          <p className="font-mono text-xs text-primary mt-0.5">
-            rzp_test_98kLsM2109xPQ
-          </p>
+      {isConnected ? (
+        <div className="p-4 rounded-xl border border-border bg-bg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span className="text-[11px] text-muted font-intert">
+              Active Key ID
+            </span>
+            <p className="font-mono text-xs text-primary mt-0.5">
+              {status?.key_id_masked || "Configured"}
+            </p>
+            <p className="text-[11px] text-muted font-intert mt-1">
+              Zero platform fees enabled
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onOpenModal}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-surface hover:bg-surface-muted text-xs font-medium font-intert text-secondary hover:text-primary transition-colors cursor-pointer"
+            >
+              <KeyRound size={13} />
+              <span>Update Keys</span>
+            </button>
+            <button
+              type="button"
+              onClick={onOpenDisconnectModal}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-surface hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-600 text-xs font-medium font-intert text-secondary transition-colors cursor-pointer"
+            >
+              <Unlink size={13} />
+              <span>Disconnect</span>
+            </button>
+          </div>
         </div>
-        <span className="text-xs font-intert text-muted">
-          Zero platform fees enabled
-        </span>
-      </div>
+      ) : (
+        <div className="p-4 rounded-xl border border-border bg-bg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium text-primary font-intert">
+              No active gateway configured
+            </p>
+            <p className="text-[11px] text-muted font-intert mt-0.5">
+              Connect your test keys to enable automated customer checkout links.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onOpenModal}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl btn-brand-solid text-xs font-medium font-intert cursor-pointer shadow-xs"
+          >
+            <RefreshCw size={13} />
+            <span>Connect Razorpay</span>
+          </button>
+        </div>
+      )}
     </section>
   );
 }
