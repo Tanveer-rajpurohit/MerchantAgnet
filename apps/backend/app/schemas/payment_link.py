@@ -20,6 +20,8 @@ class PaymentLinkVerifyRequest(BaseModel):
     razorpay_payment_id: str = Field(..., min_length=1)
     razorpay_payment_link_id: str = Field(..., min_length=1)
     razorpay_signature: str = Field(..., min_length=1)
+    razorpay_payment_link_reference_id: str | None = None
+    razorpay_payment_link_status: str | None = None
 
 class PaymentLinkResponse(BaseModel):
     id: uuid.UUID

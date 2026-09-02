@@ -11,7 +11,9 @@ import {
   ShieldCheck,
   MessageCircle,
   RotateCcw,
+  AlertCircle,
 } from "lucide-react";
+import { useCreatePaymentLink } from "../../../../hooks";
 
 interface PaymentLinkModalProps {
   isOpen: boolean;
@@ -70,11 +72,9 @@ export function PaymentLinkModal({
   defaultAmount = "",
 }: PaymentLinkModalProps) {
   const [tab, setTab] = useState<"ai" | "manual">("ai");
-
   const [aiPrompt, setAiPrompt] = useState(
     PRESET_PROMPTS[0] ?? "Create a ₹500 payment link for Rahul Sharma",
   );
-
   const [customerName, setCustomerName] = useState(
     defaultCustomerName || "Rahul Sharma",
   );
@@ -82,7 +82,6 @@ export function PaymentLinkModal({
   const [amount, setAmount] = useState(defaultAmount || "500");
   const [purpose, setPurpose] = useState("Kirana staples and grocery order");
 
-  const [isGenerating, setIsGenerating] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<{
     url: string;
     customer: string;
@@ -92,50 +91,64 @@ export function PaymentLinkModal({
   } | null>(null);
 
   const [copied, setCopied] = useState(false);
+  const createMutation = useCreatePaymentLink();
 
   if (!isOpen) return null;
 
-  const handleGenerateAi = () => {
-    setIsGenerating(true);
-    setTimeout(() => {
-      setIsGenerating(false);
-      const parsedAmount = aiPrompt.match(/₹?(\d+[\d,]*)/)?.[1] || "500";
-      const parsedName =
-        QUICK_CUSTOMERS.find((c) => {
-          const firstName = c.name.toLowerCase().split(" ")[0] ?? "";
-          return firstName ? aiPrompt.toLowerCase().includes(firstName) : false;
-        })?.name || "Customer";
+  const handleGenerateAi = async () => {
+    if (!aiPrompt.trim()) return;
+    const parsedAmountMatch = aiPrompt.match(/₹?(\d+[\d,]*)/)?.[1]?.replace(/,/g, "");
+    const cleanAmount = Number(parsedAmountMatch || "500");
+    const parsedName =
+      QUICK_CUSTOMERS.find((c) => {
+        const firstName = c.name.toLowerCase().split(" ")[0] ?? "";
+        return firstName ? aiPrompt.toLowerCase().includes(firstName) : false;
+      })?.name || "Customer";
 
-      const matchedPhone =
-        QUICK_CUSTOMERS.find((c) => c.name === parsedName)?.phone ||
-        "+91 98765 43210";
+    const matchedPhone =
+      QUICK_CUSTOMERS.find((c) => c.name === parsedName)?.phone || undefined;
 
-      setGeneratedLink({
-        url: `https://rzp.io/l/pay_${Math.random().toString(36).slice(2, 8)}`,
-        customer: parsedName,
-        phone: matchedPhone,
-        amount: parsedAmount.startsWith("₹")
-          ? parsedAmount
-          : `₹${parsedAmount}`,
-        purpose: "Groceries & provisions order",
+    try {
+      const res = await createMutation.mutateAsync({
+        customer_name: parsedName,
+        customer_phone: matchedPhone,
+        amount: cleanAmount,
+        description: aiPrompt.trim(),
       });
-    }, 600);
+      setGeneratedLink({
+        url: res.razorpay_link_url || "",
+        customer: res.customer_name,
+        phone: res.customer_phone || "",
+        amount: `₹${res.amount}`,
+        purpose: res.description,
+      });
+    } catch {
+      // Managed through mutation state
+    }
   };
 
-  const handleGenerateManual = () => {
+  const handleGenerateManual = async () => {
     if (!customerName.trim() || !amount.trim()) return;
+    const cleanAmount = Number(amount.replace(/[^0-9.]/g, ""));
+    if (isNaN(cleanAmount) || cleanAmount <= 0) return;
 
-    setIsGenerating(true);
-    setTimeout(() => {
-      setIsGenerating(false);
-      setGeneratedLink({
-        url: `https://rzp.io/l/pay_${Math.random().toString(36).slice(2, 8)}`,
-        customer: customerName,
-        phone: customerPhone,
-        amount: amount.startsWith("₹") ? amount : `₹${amount}`,
-        purpose: purpose || "Store purchase",
+    try {
+      const res = await createMutation.mutateAsync({
+        customer_name: customerName.trim(),
+        customer_phone: customerPhone.trim() || undefined,
+        amount: cleanAmount,
+        description: purpose.trim() || "Store purchase",
       });
-    }, 500);
+      setGeneratedLink({
+        url: res.razorpay_link_url || "",
+        customer: res.customer_name,
+        phone: res.customer_phone || "",
+        amount: `₹${res.amount}`,
+        purpose: res.description,
+      });
+    } catch {
+      // Managed through mutation state
+    }
   };
 
   const handleCopy = () => {
@@ -145,57 +158,68 @@ export function PaymentLinkModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSendWhatsApp = () => {
-    if (!generatedLink) return;
-    const text = `Namaste ${generatedLink.customer} ji! Here is your payment link for ${generatedLink.amount} (${generatedLink.purpose}) from Sharma Store:\n\n${generatedLink.url}\n\nThank you for shopping with us!`;
-    const cleanPhone = generatedLink.phone.replace(/\D/g, "");
-    const encoded = encodeURIComponent(text);
-    const url = cleanPhone
-      ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encoded}`
-      : `https://api.whatsapp.com/send?text=${encoded}`;
-    window.open(url, "_blank");
-  };
-
   const handleReset = () => {
     setGeneratedLink(null);
-    setIsGenerating(false);
+    setCustomerName(defaultCustomerName || "Rahul Sharma");
+    setAmount(defaultAmount || "500");
+  };
+
+  const handleSendWhatsApp = () => {
+    if (!generatedLink) return;
+    const cleanPhone = generatedLink.phone.replace(/[^0-9]/g, "");
+    const shareText = encodeURIComponent(
+      `Hi ${generatedLink.customer}, here is your payment link of ${generatedLink.amount} for "${generatedLink.purpose}": ${generatedLink.url}`
+    );
+    window.open(`https://wa.me/${cleanPhone}?text=${shareText}`, "_blank");
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4 backdrop-blur-xs font-intert">
-      <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl border border-border bg-surface p-5 sm:p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div className="flex items-center justify-between pb-3.5 border-b border-border mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#02042B] text-[#3395FF] flex items-center justify-center shrink-0">
-              <RazorpayIcon size={16} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button
+        type="button"
+        aria-label="Close"
+        className="absolute inset-0 bg-black/40 backdrop-blur-xs cursor-pointer"
+        onClick={onClose}
+      />
+
+      <div className="relative z-10 w-full max-w-md rounded-2xl border border-border bg-surface p-5 shadow-2xl font-intert overflow-hidden">
+        <div className="flex items-center justify-between pb-3 border-b border-border mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-[#02042B] text-[#3395FF] flex items-center justify-center text-xs">
+              <RazorpayIcon size={12} />
             </div>
-            <div>
-              <h2 className="text-base font-semibold text-primary">
-                Generate Razorpay Link
-              </h2>
-              <p className="text-xs text-muted">
-                Instant checkout link for customer payment
-              </p>
-            </div>
+            <h2 className="text-sm font-semibold text-primary">
+              Generate Payment Link
+            </h2>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-primary hover:bg-surface-muted transition-colors cursor-pointer"
+            className="text-muted hover:text-primary transition-colors cursor-pointer"
           >
             <X size={16} />
           </button>
         </div>
 
+        {createMutation.isError && (
+          <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
+            <AlertCircle size={14} className="shrink-0" />
+            <span className="truncate">
+              {createMutation.error?.message || "Failed to generate Razorpay link"}
+            </span>
+          </div>
+        )}
+
         {!generatedLink ? (
           <div>
-            <div className="flex items-center gap-1 p-1 rounded-xl bg-bg border border-border mb-4">
+            <div className="flex rounded-lg bg-bg p-1 border border-border mb-4">
               <button
                 type="button"
                 onClick={() => setTab("ai")}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   tab === "ai"
-                    ? "bg-surface text-primary shadow-xs border border-border"
-                    : "text-muted hover:text-secondary"
+                    ? "bg-surface text-primary shadow-xs font-semibold"
+                    : "text-muted hover:text-primary"
                 }`}
               >
                 <Sparkles size={13} className="text-brand" />
@@ -204,44 +228,45 @@ export function PaymentLinkModal({
               <button
                 type="button"
                 onClick={() => setTab("manual")}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   tab === "manual"
-                    ? "bg-surface text-primary shadow-xs border border-border"
-                    : "text-muted hover:text-secondary"
+                    ? "bg-surface text-primary shadow-xs font-semibold"
+                    : "text-muted hover:text-primary"
                 }`}
               >
+                <RazorpayIcon size={12} />
                 <span>Manual Form</span>
               </button>
             </div>
 
             {tab === "ai" ? (
-              <div className="space-y-3.5">
+              <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-medium text-primary block mb-1.5">
-                    Describe what you want to charge
+                  <label className="text-xs font-medium text-primary block mb-1">
+                    Describe the payment in natural language
                   </label>
                   <textarea
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
                     rows={3}
-                    placeholder="e.g. Create a ₹750 payment link for Rahul for Diwali sweets"
-                    className="w-full p-3 text-xs rounded-xl border border-border bg-bg text-primary focus:outline-none focus:border-brand/50 resize-none"
+                    placeholder="e.g. Generate ₹850 link for Sharmaji for oil and grains"
+                    className="w-full p-2.5 text-xs rounded-xl border border-border bg-bg text-primary placeholder:text-muted focus:outline-none focus:border-brand/50 resize-none font-intert"
                   />
                 </div>
 
                 <div>
-                  <span className="text-[11px] text-muted block mb-1.5">
-                    Quick suggestions:
-                  </span>
-                  <div className="space-y-1.5">
-                    {PRESET_PROMPTS.map((prompt) => (
+                  <p className="text-[11px] text-muted mb-1.5 font-medium">
+                    Try quick presets:
+                  </p>
+                  <div className="space-y-1">
+                    {PRESET_PROMPTS.map((p) => (
                       <button
-                        key={prompt}
+                        key={p}
                         type="button"
-                        onClick={() => setAiPrompt(prompt)}
-                        className="w-full text-left p-2 rounded-lg border border-border bg-bg hover:border-brand/40 text-xs text-secondary hover:text-primary transition-colors cursor-pointer"
+                        onClick={() => setAiPrompt(p)}
+                        className="w-full text-left p-2 rounded-lg bg-bg hover:bg-surface-muted border border-border/60 text-[11px] text-secondary hover:text-primary transition-colors cursor-pointer truncate"
                       >
-                        {prompt}
+                        {p}
                       </button>
                     ))}
                   </div>
@@ -251,10 +276,10 @@ export function PaymentLinkModal({
                   <button
                     type="button"
                     onClick={handleGenerateAi}
-                    disabled={isGenerating || !aiPrompt.trim()}
+                    disabled={createMutation.isPending || !aiPrompt.trim()}
                     className="w-full py-2.5 rounded-xl btn-brand-solid text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
                   >
-                    {isGenerating ? (
+                    {createMutation.isPending ? (
                       <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
                     ) : (
                       <>
@@ -338,11 +363,11 @@ export function PaymentLinkModal({
                     type="button"
                     onClick={handleGenerateManual}
                     disabled={
-                      isGenerating || !customerName.trim() || !amount.trim()
+                      createMutation.isPending || !customerName.trim() || !amount.trim()
                     }
                     className="w-full py-2.5 rounded-xl btn-brand-solid text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
                   >
-                    {isGenerating ? (
+                    {createMutation.isPending ? (
                       <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
                     ) : (
                       <>
@@ -450,9 +475,9 @@ export function PaymentLinkModal({
                 href={generatedLink.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-brand hover:underline"
+                className="inline-flex items-center gap-1 text-xs text-brand hover:underline font-medium cursor-pointer"
               >
-                <span>Preview Checkout</span>
+                <span>Open checkout</span>
                 <ExternalLink size={12} />
               </a>
             </div>

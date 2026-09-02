@@ -42,4 +42,18 @@ export const queryKeys = {
   razorpay: {
     status: ["merchants", "razorpay", "status"] as const,
   },
+  paymentLinks: {
+    all: ["payment-links"] as const,
+    list: (filters?: Record<string, unknown>) => ["payment-links", "list", filters] as const,
+    detail: (id: string) => ["payment-links", "detail", id] as const,
+  },
+  payouts: {
+    all: ["payouts"] as const,
+    summary: ["payouts", "summary"] as const,
+    settlements: (filters?: Record<string, unknown>) => ["payouts", "settlements", filters] as const,
+  },
+  auditLogs: {
+    all: ["audit-logs"] as const,
+    infinite: (filters?: Record<string, unknown>) => ["audit-logs", "infinite", filters] as const,
+  },
 } as const;

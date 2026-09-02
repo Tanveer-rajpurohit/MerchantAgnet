@@ -22,6 +22,8 @@ export interface PaymentLinkVerifyPayload {
   razorpay_payment_id: string;
   razorpay_payment_link_id: string;
   razorpay_signature: string;
+  razorpay_payment_link_reference_id?: string | null;
+  razorpay_payment_link_status?: string | null;
 }
 
 export interface PaymentLinkRecord {
@@ -106,3 +108,13 @@ export interface PayoutsSummaryResponse {
   pending_settlement: number;
   settlement_count: number;
 }
+
+export interface PayoutRecord {
+  id: string;
+  description: string;
+  amount: string;
+  method: string;
+  date: string;
+  status: "Settled" | "Pending";
+}
+

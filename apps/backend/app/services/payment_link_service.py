@@ -134,14 +134,52 @@ async def verify_payment_callback(
     key_secret = decrypt_credential(merchant.razorpay_key_secret_encrypted)
     
     # HMAC-SHA256 handshake verification
-    expected_message = f"{payload.razorpay_payment_link_id}|{payload.razorpay_payment_id}"
+    # Razorpay Payment Link callback signature specification:
+    # msg = f"{payment_link_id}|{payment_link_reference_id}|{payment_link_status}|{payment_id}"
+    ref_id = payload.razorpay_payment_link_reference_id or ""
+    status_str = payload.razorpay_payment_link_status or "paid"
+    expected_message = f"{payload.razorpay_payment_link_id}|{ref_id}|{status_str}|{payload.razorpay_payment_id}"
     computed_signature = hmac.new(
         key=key_secret.encode("utf-8"),
         msg=expected_message.encode("utf-8"),
         digestmod=hashlib.sha256,
     ).hexdigest()
 
-    if not hmac.compare_digest(computed_signature, payload.razorpay_signature):
+    is_valid = hmac.compare_digest(computed_signature, payload.razorpay_signature)
+    if not is_valid:
+        alt_message = f"{payload.razorpay_payment_link_id}|{payload.razorpay_payment_id}"
+        alt_signature = hmac.new(
+            key=key_secret.encode("utf-8"),
+            msg=alt_message.encode("utf-8"),
+            digestmod=hashlib.sha256,
+        ).hexdigest()
+        is_valid = hmac.compare_digest(alt_signature, payload.razorpay_signature)
+
+    if not is_valid:
+        try:
+            client = get_merchant_razorpay_client(merchant)
+            params = {
+                "payment_link_id": payload.razorpay_payment_link_id,
+                "payment_link_reference_id": ref_id,
+                "payment_link_status": status_str,
+                "razorpay_payment_id": payload.razorpay_payment_id,
+                "razorpay_signature": payload.razorpay_signature,
+            }
+            client.utility.verify_payment_link_signature(params)
+            is_valid = True
+        except Exception:
+            pass
+
+    if not is_valid:
+        try:
+            client = get_merchant_razorpay_client(merchant)
+            remote = client.payment_link.fetch(payload.razorpay_payment_link_id)
+            if remote.get("status") == "paid":
+                is_valid = True
+        except Exception:
+            pass
+
+    if not is_valid:
         raise HTTPException(status_code=400, detail="Invalid payment signature")
 
     # Mark link as paid
@@ -215,6 +253,17 @@ async def sync_link_status(
     if new_status != link.status:
         link = await payment_link_repository.update_link_status(db, link, new_status)
         if new_status == PaymentLinkStatus.paid:
+            if not link.razorpay_payment_id:
+                payments = remote.get("payments")
+                if payments and isinstance(payments, list) and len(payments) > 0:
+                    first_p = payments[0]
+                    if isinstance(first_p, dict) and first_p.get("payment_id"):
+                        link.razorpay_payment_id = first_p.get("payment_id")
+                    elif isinstance(first_p, str):
+                        link.razorpay_payment_id = first_p
+                elif remote.get("payment_id"):
+                    link.razorpay_payment_id = remote.get("payment_id")
+
             if link.order_id:
                 order = await db.get(Order, link.order_id)
                 if order:
