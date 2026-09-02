@@ -58,8 +58,8 @@ class MerchantProfile(Base):
         nullable=False,
         server_default="English",
     )
-    razorpay_key_id_encrypted: Mapped[str | None] = mapped_column(
-        Text,
+    razorpay_key_id: Mapped[str | None] = mapped_column(
+        String(100),
         nullable=True,
     )
     razorpay_key_secret_encrypted: Mapped[str | None] = mapped_column(
@@ -70,6 +70,16 @@ class MerchantProfile(Base):
         Boolean,
         nullable=False,
         default=False,
+    )
+    razorpay_mode: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="test",
+        server_default="test",
+    )
+    razorpay_connected_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
     onboarding_completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),

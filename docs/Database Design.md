@@ -42,9 +42,11 @@
         "gstin": "VARCHAR(15)",
         "upi_vpa": "VARCHAR(100)",
         "preferred_language": "VARCHAR(20) NOT NULL DEFAULT 'English'",
-        "razorpay_key_id_encrypted": "TEXT",
+        "razorpay_key_id": "VARCHAR(100)",
         "razorpay_key_secret_encrypted": "TEXT",
         "is_razorpay_active": "BOOLEAN NOT NULL DEFAULT false",
+        "razorpay_mode": "VARCHAR(20) NOT NULL DEFAULT 'test'",
+        "razorpay_connected_at": "TIMESTAMPTZ",
         "onboarding_completed_at": "TIMESTAMPTZ",
         "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()",
         "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
@@ -151,6 +153,65 @@
         "status": "send_status NOT NULL DEFAULT 'pending'",
         "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
     },
+    
+    "payment_links": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "merchant_id": "UUID NOT NULL REFERENCES merchant_profiles(id) ON DELETE CASCADE",
+        "order_id": "UUID REFERENCES orders(id) ON DELETE SET NULL",
+        "customer_id": "UUID REFERENCES users(id) ON DELETE SET NULL",
+        "customer_name": "VARCHAR(255) NOT NULL",
+        "customer_phone": "VARCHAR(20)",
+        "customer_email": "VARCHAR(255)",
+        "description": "VARCHAR(500) NOT NULL",
+        "amount": "NUMERIC(10,2) NOT NULL",
+        "currency": "VARCHAR(10) NOT NULL DEFAULT 'INR'",
+        "receipt_number": "VARCHAR(100)",
+        "razorpay_link_id": "VARCHAR(255) UNIQUE",
+        "razorpay_link_url": "TEXT",
+        "callback_url": "TEXT",
+        "callback_method": "VARCHAR(10) NOT NULL DEFAULT 'get'",
+        "razorpay_payment_id": "VARCHAR(255)",
+        "razorpay_signature": "VARCHAR(255)",
+        "payment_method": "VARCHAR(50)",
+        "status": "payment_link_status NOT NULL DEFAULT 'created'",
+        "notify_sms": "BOOLEAN NOT NULL DEFAULT false",
+        "notify_email": "BOOLEAN NOT NULL DEFAULT false",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()",
+        "paid_at": "TIMESTAMPTZ",
+        "cancelled_at": "TIMESTAMPTZ",
+        "expired_at": "TIMESTAMPTZ",
+        "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
+    },
+
+    "settlements": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "merchant_id": "UUID NOT NULL REFERENCES merchant_profiles(id) ON DELETE CASCADE",
+        "razorpay_settlement_id": "VARCHAR(255) UNIQUE",
+        "amount": "NUMERIC(10,2) NOT NULL",
+        "fee": "NUMERIC(10,2) NOT NULL DEFAULT 0",
+        "tax": "NUMERIC(10,2) NOT NULL DEFAULT 0",
+        "net_amount": "NUMERIC(10,2) NOT NULL",
+        "currency": "VARCHAR(10) NOT NULL DEFAULT 'INR'",
+        "utr": "VARCHAR(255)",
+        "method": "VARCHAR(50) NOT NULL DEFAULT 'NEFT'",
+        "status": "settlement_status NOT NULL DEFAULT 'pending'",
+        "settled_at": "TIMESTAMPTZ",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()",
+        "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
+    },
+
+    "audit_logs": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "merchant_id": "UUID REFERENCES merchant_profiles(id) ON DELETE SET NULL",
+        "user_id": "UUID REFERENCES users(id) ON DELETE SET NULL",
+        "action": "VARCHAR(100) NOT NULL",
+        "entity_type": "VARCHAR(50) NOT NULL",
+        "entity_id": "VARCHAR(255) NOT NULL",
+        "details": "JSONB NOT NULL DEFAULT '{}'::jsonb",
+        "ip_address": "VARCHAR(45)",
+        "user_agent": "TEXT",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
+    },
 
     "enums": {
         "user_role": ["merchant", "customer"],
@@ -158,7 +219,9 @@
         "order_status": ["unpaid", "paid", "cancelled"],
         "actor_type": ["merchant", "customer", "system", "ai_agent"],
         "sender_type": ["customer", "agent", "merchant"],
-        "send_status": ["pending", "sent", "failed"]
+        "send_status": ["pending", "sent", "failed"],
+        "payment_link_status": ["created", "partially_paid", "paid", "expired", "cancelled"],
+        "settlement_status": ["pending", "processed", "failed"]
     }
 }
 ```

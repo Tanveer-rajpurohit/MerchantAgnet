@@ -402,8 +402,8 @@ export default function PayoutsPage() {
   );
 
   const TABS: { id: PayoutsTab; label: string }[] = [
-    { id: "payouts", label: "Payouts" },
     { id: "payment-links", label: "Payment Links" },
+    { id: "payouts", label: "Bank Settlements" },
   ];
 
   return (
@@ -415,20 +415,33 @@ export default function PayoutsPage() {
 
         <AccountOverview onWithdrawClick={() => setShowWithdrawModal(true)} />
 
-        <div className="flex items-center gap-1 mb-5 border-b border-border">
+        <div className="flex items-center gap-1 mb-3 border-b border-border">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 text-sm font-medium font-intert border-b-2 -mb-px transition-colors whitespace-nowrap ${
+              className={`px-4 py-2.5 text-sm font-medium font-intert border-b-2 -mb-px transition-colors whitespace-nowrap cursor-pointer ${
                 activeTab === tab.id
-                  ? "border-brand text-primary"
+                  ? "border-brand text-primary font-semibold"
                   : "border-transparent text-muted hover:text-secondary"
               }`}
             >
               {tab.label}
             </button>
           ))}
+        </div>
+
+        <div className="mb-6 p-3.5 rounded-xl border border-border bg-surface">
+          <p className="text-xs font-semibold text-primary">
+            {activeTab === "payment-links"
+              ? "Customer Payment Links"
+              : "Bank Account Settlements"}
+          </p>
+          <p className="text-[11px] text-muted mt-0.5">
+            {activeTab === "payment-links"
+              ? "Generate online payment links for orders and share via WhatsApp or SMS. Real-time collection status and digital receipts."
+              : "Automated payouts transferred directly by Razorpay into your registered bank account with UTR tracking and fee deductions."}
+          </p>
         </div>
 
         {activeTab === "payouts" ? (
