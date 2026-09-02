@@ -9,6 +9,7 @@ from app.routers.customers.router import router as customers_router
 from app.routers.orders.router import router as orders_router
 from app.routers.shops.router import router as shops_router
 from app.routers.messages.router import router as messages_router
+from app.routers.merchants.razorpay_router import router as razorpay_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 
@@ -22,3 +23,4 @@ api_v1_router.include_router(customers_router)
 api_v1_router.include_router(orders_router)
 api_v1_router.include_router(shops_router)
 api_v1_router.include_router(messages_router)
+api_v1_router.include_router(razorpay_router)

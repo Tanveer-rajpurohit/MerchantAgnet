@@ -26,6 +26,15 @@ class Settings(BaseSettings):
     AWS_REGION: str = Field(default="ap-south-1", validation_alias=AliasChoices("AWS_REGION"))
     AWS_S3_BUCKET_NAME: str = Field(default="merchantagent-assets", validation_alias=AliasChoices("AWS_S3_BUCKET_NAME"))
     
+    CREDENTIALS_ENCRYPTION_KEY: str = Field(
+        default="AXuZ9j12k91823ks09HH128931kSH88k12893k199PP=",
+        validation_alias=AliasChoices("CREDENTIALS_ENCRYPTION_KEY"),
+    )
+    FRONTEND_URL: str = Field(
+        default="http://localhost:3001",
+        validation_alias=AliasChoices("FRONTEND_URL"),
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
