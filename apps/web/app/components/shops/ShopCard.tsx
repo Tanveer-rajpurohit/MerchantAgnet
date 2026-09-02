@@ -2,7 +2,7 @@
 
 import { Store, MapPin, ShieldCheck, ArrowRight } from "lucide-react";
 import { AgentOrb } from "../app/utils";
-import type { ShopListItem } from "../../../types/shop";
+import type { ShopListItem } from "../../../types";
 
 interface ShopCardProps {
   shop: ShopListItem;

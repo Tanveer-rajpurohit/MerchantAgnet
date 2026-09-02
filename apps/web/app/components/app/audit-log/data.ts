@@ -1,4 +1,4 @@
-import type { AuditLogEntry } from "../../../types/audit-log/audit";
+import type { AuditLogEntry } from "../../../../types";
 
 export const AUDIT_LOG: AuditLogEntry[] = [
   {

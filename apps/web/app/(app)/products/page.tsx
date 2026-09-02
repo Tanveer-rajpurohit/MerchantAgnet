@@ -24,8 +24,7 @@ import {
   AddExpenseModal,
   EditExpenseModal,
 } from "../../components/app/expenses";
-import type { ProductResponse } from "../../../types/product";
-import type { ExpenseResponse } from "../../../types/expense";
+import type { ProductResponse, ExpenseResponse } from "../../../types";
 
 type InventoryTab = "products" | "expenses";
 
@@ -238,7 +237,9 @@ export default function ProductsAndExpensesPage() {
       <AddProductModal
         isOpen={showAddProductModal}
         onClose={() => setShowAddProductModal(false)}
-        onAdd={(payload) => createProductMutation.mutateAsync(payload)}
+        onAdd={async (payload) => {
+          await createProductMutation.mutateAsync(payload);
+        }}
         isPending={createProductMutation.isPending}
       />
 
@@ -246,14 +247,18 @@ export default function ProductsAndExpensesPage() {
         product={editingProduct}
         isOpen={Boolean(editingProduct)}
         onClose={() => setEditingProduct(null)}
-        onUpdate={(id, payload) => updateProductMutation.mutateAsync({ id, payload })}
+        onUpdate={async (id, payload) => {
+          await updateProductMutation.mutateAsync({ id, payload });
+        }}
         isPending={updateProductMutation.isPending}
       />
 
       <AddExpenseModal
         isOpen={showAddExpenseModal}
         onClose={() => setShowAddExpenseModal(false)}
-        onAdd={(payload) => createExpenseMutation.mutateAsync(payload)}
+        onAdd={async (payload) => {
+          await createExpenseMutation.mutateAsync(payload);
+        }}
         isPending={createExpenseMutation.isPending}
       />
 
@@ -261,7 +266,9 @@ export default function ProductsAndExpensesPage() {
         expense={editingExpense}
         isOpen={Boolean(editingExpense)}
         onClose={() => setEditingExpense(null)}
-        onUpdate={(id, payload) => updateExpenseMutation.mutateAsync({ id, payload })}
+        onUpdate={async (id, payload) => {
+          await updateExpenseMutation.mutateAsync({ id, payload });
+        }}
         isPending={updateExpenseMutation.isPending}
       />
     </div>

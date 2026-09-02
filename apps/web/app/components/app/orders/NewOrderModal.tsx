@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Trash2, X } from "lucide-react";
-import type { OrderItem } from "../../../types/order";
+import type { OrderItem } from "../../../../types";
 
 interface NewOrderModalProps {
   isOpen: boolean;

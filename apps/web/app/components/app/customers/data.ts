@@ -1,4 +1,4 @@
-import type { Customer, ChatMessage } from "../../../types/customer";
+import type { Customer, ChatMessage } from "../../../../types";
 
 export const MESSAGE_LIMIT = 3;
 

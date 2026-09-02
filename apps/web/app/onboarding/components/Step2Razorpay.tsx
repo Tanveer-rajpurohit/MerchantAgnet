@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, ExternalLink, Loader2, AlertCircle } from "lucide-react";
 import { useRazorpay } from "../../../hooks";
-import type { RazorpayKeys } from "../../types/onboarding";
+import type { RazorpayKeys } from "../../../types";
 
 interface Step2RazorpayProps {
   keys: RazorpayKeys;

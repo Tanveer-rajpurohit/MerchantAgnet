@@ -9,7 +9,7 @@ import { useOnboarding } from "../../hooks/useOnboarding";
 import { useProfile } from "../../hooks/useProfile";
 import { useRazorpay } from "../../hooks/useRazorpay";
 import { useAuth } from "../../context/AuthContext";
-import type { BusinessProfile, RazorpayKeys, ExpenseRow, ProductRow } from "../types/onboarding";
+import type { BusinessProfile, RazorpayKeys, ExpenseRow, ProductRow } from "../../types";
 
 const TOTAL_STEPS = 5;
 
@@ -139,7 +139,7 @@ export default function OnboardingPage() {
         }
       }
 
-      setProfile((prev) => ({
+      setProfile((prev: BusinessProfile) => ({
         ...prev,
         businessName: mp?.business_name || prev.businessName,
         businessType: resolvedType,

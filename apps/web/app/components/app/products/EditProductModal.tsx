@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { ProductResponse, ProductUpdatePayload } from "../../../../types/product";
+import type { ProductResponse, ProductUpdatePayload } from "../../../../types";
 import { Checkbox } from "../../../components/ui/Checkbox";
 
 interface EditProductModalProps {

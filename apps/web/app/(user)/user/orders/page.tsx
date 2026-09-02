@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ShoppingBag, MessageSquare } from "lucide-react";
 import { useCustomerOrders } from "../../../../hooks/useOrders";
 import { StatusBadge } from "../../../components/app/utils";
-import type { OrderStatus } from "../../../../types/order";
+import type { OrderStatus } from "../../../../types";
 
 function getStatusBadgeVariant(
   status: OrderStatus,

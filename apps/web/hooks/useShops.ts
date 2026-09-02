@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { shopService, type GetShopsParams } from "../lib/api/services/shopService";
 import { queryKeys } from "../lib/api/utils/queryKeys";
 import { useShopDirectoryStore } from "../stores/useShopDirectoryStore";
-import type { ShopDetail } from "../types/shop";
+import type { ShopDetail } from "../types";
 
 export function useShops(params?: GetShopsParams) {
   const shops = useShopDirectoryStore((s) => s.shops);

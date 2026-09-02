@@ -8,9 +8,9 @@ import type {
   OrderResponse,
   OrderCreatePayload,
   OrderItemCreate,
-} from "../../../../types/order";
-import type { ProductResponse } from "../../../../types/product";
-import type { CustomerConnectionResponse } from "../../../../types/customer";
+  ProductResponse,
+  CustomerConnectionResponse,
+} from "../../../../types";
 
 interface OrderModalProps {
   isOpen: boolean;

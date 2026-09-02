@@ -4,7 +4,7 @@ import type {
   ExpenseCreatePayload,
   ExpenseUpdatePayload,
   ExpenseBatchPayload,
-} from "../../../types/expense";
+} from "../../../types";
 
 export const expenseService = {
   async getExpenses(): Promise<ExpenseResponse[]> {

@@ -65,3 +65,22 @@ export interface PaginatedOrderResponse {
   next_cursor?: string | null;
   has_more: boolean;
 }
+
+export interface OrderItem {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface Order {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  items: OrderItem[];
+  totalAmount?: number;
+  paidAmount?: number;
+  total?: number;
+  status: OrderStatus | "Paid" | "Unpaid" | "Cancelled";
+  date: string;
+}

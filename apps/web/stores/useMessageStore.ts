@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { MessageResponse } from "../types/message";
+import type { MessageResponse } from "../types";
 
 export interface MessageState {
   connectionId: string | null;

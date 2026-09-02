@@ -3,7 +3,7 @@ import type {
   CustomerConnectionCreatePayload,
   CustomerConnectionResponse,
   PaginatedCustomerConnectionResponse,
-} from "../../../types/customer";
+} from "../../../types";
 
 export interface GetCustomerConnectionsParams {
   status?: string;

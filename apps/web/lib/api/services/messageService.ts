@@ -1,5 +1,5 @@
 import { api } from "../utils/fetchClient";
-import type { PaginatedMessageResponse } from "../../../types/message";
+import type { PaginatedMessageResponse } from "../../../types";
 
 export interface GetMessagesParams {
   cursor?: string;

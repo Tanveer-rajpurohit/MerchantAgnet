@@ -7,7 +7,7 @@ import { useCustomerConnectionDetail } from "../../../../hooks/useCustomerConnec
 import { useMessages } from "../../../../hooks/useMessages";
 import { useRealtimeChat } from "../../../../hooks/useRealtimeChat";
 import { useSocketStore } from "../../../../stores/useSocketStore";
-import type { CustomerConnectionResponse } from "../../../../types/customer";
+import type { CustomerConnectionResponse } from "../../../../types";
 
 interface ChatViewProps {
   connectionId: string;

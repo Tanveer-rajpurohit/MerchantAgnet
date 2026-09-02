@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ShopListItem } from "../types/shop";
+import type { ShopListItem } from "../types";
 
 export interface ShopDirectoryState {
   searchQuery: string;

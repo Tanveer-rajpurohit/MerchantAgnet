@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { messageService } from "../lib/api/services/messageService";
 import { queryKeys } from "../lib/api/utils/queryKeys";
 import { useMessageStore } from "../stores/useMessageStore";
-import type { MessageResponse } from "../types/message";
+import type { MessageResponse } from "../types";
 
 export function useMessages(connectionId?: string | null) {
   const messages = useMessageStore((s) => s.messages);

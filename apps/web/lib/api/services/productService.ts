@@ -3,7 +3,7 @@ import type {
   ProductResponse,
   ProductCreatePayload,
   ProductUpdatePayload,
-} from "../../../types/product";
+} from "../../../types";
 
 export const productService = {
   async getProducts(): Promise<ProductResponse[]> {

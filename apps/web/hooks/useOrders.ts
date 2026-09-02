@@ -14,7 +14,7 @@ import type {
   OrderUpdatePayload,
   OrderResponse,
   PaginatedOrderResponse,
-} from "../types/order";
+} from "../types";
 
 export function useOrders(params?: GetMerchantOrdersParams) {
   const orders = useOrderDirectoryStore((s) => s.orders);

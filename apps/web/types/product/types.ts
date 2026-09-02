@@ -2,6 +2,7 @@ export interface ProductResponse {
   id: string;
   merchant_id: string;
   product_name: string;
+  category?: string | null;
   cost_price: number;
   selling_price: number;
   current_stock: number;
@@ -13,6 +14,7 @@ export interface ProductResponse {
 
 export interface ProductCreatePayload {
   product_name: string;
+  category?: string | null;
   cost_price: number;
   selling_price: number;
   current_stock: number;
@@ -21,6 +23,7 @@ export interface ProductCreatePayload {
 
 export interface ProductUpdatePayload {
   product_name?: string;
+  category?: string | null;
   cost_price?: number;
   selling_price?: number;
   current_stock?: number;

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { MessageCircle, Check } from "lucide-react";
-import type { CustomerConnectionResponse } from "../../../types/customer";
+import type { CustomerConnectionResponse } from "../../../../types";
 import { SearchInput, StatusBadge } from "../utils";
 
 interface ContactListProps {

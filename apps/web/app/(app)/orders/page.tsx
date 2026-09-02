@@ -11,7 +11,7 @@ import type {
   OrderResponse,
   OrderStatus,
   OrderCreatePayload,
-} from "../../../types/order";
+} from "../../../types";
 import { SearchInput } from "../../components/app/utils";
 import {
   OrderList,

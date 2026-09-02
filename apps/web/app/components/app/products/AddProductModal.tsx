@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ProductCreatePayload } from "../../../../types/product";
+import type { ProductCreatePayload } from "../../../../types";
 
 interface AddProductModalProps {
   isOpen: boolean;

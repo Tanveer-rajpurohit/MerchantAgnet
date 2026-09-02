@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { EXPENSE_CATEGORIES, type ExpenseCreatePayload } from "../../../../types/expense";
+import { EXPENSE_CATEGORIES, type ExpenseCreatePayload } from "../../../../types";
 import { Select } from "../../../components/ui/Select";
 import { DueDatePicker } from "./DueDatePicker";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { BusinessProfile } from "../../types/onboarding";
+import { BusinessProfile } from "../../../types";
 import { Select } from "../../components/ui/Select";
 
 const BUSINESS_TYPES = [

@@ -9,7 +9,7 @@ import { AgentOrb } from "../components/app/utils";
 import { useAuth } from "../../context/AuthContext";
 import { useShops } from "../../hooks/useShops";
 import { TrafficRateLimitCard, ShopCard, ShopChatView } from "../components/shops";
-import { SHOP_CATEGORIES, type ShopListItem } from "../../types/shop";
+import { SHOP_CATEGORIES, type ShopListItem } from "../../types";
 
 export default function PublicShopsPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();

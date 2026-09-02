@@ -7,7 +7,7 @@ import type {
   ExpenseResponse,
   ExpenseCreatePayload,
   ExpenseUpdatePayload,
-} from "../types/expense";
+} from "../types";
 
 export function useExpenses() {
   return useQuery<ExpenseResponse[]>({

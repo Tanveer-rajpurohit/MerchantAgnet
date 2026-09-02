@@ -5,9 +5,10 @@ import { AlertTriangle, Bot, User, Server } from "lucide-react";
 import { SearchInput, StatusBadge } from "../../components/app/utils";
 import { Select } from "../../components/ui/Select";
 import { AUDIT_LOG } from "../../components/app/audit-log/data";
-import type { AuditActor } from "../../types/audit-log/audit";
+import type { ComponentType } from "react";
+import type { AuditActor } from "../../../types";
 
-const ACTOR_ICON: Record<AuditActor, typeof Bot> = {
+const ACTOR_ICON: Record<AuditActor, ComponentType<{ size?: number; className?: string }>> = {
   "AI Agent": Bot,
   Merchant: User,
   System: Server,

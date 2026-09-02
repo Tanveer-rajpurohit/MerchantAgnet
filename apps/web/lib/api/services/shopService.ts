@@ -1,5 +1,5 @@
 import { api } from "../utils/fetchClient";
-import type { PaginatedShopResponse, ShopDetail } from "../../../types/shop";
+import type { PaginatedShopResponse, ShopDetail } from "../../../types";
 
 export interface GetShopsParams {
   search?: string;

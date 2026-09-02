@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import { ProductRow } from "../../types/onboarding";
+import { ProductRow } from "../../../types";
 
 const generateId = () => Math.random().toString(36).slice(2, 9);
 

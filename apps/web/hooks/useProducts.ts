@@ -7,7 +7,7 @@ import type {
   ProductResponse,
   ProductCreatePayload,
   ProductUpdatePayload,
-} from "../types/product";
+} from "../types";
 
 export function useProducts() {
   return useQuery<ProductResponse[]>({

@@ -9,7 +9,7 @@ import {
   XCircle,
   Check,
 } from "lucide-react";
-import type { OrderResponse, OrderStatus } from "../../../../types/order";
+import type { OrderResponse, OrderStatus } from "../../../../types";
 import { StatusBadge } from "../utils";
 
 interface OrderListProps {

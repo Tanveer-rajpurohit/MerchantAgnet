@@ -10,8 +10,7 @@ import { useRealtimeChat } from "../../../hooks/useRealtimeChat";
 import { useSocketStore } from "../../../stores/useSocketStore";
 import { useCreateCustomerConnection } from "../../../hooks/useCustomerConnections";
 import { LoginToChatCard } from "./LoginToChatCard";
-import type { ShopListItem } from "../../../types/shop";
-import type { CustomerConnectionResponse } from "../../../types/customer";
+import type { ShopListItem, CustomerConnectionResponse } from "../../../types";
 
 interface ShopChatViewProps {
   shop: ShopListItem;

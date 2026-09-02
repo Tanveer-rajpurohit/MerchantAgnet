@@ -4,7 +4,7 @@ import type {
   OrderUpdatePayload,
   OrderResponse,
   PaginatedOrderResponse,
-} from "../../../types/order";
+} from "../../../types";
 
 export interface GetMerchantOrdersParams {
   status?: string;

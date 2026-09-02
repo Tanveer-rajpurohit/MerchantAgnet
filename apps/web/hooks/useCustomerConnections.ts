@@ -8,8 +8,8 @@ import { useCustomerDirectoryStore } from "../stores/useCustomerDirectoryStore";
 import type {
   CustomerConnectionResponse,
   CustomerConnectionCreatePayload,
-} from "../types/customer";
-import type { ShopDetail } from "../types/shop";
+  ShopDetail,
+} from "../types";
 
 export function useCustomerConnections(params?: GetCustomerConnectionsParams) {
   const customers = useCustomerDirectoryStore((s) => s.customers);

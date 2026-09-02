@@ -1,5 +1,5 @@
 import { Trash2, Edit2, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
-import type { ProductResponse } from "../../../../types/product";
+import type { ProductResponse } from "../../../../types";
 
 interface ProductTableProps {
   products: ProductResponse[];

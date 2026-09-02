@@ -1,5 +1,5 @@
 import { Trash2, Edit2, Calendar } from "lucide-react";
-import type { ExpenseResponse } from "../../../../types/expense";
+import type { ExpenseResponse } from "../../../../types";
 
 interface ExpenseMobileListProps {
   expenses: ExpenseResponse[];

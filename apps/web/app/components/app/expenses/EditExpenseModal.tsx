@@ -5,7 +5,7 @@ import {
   EXPENSE_CATEGORIES,
   type ExpenseResponse,
   type ExpenseUpdatePayload,
-} from "../../../../types/expense";
+} from "../../../../types";
 import { Select } from "../../../components/ui/Select";
 import { DueDatePicker } from "./DueDatePicker";
 

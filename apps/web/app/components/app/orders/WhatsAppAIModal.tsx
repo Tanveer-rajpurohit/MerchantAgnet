@@ -12,7 +12,7 @@ import {
   BellRing,
   Link2,
 } from "lucide-react";
-import type { OrderResponse } from "../../../../types/order";
+import type { OrderResponse } from "../../../../types";
 
 interface WhatsAppAIModalProps {
   isOpen: boolean;

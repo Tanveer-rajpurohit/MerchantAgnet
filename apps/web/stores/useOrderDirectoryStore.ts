@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { OrderResponse } from "../types/order";
+import type { OrderResponse } from "../types";
 
 interface OrderDirectoryState {
   orders: OrderResponse[];

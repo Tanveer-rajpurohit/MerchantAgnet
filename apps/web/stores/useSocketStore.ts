@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { useMessageStore } from "./useMessageStore";
-import type { MessageResponse } from "../types/message";
+import type { MessageResponse } from "../types";
 
 interface SocketState {
   socket: WebSocket | null;

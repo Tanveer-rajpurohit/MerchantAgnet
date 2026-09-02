@@ -5,7 +5,7 @@ import { Search, ShoppingBag } from "lucide-react";
 import { AgentOrb } from "../../components/app/utils";
 import { useShops } from "../../../hooks/useShops";
 import { ShopCard, ShopChatView } from "../../components/shops";
-import { SHOP_CATEGORIES, type ShopListItem } from "../../../types/shop";
+import { SHOP_CATEGORIES, type ShopListItem } from "../../../types";
 
 export default function UserShoppingPage() {
   const [searchQuery, setSearchQuery] = useState("");

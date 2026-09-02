@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { CustomerConnectionResponse } from "../types/customer";
+import type { CustomerConnectionResponse } from "../types";
 
 interface CustomerDirectoryState {
   customers: CustomerConnectionResponse[];
