@@ -34,12 +34,34 @@ async def stream_merchant_chat(
         yield {"type": "error", "content": "Merchant profile not found for this user."}
         return
 
+    from app.models.address import Address
+    from app.agents.deps import StoreProfileContext
+
+    addr_stmt = select(Address).where(Address.user_id == user.id).order_by(Address.is_default.desc())
+    addr = (await db.execute(addr_stmt)).scalars().first()
+
+    store_profile = StoreProfileContext(
+        store_name=profile.business_name if profile else "Your Store",
+        category=profile.business_type if profile else "Retail Store",
+        owner_name=user.full_name or "Store Owner",
+        phone=user.phone_number or "",
+        email=user.email or "",
+        address_line1=addr.line1 if addr else "",
+        address_line2=addr.line2 if addr else "",
+        city=addr.city if addr else "",
+        state=addr.state if addr else "",
+        pincode=addr.pincode if addr else "",
+        upi_vpa=profile.upi_vpa if profile and profile.upi_vpa else "",
+    )
+
     deps = MerchantAgentDeps(
         db=db,
         merchant=profile,
         user=user,
         session_id=session_id,
         persona=payload.persona,
+        store_profile=store_profile,
+        current_date=datetime.now().strftime("%B %d, %Y"),
     )
 
     # 1. Multi-turn memory: load previous turns for this session
@@ -50,8 +72,8 @@ async def stream_merchant_chat(
     )
     
     message_history: list[ModelRequest | ModelResponse] = []
-    # Take last 10 turns for context budget
-    for run in previous_runs[-10:]:
+    # Take last 6 turns for optimal token budget and to avoid TPM rate limits
+    for run in previous_runs[-6:]:
         message_history.append(
             ModelRequest(parts=[UserPromptPart(content=run.user_message)])
         )

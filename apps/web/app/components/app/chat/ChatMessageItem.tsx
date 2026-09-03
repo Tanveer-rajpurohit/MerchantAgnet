@@ -293,8 +293,8 @@ export function ChatMessageItem({
                   </li>
                 ),
                 pre: ({ children }) => (
-                  <div className="relative my-4 overflow-hidden rounded-xl border border-border bg-surface-muted/50">
-                    <div className="overflow-x-auto p-4">
+                  <div className="relative my-4 overflow-hidden rounded-xl border border-border bg-surface-muted/30">
+                    <div className="overflow-x-auto p-3.5">
                       <pre className="font-mono text-xs text-secondary leading-relaxed whitespace-pre">
                         {children}
                       </pre>
@@ -302,10 +302,11 @@ export function ChatMessageItem({
                   </div>
                 ),
                 code: ({ children, className }) => {
-                  const isBlock = className?.startsWith("language-");
+                  const isMultiLine = typeof children === "string" && children.includes("\n");
+                  const isBlock = Boolean(className?.startsWith("language-")) || isMultiLine;
                   if (isBlock) {
                     return (
-                      <code className="font-mono text-xs">
+                      <code className="font-mono text-xs text-secondary leading-relaxed">
                         {children}
                       </code>
                     );

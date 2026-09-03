@@ -22,6 +22,18 @@ from app.models.address import Address
 
 @merchant_agent.system_prompt
 async def dynamic_system_prompt(ctx: RunContext[MerchantAgentDeps]) -> str:
+    sp = ctx.deps.store_profile
+    if sp:
+        return build_merchant_constitution(
+            store_name=sp.store_name,
+            category=sp.category,
+            persona=ctx.deps.persona,
+            owner_name=sp.owner_name,
+            address=sp.full_address,
+            phone=sp.phone,
+            upi_vpa=sp.upi_vpa,
+        )
+
     merchant = ctx.deps.merchant
     store_name = merchant.business_name if merchant else "Your Store"
     category = merchant.business_type if merchant else "Retail Commerce"
