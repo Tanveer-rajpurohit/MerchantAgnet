@@ -256,10 +256,34 @@
         "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
     },
 
+    "campaigns": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "merchant_id": "UUID NOT NULL REFERENCES merchant_profiles(id) ON DELETE CASCADE",
+        "offer_description": "TEXT NOT NULL",
+        "segment_description": "VARCHAR(500) NOT NULL",
+        "discount_percent": "VARCHAR(10) NOT NULL DEFAULT '0%'",
+        "status": "campaign_status NOT NULL DEFAULT 'draft'",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()",
+        "approved_at": "TIMESTAMPTZ",
+        "approved_by": "UUID REFERENCES users(id) ON DELETE SET NULL"
+    },
+
+    "campaign_targets": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "campaign_id": "UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE",
+        "customer_connection_id": "UUID NOT NULL REFERENCES customer_connections(id) ON DELETE CASCADE",
+        "message_content": "TEXT NOT NULL",
+        "payment_link_id": "UUID REFERENCES payment_links(id) ON DELETE SET NULL",
+        "send_status": "send_status NOT NULL DEFAULT 'pending'",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
+    },
+
     "ai_enums": {
         "knowledge_source_type": ["product", "shop_profile", "faq", "policy"],
         "agent_persona": ["merchant_admin", "customer_shopfront"],
-        "agent_run_status": ["success", "failed", "fallback"]
+        "agent_run_status": ["success", "failed", "fallback"],
+        "campaign_status": ["draft", "approved", "sending", "sent", "cancelled"],
+        "send_status": ["pending", "sent", "failed"]
     }
 }
 ```

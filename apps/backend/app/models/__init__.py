@@ -13,6 +13,7 @@ from app.models.settlement import Settlement, SettlementStatus
 from app.models.audit_log import AuditLog
 from app.models.knowledge_chunk import KnowledgeChunk, KnowledgeSourceType
 from app.models.agent_run import AgentRun, AgentPersona, AgentRunStatus
+from app.models.campaign import Campaign, CampaignTarget, CampaignStatus
 
 __all__ = [
     "User",
@@ -44,4 +45,7 @@ __all__ = [
     "AgentRun",
     "AgentPersona",
     "AgentRunStatus",
+    "Campaign",
+    "CampaignTarget",
+    "CampaignStatus",
 ]
