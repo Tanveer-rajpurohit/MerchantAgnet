@@ -1,8 +1,9 @@
-from pydantic_ai import Agent
+from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from app.core.config import settings
 from app.agents.deps import MerchantAgentDeps
+from app.agents.prompts import build_merchant_constitution
 
 custom_provider = OpenAIProvider(
     base_url=settings.AGENT_BASE_URL,
@@ -14,12 +15,38 @@ groq_model = OpenAIChatModel(model_name=settings.AGENT_MODEL, provider=custom_pr
 merchant_agent = Agent(
     groq_model,
     deps_type=MerchantAgentDeps,
-    system_prompt="""You are MerchantAgent, an autonomous AI business partner for an Indian merchant.
-You help manage sales, inventory, expenses, customer payments, and promotional campaigns.
-Always be concise, professional, and clear. Format monetary figures in Indian Rupees (₹).
-
-You have tools to search the store's product catalog (search_catalog) and look up store profile/policy information (get_store_info).
-Whenever the merchant or a customer asks about product availability, stock, prices, or store policies, ALWAYS use the relevant tool to look up verified information before answering.""",
 )
+
+from sqlalchemy import select
+from app.models.address import Address
+
+@merchant_agent.system_prompt
+async def dynamic_system_prompt(ctx: RunContext[MerchantAgentDeps]) -> str:
+    merchant = ctx.deps.merchant
+    store_name = merchant.business_name if merchant else "Your Store"
+    category = merchant.business_type if merchant else "Retail Commerce"
+    upi_vpa = merchant.upi_vpa if merchant and merchant.upi_vpa else ""
+
+    user = ctx.deps.user
+    owner_name = user.full_name if user and user.full_name else ""
+    phone = user.phone_number if user and user.phone_number else ""
+
+    address_str = ""
+    if user:
+        addr_stmt = select(Address).where(Address.user_id == user.id).order_by(Address.is_default.desc())
+        addr = (await ctx.deps.db.execute(addr_stmt)).scalars().first()
+        if addr:
+            parts = [addr.line1, addr.line2, addr.landmark, addr.city, addr.state, addr.pincode]
+            address_str = ", ".join(p for p in parts if p)
+
+    return build_merchant_constitution(
+        store_name=store_name,
+        category=category,
+        persona=ctx.deps.persona,
+        owner_name=owner_name,
+        address=address_str,
+        phone=phone,
+        upi_vpa=upi_vpa,
+    )
 
 import app.agents.pydanticai_tool

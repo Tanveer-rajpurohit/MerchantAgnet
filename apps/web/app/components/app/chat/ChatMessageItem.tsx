@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Copy, Check } from "lucide-react";
 import { ThinkingOrb } from "thinking-orbs";
 import ReactMarkdown from "react-markdown";
@@ -10,6 +10,8 @@ import { PaymentLinkCard } from "./PaymentLinkCard";
 import { CatalogStockCard, StockItem } from "./CatalogStockCard";
 import { CampaignGateCard } from "./CampaignGateCard";
 import { RevenueSummaryCard, RevenueMetric } from "./RevenueSummaryCard";
+import { MessageSnippetCard } from "./MessageSnippetCard";
+import { normalizeMessageContent } from "./messageNormalizer";
 
 export interface ChatMessageData {
   id: string;
@@ -46,6 +48,38 @@ export interface ChatMessageData {
 interface ChatMessageItemProps {
   message: ChatMessageData;
   isStreaming?: boolean;
+}
+
+function extractText(node: React.ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node);
+  }
+  if (Array.isArray(node)) {
+    return node.map(extractText).join("");
+  }
+  if (node && typeof node === "object" && "props" in node) {
+    return extractText((node as { props?: { children?: React.ReactNode } }).props?.children);
+  }
+  return "";
+}
+
+function renderCellContent(node: React.ReactNode): React.ReactNode {
+  if (typeof node === "string") {
+    if (/<br\s*\/?>/i.test(node)) {
+      const parts = node.split(/<br\s*\/?>/i);
+      return parts.map((part, idx) => (
+        <React.Fragment key={idx}>
+          {idx > 0 && <span className="block my-0.5" />}
+          {part.trim()}
+        </React.Fragment>
+      ));
+    }
+    return node;
+  }
+  if (Array.isArray(node)) {
+    return React.Children.map(node, renderCellContent);
+  }
+  return node;
 }
 
 export function ChatMessageItem({
@@ -96,67 +130,204 @@ export function ChatMessageItem({
 
       <div className="pl-0 sm:pl-1">
         {message.content && (
-          <div className="prose prose-neutral dark:prose-invert max-w-none text-[14.5px] text-secondary leading-[1.7] font-intert space-y-3">
+          <div className="max-w-none text-[14px] text-secondary leading-[1.75] font-intert">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
                 h1: ({ children }) => (
-                  <h1 className="text-xl font-semibold text-primary mt-4 mb-2">
+                  <h1 className="text-xl sm:text-2xl font-bold font-instrument text-primary mt-6 mb-3 tracking-tight">
                     {children}
                   </h1>
                 ),
                 h2: ({ children }) => (
-                  <h2 className="text-lg font-semibold text-primary mt-3.5 mb-1.5">
+                  <h2 className="text-lg sm:text-xl font-semibold text-primary mt-5 mb-2.5 tracking-tight">
                     {children}
                   </h2>
                 ),
                 h3: ({ children }) => (
-                  <h3 className="text-base font-semibold text-primary mt-3 mb-1">
+                  <h3 className="text-base font-semibold text-primary mt-4 mb-2 tracking-tight">
                     {children}
                   </h3>
                 ),
-                p: ({ children }) => (
-                  <p className="text-secondary leading-relaxed mb-3 last:mb-0 inline">
+                h4: ({ children }) => (
+                  <h4 className="text-sm font-semibold text-primary mt-3 mb-1.5 tracking-tight">
                     {children}
-                  </p>
+                  </h4>
                 ),
-                strong: ({ children }) => (
-                  <strong className="font-semibold text-primary">
+                p: ({ children }) => {
+                  const text = extractText(children).trim();
+                  if (/^(?:WhatsApp Message Template|Message Template|Order Template|Restock Plan|Summary|Product Recommendation)/i.test(text)) {
+                    return (
+                      <h3 className="text-base sm:text-lg font-semibold text-primary mt-5 mb-2 tracking-tight">
+                        {text.replace(/^\*\*|\*\*$/g, "")}
+                      </h3>
+                    );
+                  }
+                  const isSectionDivider =
+                    /^(?:EXECUTIVE SUMMARY|DATA TABLES?(?:\s*\/\s*SCENARIO COMPARISONS?)?|KEY (?:BUSINESS )?INSIGHTS?|NEXT STEP|ACTIONABLE NEXT STEP|ARITHMETIC BREAKDOWN|STATUS|STOCK HEALTH|RECOMMENDATION|SCENARIOS?|QUICK BUSINESS TAKE|INVENTORY STATUS|QUICK CHECKLIST.*|EXAMPLE.*):?$/i.test(
+                      text
+                    );
+                  if (isSectionDivider) {
+                    return (
+                      <div className="mt-5 mb-2">
+                        <span className="text-[11.5px] font-bold text-primary uppercase tracking-widest">
+                          {text.replace(/:$/, "")}
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <p className="text-secondary leading-[1.75] my-2 [&:first-child]:mt-0">
+                      {children}
+                    </p>
+                  );
+                },
+                table: ({ children }) => (
+                  <div className="w-full max-w-full my-3.5 overflow-x-auto rounded-xl border border-border bg-surface shadow-xs">
+                    <table className="w-full text-left text-xs sm:text-[13px] border-collapse min-w-[480px]">
+                      {children}
+                    </table>
+                  </div>
+                ),
+                thead: ({ children }) => (
+                  <thead className="bg-surface-muted/50 border-b border-border font-intert">
                     {children}
-                  </strong>
+                  </thead>
                 ),
+                tbody: ({ children }) => (
+                  <tbody className="divide-y divide-border/50 font-intert text-secondary">
+                    {children}
+                  </tbody>
+                ),
+                tr: ({ children }) => (
+                  <tr className="hover:bg-surface-muted/25 transition-colors">
+                    {children}
+                  </tr>
+                ),
+                th: ({ children }) => (
+                  <th className="px-3.5 py-2 text-[11px] font-semibold text-muted uppercase tracking-wider">
+                    {renderCellContent(children)}
+                  </th>
+                ),
+                td: ({ children }) => {
+                  const raw = extractText(children).trim();
+                  if (/^Healthy(?: Stock)?$/i.test(raw)) {
+                    return (
+                      <td className="px-3.5 py-2.5">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          {raw}
+                        </span>
+                      </td>
+                    );
+                  }
+                  if (/^Low Stock$/i.test(raw)) {
+                    return (
+                      <td className="px-3.5 py-2.5">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                          {raw}
+                        </span>
+                      </td>
+                    );
+                  }
+                  if (/^Out of Stock$/i.test(raw)) {
+                    return (
+                      <td className="px-3.5 py-2.5">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-medium bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
+                          {raw}
+                        </span>
+                      </td>
+                    );
+                  }
+                  return (
+                    <td className="px-3.5 py-2.5 text-secondary first:text-primary first:font-medium leading-relaxed">
+                      {renderCellContent(children)}
+                    </td>
+                  );
+                },
+                strong: ({ children }) => {
+                  const text = extractText(children).trim();
+                  const isActionLabel =
+                    /^(?:NEXT STEP|ACTIONABLE NEXT STEP|ACTION|RECOMMENDATION):?$/i.test(
+                      text
+                    );
+                  if (isActionLabel) {
+                    return (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-brand bg-brand/10 border border-brand/20 uppercase tracking-wider mr-2 my-0.5 align-middle shadow-xs">
+                        {text.replace(/:$/, "")}
+                      </span>
+                    );
+                  }
+                  const isMetricLabel =
+                    /^(?:Velocity Signal|Margin Insight|Margin Watch|Restock Alert|Revenue Snapshot|Fastest-Selling Signal|Stock after|High-Margin Drivers|Cross-Sell Pairing|Total|Remaining stock):?$/i.test(
+                      text
+                    );
+                  if (isMetricLabel) {
+                    return (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium text-primary bg-surface-muted border border-border uppercase tracking-wider mr-2 my-0.5 align-middle shadow-xs">
+                        {text.replace(/:$/, "")}
+                      </span>
+                    );
+                  }
+                  return (
+                    <strong className="font-semibold text-primary">
+                      {children}
+                    </strong>
+                  );
+                },
                 em: ({ children }) => (
-                  <em className="italic text-primary">{children}</em>
+                  <em className="italic text-secondary/90">{children}</em>
                 ),
                 ul: ({ children }) => (
-                  <ul className="list-disc pl-5 my-2.5 space-y-1.5 text-secondary">
+                  <ul className="list-disc pl-5 my-3 space-y-3 text-secondary marker:text-primary">
                     {children}
                   </ul>
                 ),
                 ol: ({ children }) => (
-                  <ol className="list-decimal pl-5 my-2.5 space-y-1.5 text-secondary">
+                  <ol className="list-decimal pl-5 my-3 space-y-3 text-secondary marker:text-primary">
                     {children}
                   </ol>
                 ),
                 li: ({ children }) => (
-                  <li className="leading-relaxed">{children}</li>
-                ),
-                code: ({ children }) => (
-                  <code className="font-mono text-xs bg-surface-muted px-1.5 py-0.5 rounded border border-border text-primary">
+                  <li className="leading-[1.7] pl-1 my-1">
                     {children}
-                  </code>
+                  </li>
                 ),
+                pre: ({ children }) => (
+                  <div className="relative my-4 overflow-hidden rounded-xl border border-border bg-surface-muted/50">
+                    <div className="overflow-x-auto p-4">
+                      <pre className="font-mono text-xs text-secondary leading-relaxed whitespace-pre">
+                        {children}
+                      </pre>
+                    </div>
+                  </div>
+                ),
+                code: ({ children, className }) => {
+                  const isBlock = className?.startsWith("language-");
+                  if (isBlock) {
+                    return (
+                      <code className="font-mono text-xs">
+                        {children}
+                      </code>
+                    );
+                  }
+                  return (
+                    <code className="font-mono text-xs bg-surface-muted px-1.5 py-0.5 rounded-md border border-border text-brand font-medium">
+                      {children}
+                    </code>
+                  );
+                },
                 blockquote: ({ children }) => (
-                  <blockquote className="border-l-2 border-border pl-3.5 italic text-muted my-2">
-                    {children}
-                  </blockquote>
+                  <MessageSnippetCard>{children}</MessageSnippetCard>
+                ),
+                hr: () => (
+                  <hr className="border-border/50 my-4" />
                 ),
               }}
             >
-              {message.content}
+              {normalizeMessageContent(message.content)}
             </ReactMarkdown>
             {isStreaming && (
-              <span className="inline-block w-1.5 h-4 ml-1 bg-brand align-middle rounded-xs opacity-10" />
+              <span className="inline-block w-1.5 h-4 ml-1 bg-brand align-middle rounded-xs animate-pulse" />
             )}
           </div>
         )}

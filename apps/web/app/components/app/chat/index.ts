@@ -12,3 +12,7 @@ export { ChatInput } from "./ChatInput";
 export type { ActionMode } from "./ChatInput";
 export { ChatSuggestions } from "./ChatSuggestions";
 export { useWordStream } from "./useWordStream";
+export { MessageSnippetCard } from "./MessageSnippetCard";
+export { ChatSessionItem } from "./ChatSessionItem";
+export { RenameChatModal } from "./RenameChatModal";
+export { DeleteChatModal } from "./DeleteChatModal";

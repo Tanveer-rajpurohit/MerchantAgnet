@@ -15,3 +15,4 @@ export { razorpayService } from "./services/razorpayService";
 export { paymentLinkService } from "./services/paymentLinkService";
 export { payoutService } from "./services/payoutService";
 export { auditLogService } from "./services/auditLogService";
+export { agentService } from "./services/agentService";

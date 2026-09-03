@@ -19,6 +19,14 @@ interface AgentThinkingProps {
   defaultExpanded?: boolean;
 }
 
+function formatDuration(seconds: number): string {
+  if (!seconds || seconds <= 0) return "1s";
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return s > 0 ? `${m}m ${s}s` : `${m}m`;
+}
+
 export function AgentThinking({
   durationSeconds = 4,
   isThinking = false,
@@ -38,7 +46,7 @@ export function AgentThinking({
           className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-primary transition-colors py-0.5 cursor-pointer w-fit"
         >
           <span>
-            {isThinking ? "Thinking..." : `Thought for ${durationSeconds}s`}
+            {isThinking ? "Thinking..." : `Thought for ${formatDuration(durationSeconds)}`}
           </span>
 
           <span className="text-muted/60">

@@ -56,4 +56,9 @@ export const queryKeys = {
     all: ["audit-logs"] as const,
     infinite: (filters?: Record<string, unknown>) => ["audit-logs", "infinite", filters] as const,
   },
+  agent: {
+    all: ["agent"] as const,
+    sessions: (filters?: Record<string, unknown>) => ["agent", "sessions", filters] as const,
+    sessionHistory: (sessionId: string) => ["agent", "sessions", sessionId] as const,
+  },
 } as const;

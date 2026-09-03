@@ -39,11 +39,23 @@ async def index_product(db: AsyncSession, merchant_id: uuid.UUID, product: Produ
     await db.flush()
     return chunk
 
+from app.models.address import Address
+
 async def index_merchant_profile(db: AsyncSession, merchant: MerchantProfile) -> list[KnowledgeChunk]:
     chunks: list[KnowledgeChunk] = []
+
+    # Fetch merchant address if exists
+    addr_stmt = select(Address).where(Address.user_id == merchant.user_id).order_by(Address.is_default.desc())
+    addr = (await db.execute(addr_stmt)).scalars().first()
+    address_str = ""
+    if addr:
+        parts = [addr.line1, addr.line2, addr.landmark, addr.city, addr.state, addr.pincode]
+        address_str = ", ".join(p for p in parts if p)
     
     # 1. Index store basic details (shop_profile)
     profile_text = f"Store Name: {merchant.business_name}, Category: {merchant.business_type}"
+    if address_str:
+        profile_text += f", Store Address: {address_str}"
     if merchant.business_description:
         profile_text += f", About: {merchant.business_description}"
     if merchant.upi_vpa:
@@ -120,7 +132,7 @@ async def search_catalog_chunks(
     db: AsyncSession,
     merchant_id: uuid.UUID,
     query: str,
-    limit: int = 3,
+    limit: int = 20,
 ) -> list[str]:
     stmt = select(KnowledgeChunk).where(KnowledgeChunk.merchant_id == merchant_id)
     chunks = (await db.execute(stmt)).scalars().all()

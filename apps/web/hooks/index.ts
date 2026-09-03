@@ -46,4 +46,11 @@ export {
   useSyncSettlements,
 } from "./usePayouts";
 export { useInfiniteAuditLogs } from "./useAuditLogs";
+export {
+  useInfiniteAgentSessions,
+  useSessionHistory,
+  useRenameSession,
+  useDeleteSession,
+} from "./useAgentChat";
+export { useAgentStream } from "./useAgentStream";
 export { queryKeys } from "../lib/api/utils/queryKeys";

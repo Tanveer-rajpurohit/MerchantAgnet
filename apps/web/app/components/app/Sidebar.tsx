@@ -19,6 +19,9 @@ import {
 } from "lucide-react";
 import { AgentOrb } from "./utils";
 import { useAuth } from "../../../context/AuthContext";
+import { useInfiniteAgentSessions } from "../../../hooks";
+import { ChatSessionItem } from "./chat/ChatSessionItem";
+import type { ChatSessionSummary } from "../../../types";
 
 interface NavItem {
   href: string;
@@ -37,22 +40,24 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/settings", label: "Settings", icon: SlidersHorizontal },
 ];
 
-const MOCK_HISTORY = [
-  { id: "1", title: "Send Rahul a payment link", date: "Today" },
-  { id: "2", title: "Diwali offer for 20 customers", date: "Today" },
-  { id: "3", title: "Update milk stock count", date: "Yesterday" },
-  { id: "4", title: "Check last week revenue", date: "Yesterday" },
-];
+function formatRelativeDate(isoDate: string): string {
+  const d = new Date(isoDate);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 3600 * 24));
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays <= 7) return "Previous 7 Days";
+  return "Earlier";
+}
 
-function groupByDate(
-  items: typeof MOCK_HISTORY,
-): Record<string, typeof MOCK_HISTORY> {
-  const grouped: Record<string, typeof MOCK_HISTORY> = {};
+function groupByDate(items: ChatSessionSummary[]): Record<string, ChatSessionSummary[]> {
+  const grouped: Record<string, ChatSessionSummary[]> = {};
   for (const item of items) {
-    if (!grouped[item.date]) {
-      grouped[item.date] = [];
+    const key = formatRelativeDate(item.last_active_at);
+    if (!grouped[key]) {
+      grouped[key] = [];
     }
-    grouped[item.date]!.push(item);
+    grouped[key]!.push(item);
   }
   return grouped;
 }
@@ -66,8 +71,10 @@ export function Sidebar({ children }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user } = useAuth();
+  const { data: sessionData } = useInfiniteAgentSessions(30);
 
-  const grouped = groupByDate(MOCK_HISTORY);
+  const allSessions = sessionData?.pages.flatMap((p) => p.sessions) || [];
+  const grouped = groupByDate(allSessions);
 
   const displayName = user?.full_name || "Merchant";
   const displayEmail = user?.email || "";
@@ -217,16 +224,18 @@ export function Sidebar({ children }: SidebarProps) {
                 <p className="px-2.5 mb-1 text-[11px] font-medium font-intert text-muted uppercase tracking-wider">
                   {date}
                 </p>
-                {items.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={`/chat/${item.id}`}
-                    onClick={() => setMobileOpen(false)}
-                    className="block px-2.5 py-1.5 rounded-lg text-xs font-intert text-secondary hover:text-primary hover:bg-surface-muted transition-colors truncate"
-                  >
-                    {item.title}
-                  </Link>
-                ))}
+                {items.map((item) => {
+                  const isSessionActive =
+                    pathname === `/chat/${item.session_id}`;
+                  return (
+                    <ChatSessionItem
+                      key={item.session_id}
+                      item={item}
+                      isActive={isSessionActive}
+                      onCloseMobile={() => setMobileOpen(false)}
+                    />
+                  );
+                })}
               </div>
             ))}
           </div>
