@@ -225,3 +225,41 @@
     }
 }
 ```
+
+
+
+## Raw Schema (JSON) : AI
+```json
+{   
+    "knowledge_chunks": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "merchant_id": "UUID NOT NULL REFERENCES merchant_profiles(id) ON DELETE CASCADE",
+        "source_type": "knowledge_source_type NOT NULL DEFAULT 'product'",
+        "source_id": "UUID",
+        "content": "TEXT NOT NULL",
+        "embedding": "vector(384) NOT NULL",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()",
+        "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
+    },
+
+    "agent_runs": {
+        "id": "UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+        "conversation_id": "UUID REFERENCES conversations(id) ON DELETE SET NULL",
+        "merchant_id": "UUID NOT NULL REFERENCES merchant_profiles(id) ON DELETE CASCADE",
+        "persona": "agent_persona NOT NULL",
+        "user_message": "TEXT NOT NULL",
+        "agent_response": "TEXT NOT NULL",
+        "tools_invoked": "JSONB NOT NULL DEFAULT '[]'::jsonb",
+        "status": "agent_run_status NOT NULL DEFAULT 'success'",
+        "latency_ms": "INTEGER",
+        "error_detail": "TEXT",
+        "created_at": "TIMESTAMPTZ NOT NULL DEFAULT now()"
+    },
+
+    "ai_enums": {
+        "knowledge_source_type": ["product", "shop_profile", "faq", "policy"],
+        "agent_persona": ["merchant_admin", "customer_shopfront"],
+        "agent_run_status": ["success", "failed", "fallback"]
+    }
+}
+```

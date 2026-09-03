@@ -11,6 +11,8 @@ from app.models.conversation import Conversation, Message, SenderType, SendStatu
 from app.models.payment_link import PaymentLink, PaymentLinkStatus
 from app.models.settlement import Settlement, SettlementStatus
 from app.models.audit_log import AuditLog
+from app.models.knowledge_chunk import KnowledgeChunk, KnowledgeSourceType
+from app.models.agent_run import AgentRun, AgentPersona, AgentRunStatus
 
 __all__ = [
     "User",
@@ -37,4 +39,9 @@ __all__ = [
     "Settlement",
     "SettlementStatus",
     "AuditLog",
+    "KnowledgeChunk",
+    "KnowledgeSourceType",
+    "AgentRun",
+    "AgentPersona",
+    "AgentRunStatus",
 ]

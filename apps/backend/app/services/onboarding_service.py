@@ -167,6 +167,9 @@ async def save_onboarding_products(
         skip_inventory=payload.skip_inventory,
     )
 
+    from app.services import knowledge_service
+    await knowledge_service.index_merchant_catalog(db, mp.id)
+
     await db.flush()
 
     cache_key = f"profile:{user_id}"
@@ -220,6 +223,9 @@ async def complete_onboarding(
         goals=goals_str,
         rules=rules,
     )
+
+    from app.services import knowledge_service
+    await knowledge_service.index_merchant_profile(db, mp)
 
     await db.flush()
 

@@ -13,6 +13,8 @@ if TYPE_CHECKING:
     from app.models.ai_info import AIInfo
     from app.models.customer_connection import CustomerConnection
     from app.models.order import Order
+    from app.models.knowledge_chunk import KnowledgeChunk
+    from app.models.agent_run import AgentRun
 
 class MerchantProfile(Base):
     __tablename__ = "merchant_profiles"
@@ -124,6 +126,16 @@ class MerchantProfile(Base):
     )
     orders: Mapped[list["Order"]] = relationship(
         "Order",
+        back_populates="merchant_profile",
+        cascade="all, delete-orphan",
+    )
+    knowledge_chunks: Mapped[list["KnowledgeChunk"]] = relationship(
+        "KnowledgeChunk",
+        back_populates="merchant_profile",
+        cascade="all, delete-orphan",
+    )
+    agent_runs: Mapped[list["AgentRun"]] = relationship(
+        "AgentRun",
         back_populates="merchant_profile",
         cascade="all, delete-orphan",
     )

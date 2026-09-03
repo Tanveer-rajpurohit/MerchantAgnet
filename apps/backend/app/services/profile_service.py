@@ -160,6 +160,10 @@ async def update_profile(
             detail="User not found",
         )
 
+    if refreshed_user.merchant_profile:
+        from app.services import knowledge_service
+        await knowledge_service.index_merchant_profile(db, refreshed_user.merchant_profile)
+
     profile_response = _build_profile_response(refreshed_user)
     cache_key = f"profile:{user_id}"
     await redis.set(cache_key, profile_response.model_dump_json(), ex=3600)
@@ -250,6 +254,10 @@ async def update_settings(
         )
 
     await db.flush()
+
+    if user.merchant_profile:
+        from app.services import knowledge_service
+        await knowledge_service.index_merchant_profile(db, user.merchant_profile)
 
     cache_key = f"profile:{user_id}"
     await redis.delete(cache_key)

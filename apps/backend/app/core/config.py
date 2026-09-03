@@ -35,6 +35,23 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("FRONTEND_URL"),
     )
 
+    AGENT_BASE_URL: str = Field(
+        default="https://api.groq.com/openai/v1",
+        validation_alias=AliasChoices("AGENT_BASE_URL"),
+    )
+    AGENT_API_KEY: str = Field(
+        validation_alias=AliasChoices("AGENT_API_KEY"),
+    )
+    AGENT_MODEL: str = Field(
+        default="qwen/qwen3.8-27b",
+        validation_alias=AliasChoices("AGENT_MODEL"),
+    )
+    
+    EMBEDDING_DIM: int = Field(
+        default=384,
+        validation_alias=AliasChoices("EMBEDDING_DIM"),
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
