@@ -1,13 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Search, ShoppingBag } from "lucide-react";
 import { AgentOrb } from "../../components/app/utils";
-import { useShops } from "../../../hooks/useShops";
+import { useShops, useShopDetail } from "../../../hooks/useShops";
 import { ShopCard, ShopChatView } from "../../components/shops";
 import { SHOP_CATEGORIES, type ShopListItem } from "../../../types";
 
-export default function UserShoppingPage() {
+function UserShoppingContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const shopIdFromUrl = searchParams.get("shop");
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedShop, setSelectedShop] = useState<ShopListItem | null>(null);
@@ -23,12 +28,62 @@ export default function UserShoppingPage() {
     category: selectedCategory,
   });
 
+  const { data: detailData, isLoading: isDetailLoading } = useShopDetail(
+    !selectedShop && shopIdFromUrl ? shopIdFromUrl : undefined
+  );
+
+  useEffect(() => {
+    if (shopIdFromUrl && !selectedShop) {
+      const match = shops.find((s) => s.id === shopIdFromUrl);
+      if (match) {
+        setSelectedShop(match);
+      } else if (detailData) {
+        setSelectedShop({
+          id: detailData.id,
+          business_name: detailData.business_name,
+          business_type: detailData.business_type,
+          description: detailData.description || "",
+          popular_products: [],
+          city: detailData.address?.city || "",
+          area: detailData.address?.line2 || "",
+          address: detailData.address ? {
+            line1: detailData.address.line1,
+            city: detailData.address.city,
+            pincode: detailData.address.pincode,
+          } : undefined,
+          is_active: detailData.is_active,
+        });
+      }
+    } else if (!shopIdFromUrl && selectedShop) {
+      setSelectedShop(null);
+    }
+  }, [shopIdFromUrl, shops, detailData, selectedShop]);
+
+  const handleSelectShop = (shop: ShopListItem) => {
+    setSelectedShop(shop);
+    router.push(`/user?shop=${shop.id}`, { scroll: false });
+  };
+
+  const handleBack = () => {
+    setSelectedShop(null);
+    router.push("/user", { scroll: false });
+  };
+
   if (selectedShop) {
     return (
       <ShopChatView
         shop={selectedShop}
-        onBack={() => setSelectedShop(null)}
+        onBack={handleBack}
       />
+    );
+  }
+
+  if (shopIdFromUrl && isDetailLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full font-intert">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent mb-3" />
+        <p className="text-xs text-muted">Opening store assistant...</p>
+      </div>
     );
   }
 
@@ -102,7 +157,7 @@ export default function UserShoppingPage() {
                 <ShopCard
                   key={shop.id}
                   shop={shop}
-                  onSelect={(s) => setSelectedShop(s)}
+                  onSelect={handleSelectShop}
                 />
               ))}
             </div>
@@ -126,5 +181,19 @@ export default function UserShoppingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function UserShoppingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center items-center h-full">
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+        </div>
+      }
+    >
+      <UserShoppingContent />
+    </Suspense>
   );
 }

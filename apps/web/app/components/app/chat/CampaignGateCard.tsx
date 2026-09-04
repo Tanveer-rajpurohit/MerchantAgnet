@@ -15,8 +15,10 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { customerService } from "../../../../lib/api/services/customerService";
 import { queryKeys } from "../../../../lib/api/utils/queryKeys";
+import { useApproveCampaign, useDeclineCampaign } from "../../../../hooks";
 
 interface CampaignGateCardProps {
+  campaignId?: string;
   campaignName: string;
   segmentDescription: string;
   targetCount: number;
@@ -27,6 +29,7 @@ interface CampaignGateCardProps {
 }
 
 export function CampaignGateCard({
+  campaignId,
   campaignName,
   segmentDescription,
   targetCount,
@@ -40,8 +43,11 @@ export function CampaignGateCard({
   );
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  // Query real customers connected to the merchant store
+  const approveMutation = useApproveCampaign();
+  const declineMutation = useDeclineCampaign();
+
   const { data: customerData, isLoading: isLoadingCustomers } = useQuery({
     queryKey: queryKeys.customers.list({ limit: 100 }),
     queryFn: () => customerService.getConnections({ limit: 100 }),
@@ -69,20 +75,45 @@ export function CampaignGateCard({
       c.phone.includes(customerSearch),
   );
 
-  const handleApprove = () => {
-    setStatus("approved");
-    onApprove?.();
+  const handleApprove = async () => {
+    setActionError(null);
+    if (campaignId) {
+      try {
+        await approveMutation.mutateAsync(campaignId);
+        setStatus("approved");
+        onApprove?.();
+      } catch (err: unknown) {
+        const error = err as Error;
+        setActionError(error.message || "Failed to approve campaign");
+      }
+    } else {
+      setStatus("approved");
+      onApprove?.();
+    }
   };
 
-  const handleReject = () => {
-    setStatus("rejected");
-    onReject?.();
+  const handleReject = async () => {
+    setActionError(null);
+    if (campaignId) {
+      try {
+        await declineMutation.mutateAsync(campaignId);
+        setStatus("rejected");
+        onReject?.();
+      } catch (err: unknown) {
+        const error = err as Error;
+        setActionError(error.message || "Failed to decline campaign");
+      }
+    } else {
+      setStatus("rejected");
+      onReject?.();
+    }
   };
+
+  const isPendingAction = approveMutation.isPending || declineMutation.isPending;
 
   return (
     <>
       <div className="w-full my-4 rounded-2xl border border-border bg-surface p-4 sm:p-5 font-intert shadow-xs">
-        {/* Card Header */}
         <div className="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-border">
           <div>
             <span className="text-xs font-semibold text-primary block leading-none">
@@ -110,12 +141,11 @@ export function CampaignGateCard({
           {status === "rejected" && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 text-[11px] font-medium border border-red-500/20">
               <XCircle size={11} />
-              <span>Batch Canceled</span>
+              <span>Batch Declined</span>
             </span>
           )}
         </div>
 
-        {/* Campaign Metrics & Preview */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           <div className="p-3 rounded-xl bg-bg border border-border">
             <div className="flex items-center justify-between gap-2 mb-1">
@@ -163,28 +193,36 @@ export function CampaignGateCard({
           </div>
         </div>
 
-        {/* Action Gate Buttons */}
+        {actionError && (
+          <div className="mb-3 p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-600 dark:text-red-400">
+            {actionError}
+          </div>
+        )}
+
         {status === "pending" && (
           <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border-subtle">
             <button
               type="button"
               onClick={handleReject}
-              className="px-3.5 py-1.5 rounded-lg bg-surface border border-border hover:bg-surface-muted text-xs font-medium text-secondary hover:text-primary transition-colors cursor-pointer"
+              disabled={isPendingAction}
+              className="px-3.5 py-1.5 rounded-lg bg-surface border border-border hover:bg-surface-muted text-xs font-medium text-secondary hover:text-primary transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
-              Reject / Modify
+              {declineMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : null}
+              <span>Decline</span>
             </button>
             <button
               type="button"
               onClick={handleApprove}
-              className="px-4 py-1.5 rounded-lg btn-brand-solid text-xs font-medium transition-all cursor-pointer shadow-xs"
+              disabled={isPendingAction}
+              className="px-4 py-1.5 rounded-lg btn-brand-solid text-xs font-medium transition-all cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
-              Approve & Send Batch ({displayTargetCount})
+              {approveMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : null}
+              <span>Approve & Send Batch ({displayTargetCount})</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* Target Customer Inspection Modal */}
       {showCustomerModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4 backdrop-blur-xs font-intert">
           <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl border border-border bg-surface p-5 max-h-[85vh] flex flex-col shadow-2xl">

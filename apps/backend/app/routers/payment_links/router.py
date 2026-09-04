@@ -2,7 +2,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_db, get_current_user
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.payment_link import PaymentLinkStatus
 from app.schemas.payment_link import (
     PaymentLinkCreateRequest,
@@ -68,6 +68,36 @@ async def list_payment_links(
         total_pages=total_pages,
     )
 
+@router.get("/my-links", response_model=PaymentLinkListResponse)
+async def list_my_payment_links(
+    status_filter: PaymentLinkStatus | None = Query(None, alias="status"),
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Customer-side: list payment links generated for the current customer."""
+    if current_user.role != UserRole.customer:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This endpoint is for customers only.",
+        )
+
+    items = await payment_link_repository.list_by_customer(
+        db=db,
+        customer_id=current_user.id,
+        status=status_filter,
+        limit=limit,
+    )
+
+    return PaymentLinkListResponse(
+        items=items,
+        total_count=len(items),
+        page=1,
+        count=limit,
+        total_pages=1,
+    )
+
+
 @router.get("/{link_id}", response_model=PaymentLinkResponse)
 async def get_payment_link(
     link_id: uuid.UUID,
@@ -83,12 +113,14 @@ async def get_payment_link(
         raise HTTPException(status_code=404, detail="Payment link not found")
     return link
 
+
 @router.post("/verify-payment", response_model=PaymentLinkResponse)
 async def verify_payment(
     payload: PaymentLinkVerifyRequest,
     db: AsyncSession = Depends(get_db),
 ):
     return await payment_link_service.verify_payment_callback(db=db, payload=payload)
+
 
 @router.post("/{link_id}/sync", response_model=PaymentLinkResponse)
 async def sync_payment_link(

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -58,16 +58,14 @@ function PaymentSuccessContent() {
     linkId || "",
   );
 
-  useEffect(() => {
+  const isVerifyingRef = useRef(false);
+
+  const doVerify = () => {
     if (
       razorpayPaymentId &&
       razorpayPaymentLinkId &&
       razorpaySignature &&
-      razorpaySignature !== "verified" &&
-      !verifiedRecord &&
-      !verifyMutation.isPending &&
-      !verifyMutation.isSuccess &&
-      !verifyMutation.isError
+      razorpaySignature !== "verified"
     ) {
       verifyMutation.mutate(
         {
@@ -86,6 +84,20 @@ function PaymentSuccessContent() {
         },
       );
     }
+  };
+
+  useEffect(() => {
+    if (
+      razorpayPaymentId &&
+      razorpayPaymentLinkId &&
+      razorpaySignature &&
+      razorpaySignature !== "verified" &&
+      !verifiedRecord &&
+      !isVerifyingRef.current
+    ) {
+      isVerifyingRef.current = true;
+      doVerify();
+    }
   }, [
     razorpayPaymentId,
     razorpayPaymentLinkId,
@@ -93,7 +105,6 @@ function PaymentSuccessContent() {
     razorpayPaymentLinkReferenceId,
     razorpayPaymentLinkStatus,
     verifiedRecord,
-    verifyMutation,
   ]);
 
   const activePaymentId =
@@ -128,24 +139,46 @@ function PaymentSuccessContent() {
   }
 
   if (verifyMutation.isError) {
+    const isNetworkError =
+      verifyMutation.error?.message?.toLowerCase().includes("network") ||
+      verifyMutation.error?.message?.toLowerCase().includes("connection") ||
+      verifyMutation.error?.message?.toLowerCase().includes("fetch");
+
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center font-intert">
         <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center mb-4">
           <AlertCircle size={24} />
         </div>
         <h2 className="text-lg font-semibold text-primary font-intert">
-          Payment Signature Verification Failed
+          {isNetworkError
+            ? "Server Connection Error"
+            : "Payment Signature Verification Failed"}
         </h2>
         <p className="text-xs text-muted mt-1 max-w-sm">
-          {verifyMutation.error?.message ||
-            "Unable to verify the cryptographic payment signature returned by the gateway."}
+          {isNetworkError
+            ? "Your payment was processed by Razorpay, but our server couldn't be reached to verify the receipt. Please check your network and retry."
+            : verifyMutation.error?.message ||
+              "Unable to verify the cryptographic payment signature returned by the gateway."}
         </p>
-        <div className="mt-6 flex gap-3">
-          <Link
-            href="/payouts"
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => doVerify()}
             className="px-4 py-2 rounded-xl btn-brand-solid text-xs font-medium cursor-pointer"
           >
-            Go to Payouts
+            Retry Verification
+          </button>
+          <Link
+            href="/user/orders"
+            className="px-4 py-2 rounded-xl border border-border bg-surface text-xs font-medium hover:bg-surface-muted text-secondary hover:text-primary transition-colors cursor-pointer"
+          >
+            My Orders
+          </Link>
+          <Link
+            href="/payouts"
+            className="px-4 py-2 rounded-xl border border-border bg-surface text-xs font-medium hover:bg-surface-muted text-secondary hover:text-primary transition-colors cursor-pointer"
+          >
+            Payouts
           </Link>
         </div>
       </div>
@@ -357,11 +390,17 @@ function PaymentSuccessContent() {
         </button>
 
         <Link
-          href="/payouts"
+          href="/user/orders"
           className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl btn-brand-solid text-xs font-medium cursor-pointer"
         >
           <ArrowLeft size={15} />
-          <span>Back to Dashboard</span>
+          <span>View Orders</span>
+        </Link>
+        <Link
+          href="/user"
+          className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-border bg-surface hover:bg-surface-muted text-xs font-medium text-secondary hover:text-primary transition-colors cursor-pointer"
+        >
+          <span>Continue Shopping</span>
         </Link>
       </div>
     </div>

@@ -8,8 +8,7 @@ import {
   extractCardsFromRun,
   extractCardsFromData,
 } from "../../../components/app/chat";
-import type { ActionMode, ChatMessageData } from "../../../components/app/chat";
-import type { AgentStep } from "../../../components/app/chat/AgentThinking";
+import type { ActionMode, ChatMessageData, AgentStep } from "../../../../types";
 import {
   useSessionHistory,
   useAgentStream,
@@ -60,6 +59,12 @@ export default function ChatSessionPage({
   }
   const sessionTitle = runs.length > 0 ? runs[0]?.user_message.slice(0, 45) : "Merchant Conversation";
 
+  const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  };
+
   const handleScroll = () => {
     const el = scrollContainerRef.current;
     if (!el) return;
@@ -70,26 +75,31 @@ export default function ChatSessionPage({
 
   useEffect(() => {
     if (!isUserNearBottomRef.current) return;
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [streamingAssistantResponse, isStreaming]);
+    scrollToBottom("auto");
+  }, [streamingAssistantResponse, streamingUserMessage, isStreaming]);
 
   useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [runs.length]);
+    if (!isLoading) {
+      scrollToBottom("auto");
+      const t = setTimeout(() => scrollToBottom("auto"), 60);
+      return () => clearTimeout(t);
+    }
+  }, [isLoading, runs.length]);
 
   const handleSend = (
     text: string,
     _mode?: ActionMode,
-    attachedCustomer?: any,
+    attachedCustomer?: Parameters<typeof sendMessage>[3],
   ) => {
     const trimmed = text.trim();
     if (!trimmed) return;
+    isUserNearBottomRef.current = true;
     setQuery("");
     sendMessage(trimmed, "merchant_admin", chatId, attachedCustomer);
+    scrollToBottom("auto");
+    requestAnimationFrame(() => scrollToBottom("auto"));
+    setTimeout(() => scrollToBottom("auto"), 50);
+    setTimeout(() => scrollToBottom("auto"), 150);
   };
 
   const messages: ChatMessageData[] = [];

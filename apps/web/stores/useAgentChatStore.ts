@@ -1,26 +1,5 @@
 import { create } from "zustand";
-import type { AgentRunRecord } from "../types";
-
-export interface AgentChatState {
-  activeSessionId: string | null;
-  activeSessionTitle: string | null;
-  runs: AgentRunRecord[];
-  isStreaming: boolean;
-  streamingUserMessage: string | null;
-  streamingAssistantResponse: string;
-  streamingRunId: string | null;
-  error: string | null;
-
-  setActiveSession: (sessionId: string | null, title?: string | null) => void;
-  setRuns: (runs: AgentRunRecord[]) => void;
-  appendRun: (run: AgentRunRecord) => void;
-  startStreaming: (userMessage: string, sessionId?: string | null) => void;
-  appendStreamToken: (token: string) => void;
-  finishStreaming: (sessionId: string, runId: string) => void;
-  setStreamingError: (error: string) => void;
-  resetStream: () => void;
-  clearChat: () => void;
-}
+import type { AgentRunRecord, ToolInvocation, AgentChatState } from "../types";
 
 export const useAgentChatStore = create<AgentChatState>((set) => ({
   activeSessionId: null,
@@ -66,7 +45,7 @@ export const useAgentChatStore = create<AgentChatState>((set) => ({
       streamingAssistantResponse: state.streamingAssistantResponse + token,
     })),
 
-  finishStreaming: (sessionId, runId) =>
+  finishStreaming: (sessionId, runId, toolsInvoked) =>
     set((state) => {
       if (!state.streamingUserMessage) {
         return {
@@ -84,7 +63,7 @@ export const useAgentChatStore = create<AgentChatState>((set) => ({
         persona: "merchant_admin",
         user_message: state.streamingUserMessage,
         agent_response: state.streamingAssistantResponse,
-        tools_invoked: [],
+        tools_invoked: toolsInvoked || [],
         status: "success",
         latency_ms: null,
         created_at: new Date().toISOString(),

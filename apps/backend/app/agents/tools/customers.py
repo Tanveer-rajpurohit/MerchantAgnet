@@ -21,6 +21,11 @@ async def get_recent_customers(
     ctx: RunContext[MerchantAgentDeps],
     limit: int = 20,
 ) -> str:
+    """Retrieve connected customers who have recently chatted or interacted with the store.
+
+    Call this to see connected customers, their recent activity, contact details, and total spend.
+    - limit: Maximum number of customers to return (default 20, max 50).
+    """
     guard = _guard_merchant(ctx)
     if guard:
         return guard

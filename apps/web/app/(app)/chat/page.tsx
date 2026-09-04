@@ -10,8 +10,7 @@ import {
   extractCardsFromRun,
   extractCardsFromData,
 } from "../../components/app/chat";
-import type { ActionMode, ChatMessageData } from "../../components/app/chat";
-import type { AgentStep } from "../../components/app/chat/AgentThinking";
+import type { ActionMode, ChatMessageData, AgentStep } from "../../../types";
 import { useAgentStream } from "../../../hooks";
 import { useAgentChatStore } from "../../../stores";
 
@@ -38,8 +37,13 @@ function ChatContent() {
     if (!isStreaming) {
       clearChat();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  };
 
   const handleScroll = () => {
     const el = scrollContainerRef.current;
@@ -51,23 +55,26 @@ function ChatContent() {
 
   useEffect(() => {
     if (!isUserNearBottomRef.current) return;
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [streamingAssistantResponse, isStreaming]);
+    scrollToBottom("auto");
+  }, [streamingAssistantResponse, streamingUserMessage, isStreaming]);
 
   useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
+    scrollToBottom("auto");
+    const t = setTimeout(() => scrollToBottom("auto"), 60);
+    return () => clearTimeout(t);
   }, [runs.length]);
 
   const handleSend = useCallback(
-    (text: string, _mode?: ActionMode, attachedCustomer?: any) => {
+    (text: string, _mode?: ActionMode, attachedCustomer?: Parameters<typeof sendMessage>[3]) => {
       const trimmed = text.trim();
       if (!trimmed) return;
+      isUserNearBottomRef.current = true;
       setQuery("");
       sendMessage(trimmed, "merchant_admin", null, attachedCustomer);
+      scrollToBottom("auto");
+      requestAnimationFrame(() => scrollToBottom("auto"));
+      setTimeout(() => scrollToBottom("auto"), 50);
+      setTimeout(() => scrollToBottom("auto"), 150);
     },
     [isStreaming, sendMessage]
   );

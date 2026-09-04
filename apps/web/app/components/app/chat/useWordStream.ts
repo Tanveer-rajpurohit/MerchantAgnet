@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import type { ChatMessageData } from "./ChatMessageItem";
+import type { ChatMessageData } from "../../../types";
 
 const WORDS_PER_TICK = 2;
 const TICK_MS = 14;

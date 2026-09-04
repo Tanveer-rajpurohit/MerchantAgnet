@@ -8,16 +8,23 @@ import {
   LowStock,
 } from "../../components/app/dashboard";
 import { PaymentLinkModal } from "../../components/app/utils";
+import { useProfile } from "../../../hooks/useProfile";
 
 export default function DashboardPage() {
   const [showPaymentLinkModal, setShowPaymentLinkModal] = useState(false);
+  const { profile } = useProfile();
+
+  const greetingName =
+    profile?.merchant_profile?.business_name ||
+    profile?.full_name ||
+    "Store Owner";
 
   return (
     <div className="w-full h-full overflow-y-auto font-intert">
       <div className="px-6 sm:px-10 lg:px-16 py-8 sm:py-10">
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-instrument text-primary tracking-tight">
-            Good to see you, Sharma Store
+            Good to see you, {greetingName}
           </h1>
           <p className="text-sm text-muted font-intert mt-1">
             Here&apos;s what&apos;s happening across your store today.

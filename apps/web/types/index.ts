@@ -12,3 +12,7 @@ export * from "./razorpay/types";
 export * from "./payment/types";
 export * from "./audit/types";
 export * from "./agent/types";
+export * from "./campaign/types";
+export * from "./user/types";
+
+

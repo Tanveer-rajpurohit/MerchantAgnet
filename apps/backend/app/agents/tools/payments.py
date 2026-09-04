@@ -2,10 +2,13 @@ import logging
 import uuid
 from decimal import Decimal
 from pydantic_ai import RunContext
+from sqlalchemy import select, or_
 
 from app.agents.deps import MerchantAgentDeps
 from app.agents.base_agent import merchant_agent
 from app.models.payment_link import PaymentLink, PaymentLinkStatus
+from app.models.customer_connection import CustomerConnection
+from app.models.user import User
 from app.services.razorpay_client_factory import get_merchant_razorpay_client
 from app.repositories import audit_log_repository, payment_link_repository
 from app.core.config import settings
@@ -22,8 +25,18 @@ async def create_payment_link(
     description: str,
     customer_phone: str | None = None,
     customer_email: str | None = None,
+    customer_id: str | None = None,
 ) -> str:
+    """Create a Razorpay payment link for a customer purchase or invoice.
 
+    Call this when the merchant asks to create, send, or generate a payment link or bill for a customer.
+    - customer_name: Name of the customer (e.g. 'Rajesh Kumar').
+    - amount: Total amount in INR (e.g. 500.0).
+    - description: Purpose or invoice summary (e.g. 'Order #123 payment' or '2x Wheat Flour').
+    - customer_phone: Optional phone number (will receive WhatsApp / SMS if valid).
+    - customer_email: Optional email address.
+    Returns the generated payment link URL and details to share with the customer.
+    """
     try:
         if (not customer_name or customer_name.strip() in ("", "Customer", "the customer")) and ctx.deps.target_customer_name:
             customer_name = ctx.deps.target_customer_name
@@ -86,13 +99,69 @@ async def create_payment_link(
                 f"Tell the merchant to check their Razorpay keys in Settings."
             )
 
-        # Persist the link record locally
+        resolved_customer_id: uuid.UUID | None = None
+        if customer_id:
+            try:
+                resolved_customer_id = uuid.UUID(str(customer_id).strip())
+            except (ValueError, TypeError):
+                pass
+
+        if not resolved_customer_id and ctx.deps.target_customer_id:
+            resolved_customer_id = ctx.deps.target_customer_id
+
+        if not resolved_customer_id and ctx.deps.target_customer_connection_id:
+            conn = await ctx.deps.db.get(CustomerConnection, ctx.deps.target_customer_connection_id)
+            if conn:
+                resolved_customer_id = conn.customer_id
+
+        if not resolved_customer_id and (customer_phone or customer_name or customer_email):
+            stmt = (
+                select(CustomerConnection)
+                .join(User, CustomerConnection.customer_id == User.id)
+                .where(CustomerConnection.merchant_id == merchant.id)
+            )
+            conditions = []
+            if customer_phone:
+                clean_p = "".join(filter(str.isdigit, customer_phone))[-10:]
+                if len(clean_p) >= 10:
+                    conditions.append(User.phone_number.contains(clean_p))
+            if customer_email:
+                conditions.append(User.email.ilike(customer_email.strip()))
+            if customer_name and customer_name.strip().lower() not in ("", "customer", "the customer"):
+                conditions.append(User.full_name.ilike(f"%{customer_name.strip()}%"))
+
+            if conditions:
+                stmt = stmt.where(or_(*conditions))
+                res = await ctx.deps.db.execute(stmt)
+                found_conn = res.scalars().first()
+                if found_conn:
+                    resolved_customer_id = found_conn.customer_id
+
+        if not resolved_customer_id and (customer_phone or customer_email):
+            u_conds = []
+            if customer_phone:
+                clean_p = "".join(filter(str.isdigit, customer_phone))[-10:]
+                if len(clean_p) >= 10:
+                    u_conds.append(User.phone_number.contains(clean_p))
+            if customer_email:
+                u_conds.append(User.email.ilike(customer_email.strip()))
+            if u_conds:
+                u_stmt = select(User).where(or_(*u_conds))
+                u_res = await ctx.deps.db.execute(u_stmt)
+                found_user = u_res.scalars().first()
+                if found_user:
+                    resolved_customer_id = found_user.id
+
+        if not resolved_customer_id and getattr(ctx.deps.persona, "value", str(ctx.deps.persona)) == "customer_shopfront" and ctx.deps.user is not None:
+            resolved_customer_id = ctx.deps.user.id
+
         link = PaymentLink(
             merchant_id=merchant.id,
             amount=Decimal(str(amount)),
             customer_name=customer_name,
             customer_phone=customer_phone,
             customer_email=customer_email,
+            customer_id=resolved_customer_id,
             description=description,
             currency="INR",
             receipt_number=receipt_no,
@@ -104,10 +173,6 @@ async def create_payment_link(
             notify_sms=False,
             notify_email=False,
         )
-        if ctx.deps.target_customer_id:
-            link.customer_id = ctx.deps.target_customer_id
-        elif getattr(ctx.deps.persona, "value", str(ctx.deps.persona)) == "customer_shopfront" and ctx.deps.user is not None:
-            link.customer_id = ctx.deps.user.id
 
         ctx.deps.db.add(link)
 
@@ -122,6 +187,7 @@ async def create_payment_link(
                 "amount": str(amount),
                 "razorpay_link_id": razorpay_resp.get("id"),
                 "customer_name": customer_name,
+                "customer_id": str(resolved_customer_id) if resolved_customer_id else None,
                 "persona": ctx.deps.persona.value,
             },
         )
@@ -154,7 +220,12 @@ async def check_payment_status(
     ctx: RunContext[MerchantAgentDeps],
     link_id: str,
 ) -> str:
-   
+    """Check the real-time status of a payment link (synced directly with Razorpay).
+
+    Call this to verify if a customer has paid a link, check settlement status, or troubleshoot.
+    - link_id: The Razorpay link ID (e.g. 'plink_xxx') or the internal link UUID.
+    Returns the current status ('paid', 'created', 'partially_paid', 'expired'), amount, and payment timestamp.
+    """
     guard = _guard_merchant(ctx)
     if guard:
         return guard

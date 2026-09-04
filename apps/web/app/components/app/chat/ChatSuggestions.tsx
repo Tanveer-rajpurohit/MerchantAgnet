@@ -1,16 +1,7 @@
 "use client";
 
 import { Link2, Package, Megaphone, TrendingUp } from "lucide-react";
-import type { ActionMode } from "./ChatInput";
-
-interface SuggestionItem {
-  id: string;
-  icon: typeof Link2;
-  title: string;
-  subtitle: string;
-  prompt: string;
-  mode: ActionMode;
-}
+import type { ActionMode, SuggestionItem } from "../../../../types";
 
 const SUGGESTIONS: SuggestionItem[] = [
   {

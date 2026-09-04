@@ -1,16 +1,7 @@
 "use client";
 
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
-
-export interface StockItem {
-  id: string;
-  name: string;
-  category: string;
-  currentStock: number;
-  threshold: number;
-  sellingPrice: string;
-  status: "low" | "ok" | "critical";
-}
+import type { StockItem } from "../../../../types";
 
 interface CatalogStockCardProps {
   title?: string;

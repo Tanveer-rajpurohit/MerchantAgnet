@@ -2,10 +2,16 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User, UserRole
 from app.models.order import Order, OrderStatus, ActorType
-from app.repositories import order_repository, customer_connection_repository
+from app.models.product import Product
+from app.repositories import (
+    order_repository,
+    customer_connection_repository,
+    product_repository,
+)
 from app.schemas.order import (
     OrderCreateRequest,
     OrderUpdateRequest,
@@ -61,9 +67,37 @@ async def create_order(
 
     target_customer_id = payload.customer_id
     connection_id = payload.customer_connection_id
+    status_to_set = payload.status
+    paid_amount_to_set = payload.paid_amount
 
     if current_user is not None and current_user.role == UserRole.customer:
         target_customer_id = current_user.id
+        status_to_set = OrderStatus.unpaid
+        paid_amount_to_set = Decimal("0.00")
+
+        for item in payload.items:
+            product = None
+            if item.product_id:
+                product = await product_repository.get_by_id(db, item.product_id, merchant_id)
+            if not product and item.product_name_snapshot:
+                stmt = (
+                    select(Product)
+                    .where(
+                        Product.merchant_id == merchant_id,
+                        Product.is_active.is_(True),
+                        Product.product_name.ilike(item.product_name_snapshot.strip()),
+                    )
+                    .limit(1)
+                )
+                product = (await db.execute(stmt)).scalars().first()
+            if not product:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Product '{item.product_name_snapshot}' is not available in this store.",
+                )
+            item.unit_price_snapshot = product.selling_price
+            item.product_id = product.id
+            item.product_name_snapshot = product.product_name
 
     if connection_id is not None:
         conn = await customer_connection_repository.get_by_id(db, connection_id, merchant_id)
@@ -98,16 +132,16 @@ async def create_order(
         customer_connection_id=connection_id,
         items=payload.items,
         total_amount=total_amount,
-        paid_amount=payload.paid_amount,
-        status=payload.status,
+        paid_amount=paid_amount_to_set,
+        status=status_to_set,
         changed_by=changed_by,
         reason="Order created",
     )
 
-    if payload.paid_amount > Decimal("0.00") and connection_id is not None:
+    if paid_amount_to_set > Decimal("0.00") and connection_id is not None:
         conn = await customer_connection_repository.get_by_id(db, connection_id)
         if conn:
-            conn.total_spent = (conn.total_spent or Decimal("0.00")) + payload.paid_amount
+            conn.total_spent = (conn.total_spent or Decimal("0.00")) + paid_amount_to_set
             await db.flush()
 
     return to_order_response(order)

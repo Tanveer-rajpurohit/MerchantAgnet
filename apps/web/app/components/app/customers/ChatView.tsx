@@ -1,13 +1,46 @@
 "use client";
 
-import { useState, useRef, useLayoutEffect } from "react";
+import { useState, useRef, useLayoutEffect, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowUp, X, CheckCircle2, Clock } from "lucide-react";
+import dynamic from "next/dynamic";
+import { ArrowLeft, ArrowUp, X, CheckCircle2, Clock, Smile } from "lucide-react";
 import { useCustomerConnectionDetail } from "../../../../hooks/useCustomerConnections";
 import { useMessages } from "../../../../hooks/useMessages";
 import { useRealtimeChat } from "../../../../hooks/useRealtimeChat";
 import { useSocketStore } from "../../../../stores/useSocketStore";
+import { AgentOrb } from "../utils";
 import type { CustomerConnectionResponse } from "../../../../types";
+
+const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
+
+const RZP_URL_REGEX =
+  /https?:\/\/(?:rzp\.io\/[a-zA-Z0-9_\-\/]+|api\.razorpay\.com\/[a-zA-Z0-9_\-\/]+)/i;
+
+function extractAmount(text: string): number | null {
+  const matches = text.match(/(?:₹|rs\.?|inr)\s*([\d,]+(?:\.\d{1,2})?)/i);
+  if (matches && matches[1]) {
+    const clean = matches[1].replace(/,/g, "");
+    const n = parseFloat(clean);
+    if (!Number.isNaN(n) && n > 0) return n;
+  }
+  return null;
+}
+
+function buildPaymentCard(content: string): {
+  linkUrl: string;
+  amount: string;
+  description: string;
+} | null {
+  const urlMatch = content.match(RZP_URL_REGEX);
+  if (!urlMatch) return null;
+  const linkUrl = urlMatch[0];
+  const amount = extractAmount(content);
+  return {
+    linkUrl,
+    amount: amount ? String(amount) : "",
+    description: "Payment for your order",
+  };
+}
 
 interface ChatViewProps {
   connectionId: string;
@@ -103,11 +136,15 @@ export function ChatView({ connectionId }: ChatViewProps) {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [isEmojiOpen, setIsEmojiOpen] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const emojiRef = useRef<HTMLDivElement>(null);
   const prevScrollHeightRef = useRef<number>(0);
   const isInitialLoadRef = useRef<boolean>(true);
+  const isAtBottomRef = useRef<boolean>(true);
 
   const { data: customer, isLoading: isCustomerLoading } =
     useCustomerConnectionDetail(connectionId);
@@ -128,9 +165,38 @@ export function ChatView({ connectionId }: ChatViewProps) {
 
   const isConnected = customer?.status === "connected";
 
+  const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior,
+      });
+    }
+  };
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (emojiRef.current && !emojiRef.current.contains(event.target as Node)) {
+        setIsEmojiOpen(false);
+      }
+    }
+    if (isEmojiOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isEmojiOpen]);
+
   const handleScroll = () => {
     const container = scrollContainerRef.current;
-    if (!container || !hasMore || isLoadingMore) return;
+    if (!container) return;
+
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+    isAtBottomRef.current = distanceFromBottom < 100;
+
+    if (!hasMore || isLoadingMore) return;
 
     if (container.scrollTop <= 40) {
       prevScrollHeightRef.current = container.scrollHeight;
@@ -145,6 +211,7 @@ export function ChatView({ connectionId }: ChatViewProps) {
     if (isInitialLoadRef.current && messages.length > 0) {
       isInitialLoadRef.current = false;
       container.scrollTop = container.scrollHeight;
+      isAtBottomRef.current = true;
       return;
     }
 
@@ -152,15 +219,31 @@ export function ChatView({ connectionId }: ChatViewProps) {
       const heightDiff = container.scrollHeight - prevScrollHeightRef.current;
       container.scrollTop += heightDiff;
       prevScrollHeightRef.current = 0;
+      return;
+    }
+
+    if (isAtBottomRef.current) {
+      container.scrollTop = container.scrollHeight;
     }
   }, [messages]);
+
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+
+  const handleCopy = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedUrl(url);
+      setTimeout(() => setCopiedUrl(null), 1500);
+    } catch {}
+  };
 
   const handleInput = (val: string) => {
     setInput(val);
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       const nextHeight = Math.min(textareaRef.current.scrollHeight, 120);
-      textareaRef.current.style.height = `${Math.max(nextHeight, 24)}px`;
+      textareaRef.current.style.height = `${Math.max(nextHeight, 38)}px`;
+      textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > 120 ? "auto" : "hidden";
     }
   };
 
@@ -170,12 +253,19 @@ export function ChatView({ connectionId }: ChatViewProps) {
 
     setIsSending(true);
     setInput("");
+    setIsEmojiOpen(false);
 
     useSocketStore.getState().sendMessage(trimmed, "merchant");
     setIsSending(false);
 
+    isAtBottomRef.current = true;
+    scrollToBottom("auto");
+    requestAnimationFrame(() => scrollToBottom("auto"));
+    setTimeout(() => scrollToBottom("auto"), 50);
+
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
+      textareaRef.current.style.overflowY = "hidden";
     }
   };
 
@@ -276,26 +366,97 @@ export function ChatView({ connectionId }: ChatViewProps) {
           messages.map((msg) => {
             const isMerchant = msg.sender_type === "merchant";
             const isAgent = msg.sender_type === "agent";
+            const isCustomer = msg.sender_type === "customer";
+            const payCard = buildPaymentCard(msg.content);
             return (
               <div
                 key={msg.id}
                 className={`flex ${isMerchant ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[80%] sm:max-w-[65%] px-4 py-2.5 rounded-2xl text-xs sm:text-[13px] leading-relaxed ${
+                  className={`max-w-[85%] sm:max-w-[70%] px-4 py-2.5 rounded-2xl text-xs sm:text-[13px] leading-relaxed ${
                     isMerchant
-                      ? "bg-brand text-white rounded-br-xs"
+                      ? "bg-brand text-white rounded-br-xs shadow-xs"
                       : isAgent
-                        ? "bg-brand/5 border border-brand/20 text-primary rounded-bl-xs shadow-xs"
+                        ? "bg-brand/10 dark:bg-brand/15 border border-brand/25 text-primary rounded-bl-xs shadow-xs"
                         : "bg-surface border border-border text-primary rounded-bl-xs shadow-xs"
                   }`}
                 >
                   {isAgent && (
-                    <span className="block text-[10px] text-brand font-semibold mb-1">
-                      AI Copilot (Auto-reply)
-                    </span>
+                    <div className="flex items-center gap-1.5 text-[10px] text-brand font-semibold mb-1">
+                      <AgentOrb animated size={12} className="text-brand not-italic shrink-0" />
+                      <span>AI Copilot (Auto-reply)</span>
+                    </div>
+                  )}
+                  {isCustomer && (
+                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-secondary mb-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand/60 shrink-0" />
+                      <span className="truncate">{customer?.customer_name || "Customer"}</span>
+                    </div>
                   )}
                   <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+
+                  {payCard && (
+                    <div
+                      className={`mt-2.5 rounded-xl p-2.5 sm:p-3 ${
+                        isMerchant
+                          ? "border border-white/20 bg-black/15 text-white"
+                          : "border border-brand/20 bg-brand/5 text-primary"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span
+                          className={`text-[10px] font-semibold uppercase tracking-wide ${
+                            isMerchant ? "text-white/90" : "text-brand"
+                          }`}
+                        >
+                          🔗 Payment Link
+                        </span>
+                        {payCard.amount && (
+                          <span
+                            className={`text-xs sm:text-sm font-instrument font-semibold ${
+                              isMerchant ? "text-white" : "text-primary"
+                            }`}
+                          >
+                            ₹{Number(payCard.amount).toLocaleString("en-IN")}
+                          </span>
+                        )}
+                      </div>
+                      <code
+                        className={`block text-[11px] font-mono mb-2 truncate ${
+                          isMerchant ? "text-white/80" : "text-muted"
+                        }`}
+                      >
+                        {payCard.linkUrl}
+                      </code>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(payCard.linkUrl)}
+                          className={`flex-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer ${
+                            isMerchant
+                              ? "border border-white/30 bg-white/10 hover:bg-white/20 text-white"
+                              : "border border-border bg-surface hover:bg-surface-muted text-secondary hover:text-primary"
+                          }`}
+                        >
+                          {copiedUrl === payCard.linkUrl ? "Copied ✓" : "Copy Link"}
+                        </button>
+                        <a
+                          href={payCard.linkUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`flex-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-colors shadow-2xs ${
+                            isMerchant
+                              ? "bg-white text-brand hover:bg-white/90"
+                              : "btn-brand-solid"
+                          }`}
+                        >
+                          {isMerchant ? "Open Link →" : "Pay Now →"}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
                   <span
                     className={`block text-[9px] mt-1 ${
                       isMerchant ? "text-white/70 text-right" : "text-muted"
@@ -310,10 +471,39 @@ export function ChatView({ connectionId }: ChatViewProps) {
               </div>
             );
           })}
+        <div ref={messagesEndRef} />
       </div>
 
       <div className="p-3 sm:p-4 border-t border-border bg-surface shrink-0">
-        <div className="flex items-end gap-2 max-w-4xl mx-auto">
+        <div className="relative max-w-4xl mx-auto flex items-end gap-2" ref={emojiRef}>
+          {isEmojiOpen && (
+            <div className="absolute bottom-full left-0 mb-3 z-50 shadow-2xl rounded-2xl overflow-hidden border border-border">
+              <EmojiPicker
+                onEmojiClick={(emojiData) => {
+                  handleInput(input + emojiData.emoji);
+                  setIsEmojiOpen(false);
+                }}
+                autoFocusSearch={false}
+                lazyLoadEmojis={true}
+                height={380}
+                width={320}
+              />
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setIsEmojiOpen((v) => !v)}
+            title="Insert emoji"
+            className={`flex items-center justify-center w-10 h-10 rounded-xl transition-colors shrink-0 cursor-pointer ${
+              isEmojiOpen
+                ? "bg-brand/15 text-brand"
+                : "text-muted hover:text-secondary hover:bg-surface-muted"
+            }`}
+          >
+            <Smile size={18} />
+          </button>
+
           <textarea
             ref={textareaRef}
             rows={1}
@@ -321,7 +511,8 @@ export function ChatView({ connectionId }: ChatViewProps) {
             onChange={(e) => handleInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a reply..."
-            className="flex-1 resize-none px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-border bg-bg text-primary placeholder:text-muted focus:outline-none focus:border-brand/50 shadow-xs max-h-32"
+            className="flex-1 resize-none px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-border bg-bg text-primary placeholder:text-muted focus:outline-none focus:border-brand/50 shadow-xs max-h-32 overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            style={{ minHeight: "38px" }}
           />
           <button
             type="button"

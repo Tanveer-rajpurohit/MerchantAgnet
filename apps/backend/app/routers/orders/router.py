@@ -105,18 +105,20 @@ async def create_order(
 async def update_order(
     order_id: uuid.UUID,
     payload: OrderUpdateRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_merchant),
     db: AsyncSession = Depends(get_db),
 ):
-    actor = ActorType.merchant if current_user.role == UserRole.merchant else ActorType.customer
-    merchant_id = current_user.merchant_profile.id if current_user.merchant_profile else None
-    customer_id = current_user.id if current_user.role == UserRole.customer else None
+    if not current_user.merchant_profile:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Merchant profile not found",
+        )
 
     return await order_service.update_order(
         db=db,
         order_id=order_id,
-        merchant_id=merchant_id,
-        customer_id=customer_id,
+        merchant_id=current_user.merchant_profile.id,
+        customer_id=None,
         payload=payload,
-        actor=actor,
+        actor=ActorType.merchant,
     )

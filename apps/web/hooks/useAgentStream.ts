@@ -93,7 +93,7 @@ export function useAgentStream() {
               streamedResponseAccumulator += token;
               appendStreamToken(token);
             },
-            onDone: (sessionId, runId) => {
+            onDone: (sessionId, runId, toolsInvoked) => {
               const runRecord = {
                 id: runId || `run-${Date.now()}`,
                 session_id: sessionId,
@@ -101,7 +101,7 @@ export function useAgentStream() {
                 persona,
                 user_message: trimmed,
                 agent_response: streamedResponseAccumulator,
-                tools_invoked: [],
+                tools_invoked: toolsInvoked || [],
                 status: "success" as const,
                 latency_ms: null,
                 created_at: new Date().toISOString(),
@@ -122,7 +122,7 @@ export function useAgentStream() {
                 }
               );
 
-              finishStreaming(sessionId, runId);
+              finishStreaming(sessionId, runId, toolsInvoked);
               queryClient.invalidateQueries({ queryKey: queryKeys.agent.sessions() });
               queryClient.invalidateQueries({ queryKey: queryKeys.agent.sessionHistory(sessionId) });
 

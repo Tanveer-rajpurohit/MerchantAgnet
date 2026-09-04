@@ -1,15 +1,6 @@
 import { create } from "zustand";
 import { useMessageStore } from "./useMessageStore";
-import type { MessageResponse } from "../types";
-
-interface SocketState {
-  socket: WebSocket | null;
-  isConnected: boolean;
-  currentConnectionId: string | null;
-  connect: (connectionId: string, role?: "customer" | "merchant") => void;
-  disconnect: () => void;
-  sendMessage: (content: string, senderType?: "customer" | "merchant") => boolean;
-}
+import type { MessageResponse, SocketState } from "../types";
 
 function getWsUrl(connectionId: string, role: string): string {
   const customWsUrl = process.env.NEXT_PUBLIC_WS_URL;
@@ -33,7 +24,10 @@ let pendingQueue: Array<{ content: string; senderType: string }> = [];
 export const useSocketStore = create<SocketState>((set, get) => ({
   socket: null,
   isConnected: false,
+  isAiTyping: false,
   currentConnectionId: null,
+
+  setIsAiTyping: (isTyping: boolean) => set({ isAiTyping: isTyping }),
 
   connect: (connectionId: string, role = "customer") => {
     if (!connectionId) return;
@@ -73,8 +67,13 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        if (data.type === "ai_typing") {
+          set({ isAiTyping: Boolean(data.is_typing) });
+          return;
+        }
         const msg = data.message as MessageResponse | undefined;
         if (msg) {
+          set({ isAiTyping: false });
           useMessageStore.getState().appendMessage(msg);
         }
       } catch {
@@ -83,14 +82,14 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     };
 
     ws.onclose = () => {
-      set({ isConnected: false, socket: null, currentConnectionId: null });
+      set({ isConnected: false, isAiTyping: false, socket: null, currentConnectionId: null });
     };
 
     ws.onerror = () => {
-      set({ isConnected: false });
+      set({ isConnected: false, isAiTyping: false });
     };
 
-    set({ socket: ws, currentConnectionId: connectionId, isConnected: false });
+    set({ socket: ws, currentConnectionId: connectionId, isConnected: false, isAiTyping: false });
   },
 
   disconnect: () => {

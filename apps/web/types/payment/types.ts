@@ -5,6 +5,9 @@ export type PaymentLinkStatus =
   | "expired"
   | "cancelled";
 
+export type CustomerPaymentLinksFilterTab = "all" | "pending" | "paid";
+
+
 export interface PaymentLinkCreatePayload {
   amount: number;
   currency?: string;
@@ -117,4 +120,10 @@ export interface PayoutRecord {
   date: string;
   status: "Settled" | "Pending";
 }
+
+export interface CustomerPaymentLinksParams {
+  status?: PaymentLinkStatus;
+  limit?: number;
+}
+
 

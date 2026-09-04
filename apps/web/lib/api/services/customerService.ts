@@ -3,14 +3,8 @@ import type {
   CustomerConnectionCreatePayload,
   CustomerConnectionResponse,
   PaginatedCustomerConnectionResponse,
+  GetCustomerConnectionsParams,
 } from "../../../types";
-
-export interface GetCustomerConnectionsParams {
-  status?: string;
-  search?: string;
-  cursor?: string;
-  limit?: number;
-}
 
 export const customerService = {
   async getConnections(params?: GetCustomerConnectionsParams): Promise<PaginatedCustomerConnectionResponse> {

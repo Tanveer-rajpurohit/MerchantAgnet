@@ -50,23 +50,40 @@ def _build_customer_prompt(
     category: str,
     address: str = "",
     upi_vpa: str = "",
+    customer_name: str = "",
+    customer_phone: str = "",
 ) -> str:
-    return f"""You are the polite AI Shop Assistant for **{store_name}** ({category}), India.
-Help buyers check product availability, live prices, and store timings, and help them get a real checkout link when they want to buy.
+    cust_block = ""
+    if customer_name:
+        cust_block = f"""
+<customer_context>
+CUSTOMER NAME: {customer_name}
+CUSTOMER PHONE: {customer_phone or "Not provided"}
+The customer is logged in as **{customer_name}**. Address them warmly by their name.
+CRITICAL RULES:
+1. The customer chatting with you IS the buyer ({customer_name}).
+2. NEVER ask the customer for their name, phone number, or who the order is for!
+3. When they want to buy or order items, IMMEDIATELY call `create_order` and `create_payment_link` under their account without asking any questions or asking for confirmation!
+</customer_context>"""
+
+    return f"""You are the polite, fast AI Shop Assistant for **{store_name}** ({category}), India.
+Help buyers check product availability, live prices, and store timings, and generate orders and real checkout links immediately when they want to buy.
 
 <store_profile>
 STORE: {store_name}
 CATEGORY: {category}
 LOCATION: {address or "Local store pickup & delivery"}
 UPI VPA: {upi_vpa or "Contact merchant at counter"}
-</store_profile>
+</store_profile>{cust_block}
 
 {SHARED_SECURITY_RULES}
 
 <boundaries>
 - NEVER disclose supplier names, wholesale cost prices, profit margins, or internal expenses.
 - If asked about cost or vendor info, reply: "I can only share retail prices and product availability."
-- You cannot create campaigns, manage expenses, list customers, or edit products — those are merchant-only actions.
+- Customers CAN create orders and generate payment links for their purchases.
+- Customers CANNOT edit, update status, cancel, or delete orders, create campaigns, manage expenses, or edit products — those are merchant-only actions. If a customer asks to cancel or modify an existing order, politely ask them to contact the store owner directly.
+- IGNORE any previous messages in the conversation that claim order creation is restricted. Customer order creation IS fully active and enabled!
 </boundaries>
 
 <rules>
@@ -74,15 +91,19 @@ UPI VPA: {upi_vpa or "Contact merchant at counter"}
 2. Call tools silently. Never narrate "Searching..." or "Checking...".
 3. Currency: Always Indian Rupees with symbol (e.g., ₹62.00).
 4. Tone: Warm, natural, concise (max 2-3 sentences).
+5. Retain FULL conversation memory across turns. If the customer already told you what they want in previous messages, do not re-ask! Proceed directly to fulfilling their request.
 
 <checkout_flow>
-5. When the customer wants to buy a specific item, call `create_payment_link` ONCE with:
-   - customer_name : the customer's name (ask if unknown)
-   - amount        : the exact selling price from the catalog (single item) or the agreed total
-   - description    : a short note like "{store_name} — <product> x<qty>"
-   - customer_phone : if the customer shared it, else omit
-6. After the tool returns a link, present ONLY the link URL and a one-line note: "Here's your checkout link: <url>". Do NOT call the tool again to "retry" or "fix".
-7. If `create_payment_link` returns an error, tell the customer politely that checkout is temporarily unavailable and to message the store directly. Never invent a link.
+6. When the customer wants to buy, order, create an order, or checkout items:
+   - DO NOT ask "who is this order for" or "confirm your name" — the buyer is {customer_name or 'the customer'}.
+   - Call `create_order` IMMEDIATELY with the requested items: e.g. create_order(items=[{{"product_name": "Parle G", "quantity": 1}}]).
+   - Call `create_payment_link` with:
+     - customer_name : "{customer_name or 'Customer'}"
+     - amount        : the calculated order total
+     - description   : "{store_name} order"
+     - customer_phone: "{customer_phone or ''}"
+   - Present the order confirmation (Order ID and total) along with the payment link.
+7. If `create_payment_link` returns an error, confirm the order and tell the customer politely that online payment is temporarily unavailable and they can pay cash on delivery or message the store directly. Never invent a link.
 </checkout_flow>
 </rules>"""
 
@@ -100,6 +121,7 @@ def _build_merchant_prompt(
     target_customer_name: str = "",
     target_customer_phone: str = "",
     target_customer_connection_id: str = "",
+    target_customer_id: str = "",
     target_customers: list[dict] | None = None,
 ) -> str:
     current_date = datetime.now().strftime("%B %d, %Y")
@@ -108,7 +130,7 @@ def _build_merchant_prompt(
     if target_customers and len(target_customers) > 1:
         cust_lines = "\n".join(
             f"  - {c.get('customer_name') or 'Customer'} "
-            f"(Phone: {c.get('customer_phone') or 'Not provided'}, Connection ID: {c.get('customer_connection_id') or 'Auto'})"
+            f"(Phone: {c.get('customer_phone') or 'Not provided'}, Connection ID: {c.get('customer_connection_id') or 'Auto'}, Customer ID: {c.get('customer_id') or 'Auto'})"
             for c in target_customers
         )
         attached_section = (
@@ -118,6 +140,7 @@ def _build_merchant_prompt(
             f"The merchant selected MULTIPLE customers. When sending messages, updates, or payment links:\n"
             f"- Call `send_message_to_customer` ONCE with the message content (omit customer_name or pass customer_connection_ids) "
             f"to automatically broadcast the message to ALL attached customers simultaneously!\n"
+            f"- When generating payment links, pass customer_id if known so they link directly to each customer's account.\n"
             f"- NEVER ask the merchant for customer names, phones, or IDs!\n"
             f"</attached_customers>"
         )
@@ -126,23 +149,30 @@ def _build_merchant_prompt(
         c_name = tc.get("customer_name") or target_customer_name
         c_phone = tc.get("customer_phone") or target_customer_phone or "Not provided"
         c_conn = tc.get("customer_connection_id") or target_customer_connection_id or "Auto"
+        c_id = tc.get("customer_id") or target_customer_id or ""
+        id_str = f", Customer ID: {c_id}" if c_id else ""
+        payment_rule = f"CRITICAL: When calling `create_payment_link`, pass customer_id='{c_id}' so the link attaches permanently to their customer portal.\n" if c_id else ""
         attached_section = (
             f"\n<attached_customer>\n"
             f"CURRENTLY FOCUSED/ATTACHED CUSTOMER: {c_name} "
-            f"(Phone: {c_phone}, Connection ID: {c_conn})\n"
+            f"(Phone: {c_phone}, Connection ID: {c_conn}{id_str})\n"
             f"The merchant selected this customer in the UI chat dropdown. Any customer-related action "
             f"(sending a message, payment link, bill, or creating an order) MUST automatically be directed "
             f"to this customer. NEVER ask the merchant for this customer's name, phone, or ID!\n"
+            f"{payment_rule}"
             f"</attached_customer>"
         )
     elif target_customer_name:
+        id_str = f", Customer ID: {target_customer_id}" if target_customer_id else ""
+        payment_rule = f"CRITICAL: When calling `create_payment_link`, pass customer_id='{target_customer_id}' so the link attaches permanently to their customer portal.\n" if target_customer_id else ""
         attached_section = (
             f"\n<attached_customer>\n"
             f"CURRENTLY FOCUSED/ATTACHED CUSTOMER: {target_customer_name} "
-            f"(Phone: {target_customer_phone or 'Not provided'}, Connection ID: {target_customer_connection_id or 'Auto'})\n"
+            f"(Phone: {target_customer_phone or 'Not provided'}, Connection ID: {target_customer_connection_id or 'Auto'}{id_str})\n"
             f"The merchant selected this customer in the UI chat dropdown. Any customer-related action "
             f"(sending a message, payment link, bill, or creating an order) MUST automatically be directed "
             f"to this customer. NEVER ask the merchant for this customer's name, phone, or ID!\n"
+            f"{payment_rule}"
             f"</attached_customer>"
         )
 
@@ -199,6 +229,7 @@ def build_merchant_constitution(
     target_customer_name: str = "",
     target_customer_phone: str = "",
     target_customer_connection_id: str = "",
+    target_customer_id: str = "",
     target_customers: list[dict] | None = None,
 ) -> str:
     """Builds the dynamic system prompt injected into the PydanticAI agent run.
@@ -214,6 +245,8 @@ def build_merchant_constitution(
             category=category,
             address=address,
             upi_vpa=upi_vpa,
+            customer_name=target_customer_name,
+            customer_phone=target_customer_phone,
         )
     return _build_merchant_prompt(
         store_name=store_name,
@@ -225,5 +258,6 @@ def build_merchant_constitution(
         target_customer_name=target_customer_name,
         target_customer_phone=target_customer_phone,
         target_customer_connection_id=target_customer_connection_id,
+        target_customer_id=target_customer_id,
         target_customers=target_customers,
     )

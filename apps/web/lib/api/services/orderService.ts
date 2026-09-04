@@ -4,21 +4,9 @@ import type {
   OrderUpdatePayload,
   OrderResponse,
   PaginatedOrderResponse,
+  GetMerchantOrdersParams,
+  GetCustomerOrdersParams,
 } from "../../../types";
-
-export interface GetMerchantOrdersParams {
-  status?: string;
-  customer_id?: string;
-  search?: string;
-  cursor?: string;
-  limit?: number;
-}
-
-export interface GetCustomerOrdersParams {
-  status?: string;
-  cursor?: string;
-  limit?: number;
-}
 
 export const orderService = {
   async getMerchantOrders(params?: GetMerchantOrdersParams): Promise<PaginatedOrderResponse> {

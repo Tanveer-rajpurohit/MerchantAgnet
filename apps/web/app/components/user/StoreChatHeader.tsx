@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeft, MapPin, ShieldCheck } from "lucide-react";
-import { StoreItem } from "./types";
+import type { StoreItem } from "../../../types";
 
 interface StoreChatHeaderProps {
   store: StoreItem;

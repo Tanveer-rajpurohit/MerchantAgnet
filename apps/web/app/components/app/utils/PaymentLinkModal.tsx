@@ -123,7 +123,6 @@ export function PaymentLinkModal({
         purpose: res.description,
       });
     } catch {
-      // Managed through mutation state
     }
   };
 
@@ -147,7 +146,6 @@ export function PaymentLinkModal({
         purpose: res.description,
       });
     } catch {
-      // Managed through mutation state
     }
   };
 

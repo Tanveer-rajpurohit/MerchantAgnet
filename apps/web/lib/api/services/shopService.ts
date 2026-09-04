@@ -1,12 +1,5 @@
 import { api } from "../utils/fetchClient";
-import type { PaginatedShopResponse, ShopDetail } from "../../../types";
-
-export interface GetShopsParams {
-  search?: string;
-  category?: string;
-  cursor?: string;
-  limit?: number;
-}
+import type { PaginatedShopResponse, ShopDetail, GetShopsParams } from "../../../types";
 
 export const shopService = {
   async getShops(params?: GetShopsParams): Promise<PaginatedShopResponse> {

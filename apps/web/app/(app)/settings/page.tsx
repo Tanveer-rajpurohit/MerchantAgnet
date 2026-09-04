@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AppearanceSection,
+  VoiceSettingsSection,
   StoreProfileSection,
   AIGoalsSection,
   RazorpaySection,
@@ -47,6 +48,7 @@ export default function SettingsPage() {
 
         <div className="space-y-6">
           <AppearanceSection />
+          <VoiceSettingsSection />
           <StoreProfileSection />
           <AIGoalsSection />
           <RazorpaySection

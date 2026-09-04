@@ -1,5 +1,4 @@
-import type { AgentRunRecord } from "../../../types";
-import type { ChatMessageData } from "./ChatMessageItem";
+import type { AgentRunRecord, ChatMessageData } from "../../../types";
 
 export function extractCardsFromRun(
   run: AgentRunRecord
@@ -18,7 +17,6 @@ export function extractCardsFromData(
     return result;
   }
 
-  // 1. PAYMENT LINK EXTRACTION
   const paymentTool = toolsInvoked?.find(
     (t) => t.tool === "create_payment_link" || (t as { name?: string }).name === "create_payment_link"
   );
@@ -29,7 +27,6 @@ export function extractCardsFromData(
   let customerPhone: string | undefined = undefined;
   let description: string = "Payment Request";
 
-  // URL regex for Razorpay payment links (rzp.io or custom links)
   const urlMatch = responseText.match(/https?:\/\/(?:rzp\.io\/[a-zA-Z0-9_\-\/]+|[\w-]+\.razorpay\.com\/[^\s\)\"\'\<\>]+)/i);
   if (urlMatch) {
     paymentUrl = urlMatch[0].replace(/[.,;:!?]+$/, "");
@@ -77,12 +74,12 @@ export function extractCardsFromData(
     };
   }
 
-  // 2. CAMPAIGN GATE EXTRACTION
   const campaignTool = toolsInvoked?.find(
     (t) => t.tool === "create_campaign" || (t as { name?: string }).name === "create_campaign"
   );
 
   let isCampaignDraft = Boolean(campaignTool);
+  let campaignId: string | undefined = undefined;
   let campaignName = "Special Store Campaign";
   let segmentDescription = "Recent connected customers";
   let targetCount = 1;
@@ -92,6 +89,9 @@ export function extractCardsFromData(
   if (campaignTool) {
     const args = (campaignTool.args || {}) as Record<string, unknown>;
     const content = String(campaignTool.content || "");
+    const idMatch = content.match(/CAMPAIGN_ID:\s*([a-f0-9\-]+)/i);
+    if (idMatch) campaignId = idMatch[1];
+
     if (args.offer_description) campaignName = String(args.offer_description);
     if (args.segment_description) segmentDescription = String(args.segment_description);
     if (args.discount_percent) discountPercent = String(args.discount_percent);
@@ -109,6 +109,9 @@ export function extractCardsFromData(
     )
   ) {
     isCampaignDraft = true;
+    const idMatch = responseText.match(/CAMPAIGN_ID:\s*([a-f0-9\-]+)/i);
+    if (idMatch) campaignId = idMatch[1];
+
     const offerMatch = responseText.match(
       /(?:OFFER|Offer(?:\s+Description)?|Campaign(?:\s+Name)?):\s*([^\n]+)/i
     );
@@ -137,6 +140,7 @@ export function extractCardsFromData(
 
   if (isCampaignDraft) {
     result.campaignGate = {
+      campaignId,
       campaignName,
       segmentDescription,
       targetCount: Math.max(1, targetCount),
@@ -145,7 +149,6 @@ export function extractCardsFromData(
     };
   }
 
-  // 3. RATE LIMIT / PEAK LOAD EXTRACTION
   if (
     /Current load is too high|upgrade to Premium|AI capacity limit reached|capacity saturated|rate limit hit/i.test(
       responseText

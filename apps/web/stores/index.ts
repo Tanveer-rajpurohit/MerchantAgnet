@@ -6,6 +6,8 @@ export { useShopDirectoryStore } from "./useShopDirectoryStore";
 export { useCustomerDirectoryStore } from "./useCustomerDirectoryStore";
 export { useOrderDirectoryStore } from "./useOrderDirectoryStore";
 export { useAgentChatStore } from "./useAgentChatStore";
+export { useVoiceStore, AVAILABLE_VOICES } from "./useVoiceStore";
+export type { VoiceOption } from "./useVoiceStore";
 export type { UIState } from "./useUIStore";
 export type { OnboardingState, GoalsDraft } from "./useOnboardingStore";
 export type { MessageState } from "./useMessageStore";

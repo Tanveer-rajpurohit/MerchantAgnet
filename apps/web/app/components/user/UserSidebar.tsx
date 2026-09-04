@@ -7,22 +7,19 @@ import {
   Store,
   ShoppingBag,
   SlidersHorizontal,
+  CreditCard,
   ChevronsLeft,
   Menu,
   X,
 } from "lucide-react";
 import { AgentOrb } from "../app/utils";
 import { useAuth } from "../../../context/AuthContext";
-
-interface UserNavItem {
-  href: string;
-  label: string;
-  icon: typeof Store;
-}
+import type { UserNavItem } from "../../../types";
 
 const USER_NAV_ITEMS: UserNavItem[] = [
   { href: "/user", label: "Shop via AI", icon: Store },
   { href: "/user/orders", label: "My Orders", icon: ShoppingBag },
+  { href: "/user/payment-links", label: "Payment Links", icon: CreditCard },
   { href: "/user/settings", label: "Settings", icon: SlidersHorizontal },
 ];
 

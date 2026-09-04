@@ -2,13 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Timer } from "lucide-react";
-
-export interface AgentStep {
-  id: string;
-  label: string;
-  detail?: string;
-  status: "completed" | "in_progress" | "pending";
-}
+import type { AgentStep } from "../../../../types";
 
 interface AgentThinkingProps {
   durationSeconds?: number;

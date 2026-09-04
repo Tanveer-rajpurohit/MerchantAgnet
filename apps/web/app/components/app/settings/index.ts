@@ -1,4 +1,5 @@
 export { AppearanceSection } from "./AppearanceSection";
+export { VoiceSettingsSection } from "./VoiceSettingsSection";
 export { StoreProfileSection } from "./StoreProfileSection";
 export { AIGoalsSection } from "./AIGoalsSection";
 export { RazorpaySection } from "./RazorpaySection";

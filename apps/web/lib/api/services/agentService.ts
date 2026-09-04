@@ -7,21 +7,13 @@ import type {
   RenameSessionRequest,
   AgentChatRequest,
   AgentStreamEvent,
+  ToolInvocation,
+  GetAgentSessionsParams,
+  StreamChatCallbacks,
 } from "../../../types";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-
-export interface GetAgentSessionsParams {
-  cursor?: string;
-  limit?: number;
-}
-
-export interface StreamChatCallbacks {
-  onToken: (token: string, sessionId: string) => void;
-  onDone?: (sessionId: string, runId: string) => void;
-  onError?: (error: Error) => void;
-}
 
 export const agentService = {
   async listSessions(params?: GetAgentSessionsParams): Promise<ChatSessionListResponse> {
@@ -82,6 +74,7 @@ export const agentService = {
     let hasReceivedDone = false;
     let finalSessionId = "";
     let finalRunId = "";
+    let finalToolsInvoked: ToolInvocation[] | undefined;
 
     try {
       while (true) {
@@ -109,20 +102,24 @@ export const agentService = {
                 callbacks.onToken(event.content, event.session_id || "");
               } else if (event.type === "done") {
                 hasReceivedDone = true;
-                callbacks.onDone?.(event.session_id || "", event.run_id || "");
+                if (event.tools_invoked) finalToolsInvoked = event.tools_invoked;
+                callbacks.onDone?.(
+                  event.session_id || "",
+                  event.run_id || "",
+                  finalToolsInvoked
+                );
               } else if (event.type === "error") {
                 hasReceivedDone = true;
                 callbacks.onError?.(new Error(event.content || "Agent error occurred"));
               }
             } catch {
-              // skip unparseable chunks
             }
           }
         }
       }
 
       if (!hasReceivedDone) {
-        callbacks.onDone?.(finalSessionId || payload.session_id || "", finalRunId || "");
+        callbacks.onDone?.(finalSessionId || payload.session_id || "", finalRunId || "", finalToolsInvoked);
       }
     } catch (err) {
       if ((err as Error).name === "AbortError") return;

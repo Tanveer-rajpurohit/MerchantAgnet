@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.models.merchant_profile import MerchantProfile
+from app.models.customer_connection import CustomerConnection
 from app.models.agent_run import AgentRun, AgentPersona, AgentRunStatus
 from app.models.address import Address
 from app.schemas.agent import (
@@ -22,7 +23,10 @@ from app.schemas.agent import (
 )
 from app.agents.deps import MerchantAgentDeps, StoreProfileContext
 from app.agents.pydanticai_tool import merchant_agent
-from app.repositories import agent_repository
+from app.agents.customer_agent import customer_agent
+from app.agents.customer_deps import CustomerAgentDeps
+from app.models.conversation import SenderType
+from app.repositories import agent_repository, message_repository
 from pydantic_ai.messages import ModelRequest, ModelResponse, UserPromptPart, TextPart
 
 logger = logging.getLogger(__name__)
@@ -107,6 +111,28 @@ async def stream_merchant_chat(
         except (ValueError, TypeError):
             pass
 
+    if not t_cust_id and t_conn_id:
+        conn_res = await db.execute(select(CustomerConnection.customer_id).where(CustomerConnection.id == t_conn_id))
+        t_cust_id = conn_res.scalar_one_or_none()
+
+    if not t_cust_id and t_phone:
+        clean_p = "".join(filter(str.isdigit, t_phone))[-10:]
+        if len(clean_p) >= 10:
+            u_res = await db.execute(select(User.id).where(User.phone_number.contains(clean_p)))
+            t_cust_id = u_res.scalars().first()
+
+    for tc in target_cust_list:
+        if not tc.get("customer_id") and tc.get("customer_connection_id"):
+            try:
+                c_uuid = uuid.UUID(tc["customer_connection_id"])
+                c_row = (await db.execute(select(CustomerConnection.customer_id).where(CustomerConnection.id == c_uuid))).scalar_one_or_none()
+                if c_row:
+                    tc["customer_id"] = str(c_row)
+            except (ValueError, TypeError):
+                pass
+        if not tc.get("customer_id") and t_cust_id and len(target_cust_list) == 1:
+            tc["customer_id"] = str(t_cust_id)
+
     deps = MerchantAgentDeps(
         db=db,
         merchant=profile,
@@ -167,11 +193,11 @@ async def stream_merchant_chat(
             if deps.created_payment_links:
                 for pl in deps.created_payment_links:
                     cname = pl.get("customer_name") or deps.target_customer_name or "the customer"
-                    summary_lines.append(f"Payment link for ₹{pl['amount']:.2f} created for {cname}: {pl['url']}")
+                    summary_lines.append(f"Payment link for \u20b9{pl['amount']:.2f} created for {cname}: {pl['url']}")
             if deps.created_orders:
                 for ord_info in deps.created_orders:
                     cname = ord_info.get("customer_name") or "Customer"
-                    summary_lines.append(f"Order created for {cname} (Total: ₹{ord_info.get('total', 0):.2f}).")
+                    summary_lines.append(f"Order created for {cname} (Total: \u20b9{ord_info.get('total', 0):.2f}).")
             if deps.sent_messages:
                 for sm in deps.sent_messages:
                     recs = sm.get("recipients", [])
@@ -249,7 +275,13 @@ async def stream_merchant_chat(
     db.add(agent_run)
     await db.commit()
 
-    yield {"type": "done", "session_id": str(session_id), "run_id": str(agent_run.id)}
+    # Include tools_invoked so the frontend cardParser can detect payment links
+    yield {
+        "type": "done",
+        "session_id": str(session_id),
+        "run_id": str(agent_run.id),
+        "tools_invoked": tools_invoked,
+    }
 
 
 
@@ -259,24 +291,56 @@ async def run_customer_chat(
     store_profile: StoreProfileContext,
     customer: User | None,
     message: str,
+    connection_id: uuid.UUID | None = None,
 ) -> tuple[str, list[dict]]:
 
     start_time = time.time()
-    deps = MerchantAgentDeps(
+
+    deps = CustomerAgentDeps(
         db=db,
         merchant=merchant_profile,
-        user=customer,
-        user_id=customer.id if customer else None,
-        persona=AgentPersona.customer_shopfront,
-        store_profile=store_profile,
-        current_date=datetime.now().strftime("%B %d, %Y"),
+        merchant_id=merchant_profile.id,
+        customer_id=customer.id if customer else None,
+        customer_name=customer.full_name if customer else "",
+        customer_phone=customer.phone_number if customer else "",
+        connection_id=connection_id,
+        store_name=store_profile.store_name,
+        store_category=store_profile.category,
+        store_address=store_profile.full_address,
+        store_upi_vpa=store_profile.upi_vpa,
     )
+
+    message_history: list[ModelRequest | ModelResponse] = []
+    if connection_id:
+        try:
+            past_msgs = await message_repository.list_messages_by_connection(
+                db=db,
+                customer_connection_id=connection_id,
+                limit=15,
+            )
+            if past_msgs and past_msgs[0].content.strip() == message.strip() and past_msgs[0].sender_type == SenderType.customer:
+                past_msgs = past_msgs[1:]
+            past_msgs = list(reversed(past_msgs))
+            for pm in past_msgs:
+                c_text = pm.content or ""
+                if len(c_text) > 600:
+                    c_text = c_text[:600] + "..."
+                if pm.sender_type == SenderType.customer:
+                    message_history.append(ModelRequest(parts=[UserPromptPart(content=c_text)]))
+                else:
+                    message_history.append(ModelResponse(parts=[TextPart(content=c_text)]))
+        except Exception as hist_err:
+            logger.warning("Failed to load customer chat history: %s", hist_err)
 
     full_response = ""
     tools_invoked: list[dict] = []
 
     try:
-        async with merchant_agent.run_stream(message, deps=deps) as stream:
+        async with customer_agent.run_stream(
+            message,
+            deps=deps,
+            message_history=message_history if message_history else None,
+        ) as stream:
             async for chunk in stream.stream_text(delta=True):
                 full_response += chunk
             for msg in stream.all_messages():
@@ -288,8 +352,12 @@ async def run_customer_chat(
                                 "args": getattr(part, "args", {}),
                             })
         if (not full_response or not full_response.strip()) and tools_invoked:
-            logger.info("Customer stream emitted tool calls without final text. Running fallback merchant_agent.run...")
-            fallback_res = await merchant_agent.run(message, deps=deps)
+            logger.info("Customer stream emitted tool calls without final text. Running fallback customer_agent.run...")
+            fallback_res = await customer_agent.run(
+                message,
+                deps=deps,
+                message_history=message_history if message_history else None,
+            )
             full_response = getattr(fallback_res, "output", getattr(fallback_res, "data", "")) or ""
             if hasattr(fallback_res, "all_messages"):
                 for msg in fallback_res.all_messages():
@@ -325,7 +393,6 @@ async def run_customer_chat(
 
     latency_ms = int((time.time() - start_time) * 1000)
 
-    # Persist the customer-side run (merchant_id scopes it to this store)
     agent_run = AgentRun(
         merchant_id=merchant_profile.id,
         persona=AgentPersona.customer_shopfront,

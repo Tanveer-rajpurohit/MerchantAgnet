@@ -89,8 +89,11 @@ async def websocket_chat_endpoint(
             # 3. If the customer spoke and the merchant is offline, let the
             #    customer_shopfront agent answer using the store catalog.
             if sender_type == SenderType.customer and not manager.is_merchant_online(connection_id):
-                # small beat so the "typing" feels natural on the customer side
-                await asyncio.sleep(0.3)
+                # Broadcast typing indicator so customer knows AI is actively processing
+                await manager.broadcast(
+                    connection_id=connection_id,
+                    message={"type": "ai_typing", "is_typing": True},
+                )
 
                 ai_text = ""
                 tools_used: list[dict] = []
@@ -104,9 +107,6 @@ async def websocket_chat_endpoint(
                             if merchant is None or store_profile is None:
                                 ai_text = "The store is unavailable right now. Please try again later."
                             else:
-                                # The customer user may or may not be authenticated.
-                                # We pass None if unknown — the customer persona
-                                # still works for catalog + checkout-link queries.
                                 customer_user = None
                                 if conn.customer_id:
                                     customer_user = await db.get(User, conn.customer_id)
@@ -117,12 +117,18 @@ async def websocket_chat_endpoint(
                                     store_profile=store_profile,
                                     customer=customer_user,
                                     message=content,
+                                    connection_id=connection_id,
                                 )
                 except Exception as agent_err:
                     logger.exception("Customer agent failed: %s", agent_err)
                     ai_text = (
                         "I'm sorry, I couldn't process that just now. Please message the "
                         "store directly and the owner will get back to you."
+                    )
+                finally:
+                    await manager.broadcast(
+                        connection_id=connection_id,
+                        message={"type": "ai_typing", "is_typing": False},
                     )
 
                 # 4. Persist + broadcast the agent reply

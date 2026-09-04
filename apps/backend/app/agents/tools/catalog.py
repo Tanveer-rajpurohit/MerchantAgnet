@@ -20,7 +20,12 @@ async def get_product_catalog(
     ctx: RunContext[MerchantAgentDeps],
     search_term: str | None = None,
 ) -> str:
+    """Retrieve the store's product catalog or search for specific products.
 
+    Call this whenever the merchant asks about inventory, stock levels, product prices, or available items.
+    Pass search_term to filter by product name, or leave empty / 'all' to list all products.
+    For merchants, returns selling price, cost price, current stock, and product IDs.
+    """
     try:
         merchant_id = _merchant_id(ctx)
         is_merchant = _is_merchant(ctx)

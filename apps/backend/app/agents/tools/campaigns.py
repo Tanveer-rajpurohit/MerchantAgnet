@@ -24,7 +24,16 @@ async def create_campaign(
     customer_connection_ids: list[str],
     message_template: str,
 ) -> str:
+    """Create a marketing campaign draft targeted at a list of connected customers.
 
+    Call this when the merchant wants to broadcast a promotion, sale, or offer to customers.
+    - offer_description: The promotional offer (e.g. '10% off on all groceries this weekend').
+    - segment_description: Description of the targeted audience segment (e.g. 'Loyal customers with >₹1000 spend').
+    - discount_percent: The discount percentage string (e.g. '10%', '15%').
+    - customer_connection_ids: List of customer connection UUID strings to receive the campaign.
+    - message_template: Template text containing placeholders {name}, {offer}, {store}.
+    Creates a draft campaign with personalized messages for each customer awaiting merchant approval.
+    """
     guard = _guard_merchant(ctx)
     if guard:
         return guard

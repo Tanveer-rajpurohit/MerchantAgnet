@@ -2,20 +2,7 @@
 
 import { ArrowUpRight, CreditCard, Smartphone, Building2 } from "lucide-react";
 import { AgentOrb } from "../utils";
-
-export interface RevenueMetric {
-  thisWeek: number;
-  lastWeek: number;
-  growthPercent: number;
-  totalOrders: number;
-  avgOrderValue: number;
-  paymentMethods: {
-    upi: number;
-    card: number;
-    netbanking: number;
-  };
-  aiInsight: string;
-}
+import type { RevenueMetric } from "../../../../types";
 
 interface RevenueSummaryCardProps {
   data?: RevenueMetric;

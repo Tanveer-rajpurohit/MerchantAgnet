@@ -20,3 +20,25 @@ export interface MessageSendPayload {
   content: string;
   sender_type?: SenderType;
 }
+
+export interface GetMessagesParams {
+  cursor?: string;
+  limit?: number;
+}
+
+export interface UseRealtimeChatOptions {
+  connectionId?: string | null;
+  role: "customer" | "merchant";
+  enabled?: boolean;
+}
+
+export interface SocketState {
+  socket: WebSocket | null;
+  isConnected: boolean;
+  isAiTyping: boolean;
+  currentConnectionId: string | null;
+  connect: (connectionId: string, role?: "customer" | "merchant") => void;
+  disconnect: () => void;
+  sendMessage: (content: string, senderType?: "customer" | "merchant") => boolean;
+  setIsAiTyping: (isTyping: boolean) => void;
+}

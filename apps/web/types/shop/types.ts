@@ -54,3 +54,12 @@ export interface PaginatedShopResponse {
   next_cursor?: string | null;
   has_more: boolean;
 }
+
+export interface GetShopsParams {
+  cursor?: string;
+  limit?: number;
+  category?: string;
+  city?: string;
+  search?: string;
+}
+

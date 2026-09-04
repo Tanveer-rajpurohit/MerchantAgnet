@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from dataclasses import dataclass, field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,3 +47,4 @@ class MerchantAgentDeps:
     sent_messages: list[dict] = field(default_factory=list)
     created_orders: list[dict] = field(default_factory=list)
     created_campaigns: list[dict] = field(default_factory=list)
+    db_lock: asyncio.Lock = field(default_factory=asyncio.Lock)

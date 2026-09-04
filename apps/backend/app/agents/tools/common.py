@@ -20,3 +20,16 @@ def _guard_merchant(ctx: RunContext[MerchantAgentDeps]) -> str | None:
     if not _is_merchant(ctx):
         return "This action is only available to the merchant. Customers cannot perform it."
     return None
+
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lock_db(ctx: RunContext):
+    lock = getattr(ctx.deps, "db_lock", None)
+    if lock:
+        async with lock:
+            yield
+    else:
+        yield
+

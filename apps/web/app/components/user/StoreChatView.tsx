@@ -2,7 +2,7 @@
 
 import { useRef, useEffect } from "react";
 import { AgentOrb } from "../app/utils";
-import { StoreItem, Message } from "./types";
+import type { StoreItem, UserChatMessage as Message } from "../../../types";
 import { StoreChatHeader } from "./StoreChatHeader";
 import { StoreOrderCard } from "./StoreOrderCard";
 import { StoreChatInput } from "./StoreChatInput";

@@ -58,7 +58,6 @@ export function openGoogleSignInPopup(
         }
       }
     } catch {
-      // Cross-origin access while still on accounts.google.com
     }
   }, 300);
 }

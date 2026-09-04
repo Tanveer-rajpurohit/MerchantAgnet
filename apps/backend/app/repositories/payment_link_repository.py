@@ -6,6 +6,7 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.payment_link import PaymentLink, PaymentLinkStatus
+from app.models.user import User
 
 async def create_payment_link(
     db: AsyncSession,
@@ -143,3 +144,48 @@ async def update_link_status(
         payment_link.expired_at = datetime.now(timezone.utc)
     await db.flush()
     return payment_link
+
+
+async def list_by_customer(
+    db: AsyncSession,
+    customer_id: uuid.UUID,
+    status: PaymentLinkStatus | None = None,
+    limit: int = 50,
+) -> list[PaymentLink]:
+    """Return payment links generated for a specific customer (most recent first).
+
+    Used by the customer-side "My Payment Links" page so the customer can see
+    and pay outstanding links generated for them by any merchant.
+    Matches by customer_id or phone/email fallback, and backfills customer_id.
+    """
+    user_res = await db.execute(select(User).where(User.id == customer_id))
+    user = user_res.scalar_one_or_none()
+
+    clauses = [PaymentLink.customer_id == customer_id]
+    if user:
+        if user.phone_number:
+            raw_phone = user.phone_number.strip()
+            ten_digit = raw_phone[-10:] if len(raw_phone) >= 10 else raw_phone
+            clauses.append(PaymentLink.customer_phone == raw_phone)
+            if ten_digit != raw_phone:
+                clauses.append(PaymentLink.customer_phone == ten_digit)
+                clauses.append(PaymentLink.customer_phone.like(f"%{ten_digit}"))
+        if user.email:
+            clauses.append(func.lower(PaymentLink.customer_email) == user.email.strip().lower())
+
+    query = select(PaymentLink).where(or_(*clauses))
+    if status is not None:
+        query = query.where(PaymentLink.status == status)
+    query = query.order_by(PaymentLink.created_at.desc()).limit(limit)
+    result = await db.execute(query)
+    links = list(result.scalars().all())
+
+    modified = False
+    for link in links:
+        if link.customer_id is None:
+            link.customer_id = customer_id
+            modified = True
+    if modified:
+        await db.flush()
+
+    return links

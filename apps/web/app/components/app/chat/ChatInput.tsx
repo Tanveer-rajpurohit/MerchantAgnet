@@ -3,20 +3,22 @@
 import { useRef, useEffect, useState } from "react";
 import {
   ArrowUp,
-  Paperclip,
-  Sparkles,
-  Link2,
-  Package,
-  Megaphone,
   X,
   Users,
   ChevronDown,
   Check,
+  Mic,
+  MicOff,
 } from "lucide-react";
 import { useCustomerConnections } from "../../../../hooks";
-import type { CustomerConnectionResponse } from "../../../../types";
-
-export type ActionMode = "default" | "payment-link" | "catalog" | "campaign";
+import type {
+  CustomerConnectionResponse,
+  ActionMode,
+  SpeechRecognitionInstance,
+  SpeechWindow,
+  SpeechRecognitionEvent,
+  SpeechRecognitionErrorEvent,
+} from "../../../../types";
 
 interface ChatInputProps {
   value: string;
@@ -41,10 +43,14 @@ export function ChatInput({
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
-  const [activeMode, setActiveMode] = useState<ActionMode>("default");
-  const [deepReasoning, setDeepReasoning] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const isListeningRef = useRef<boolean>(false);
+  const baseTextRef = useRef<string>("");
+  const accumulatedRef = useRef<string>("");
+
   const [selectedCustomers, setSelectedCustomers] = useState<CustomerConnectionResponse[]>([]);
   const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
   const { customers, isLoading: isCustomersLoading } = useCustomerConnections();
   const connectedCustomers = customers.filter(
@@ -79,21 +85,35 @@ export function ChatInput({
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       const nextHeight = Math.min(textareaRef.current.scrollHeight, 160);
-      textareaRef.current.style.height = `${Math.max(nextHeight, 24)}px`;
+      textareaRef.current.style.height = `${Math.max(nextHeight, 28)}px`;
+      textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > 160 ? "auto" : "hidden";
+    }
+  };
+
+  const stopRecognition = () => {
+    isListeningRef.current = false;
+    setIsListening(false);
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+      recognitionRef.current = null;
     }
   };
 
   const handleSend = () => {
     if (!value.trim() || disabled) return;
     const textToSend = value.trim();
+    stopRecognition();
     onSubmit(
       textToSend,
-      activeMode,
+      "default",
       selectedCustomers.length > 0 ? selectedCustomers : null
     );
     onChange("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
+      textareaRef.current.style.overflowY = "hidden";
     }
   };
 
@@ -104,54 +124,97 @@ export function ChatInput({
     }
   };
 
-  const modeBadge = () => {
-    if (activeMode === "payment-link") {
-      return {
-        label: "Payment Link Mode",
-        icon: Link2,
-        color: "bg-brand/15 text-brand border-brand/30",
-      };
+  const toggleSpeechRecognition = async () => {
+    if (typeof window === "undefined") return;
+    const speechWin = window as unknown as SpeechWindow;
+    const SpeechRecognition =
+      speechWin.SpeechRecognition || speechWin.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    if (isListening) {
+      stopRecognition();
+      return;
     }
-    if (activeMode === "catalog") {
-      return {
-        label: "Stock & Catalog Mode",
-        icon: Package,
-        color: "bg-brand/15 text-brand border-brand/30",
+
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => {});
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = "hi-IN";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+
+      baseTextRef.current = value.trim();
+      accumulatedRef.current = "";
+      isListeningRef.current = true;
+      setIsListening(true);
+
+      recognition.onstart = () => {
+        setIsListening(true);
       };
-    }
-    if (activeMode === "campaign") {
-      return {
-        label: "Campaign Offer Mode",
-        icon: Megaphone,
-        color: "bg-brand/15 text-brand border-brand/30",
+
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        let interimTranscript = "";
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const res = event.results[i];
+          const transcript = res[0]?.transcript || "";
+          if (res.isFinal) {
+            accumulatedRef.current += (accumulatedRef.current ? " " : "") + transcript.trim();
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        const currentSpoken = [accumulatedRef.current, interimTranscript.trim()].filter(Boolean).join(" ");
+        const base = baseTextRef.current;
+        const fullText = base ? `${base} ${currentSpoken}` : currentSpoken;
+        handleInput(fullText);
       };
+
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        if (event.error === "no-speech") {
+          return;
+        }
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+          stopRecognition();
+        }
+      };
+
+      recognition.onend = () => {
+        if (isListeningRef.current) {
+          try {
+            recognition.start();
+          } catch {
+            setIsListening(false);
+            isListeningRef.current = false;
+          }
+        } else {
+          setIsListening(false);
+        }
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch {
+      setIsListening(false);
+      isListeningRef.current = false;
     }
-    return null;
   };
 
-  const badge = modeBadge();
+  const isSpeechSupported =
+    typeof window !== "undefined" &&
+    Boolean(
+      (window as unknown as SpeechWindow).SpeechRecognition ||
+        (window as unknown as SpeechWindow).webkitSpeechRecognition
+    );
 
   return (
     <div className="w-full">
       <div className="rounded-2xl border border-border bg-surface shadow-xs transition-all focus-within:border-brand/50 focus-within:bg-surface">
-        {badge && (
-          <div className="flex items-center gap-2 px-4 pt-3">
-            <div
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border font-intert ${badge.color}`}
-            >
-              <badge.icon size={12} />
-              <span>{badge.label}</span>
-              <button
-                type="button"
-                onClick={() => setActiveMode("default")}
-                className="ml-1 hover:opacity-75 cursor-pointer"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          </div>
-        )}
-
         {selectedCustomers.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 px-4 pt-2.5">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-brand/10 text-brand border border-brand/20 shadow-2xs">
@@ -234,75 +297,15 @@ export function ChatInput({
             disabled={disabled}
             onChange={(e) => handleInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder}
+            placeholder={isListening ? "Listening in real-time... bolte rahiye..." : placeholder}
             rows={1}
-            className="w-full resize-none bg-transparent text-[15px] text-primary font-intert outline-none placeholder:text-muted/60 leading-relaxed disabled:opacity-50 max-h-[160px] overflow-y-auto"
-            style={{ minHeight: "24px" }}
+            className="w-full resize-none bg-transparent text-[15px] text-primary font-intert outline-none placeholder:text-muted/60 leading-relaxed disabled:opacity-50 max-h-[160px] overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            style={{ minHeight: "28px" }}
           />
         </div>
 
         <div className="flex items-center justify-between px-3 pb-3 pt-1 border-t border-border-subtle/60">
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              title="Attach product catalog or invoice"
-              className="flex items-center justify-center w-8 h-8 rounded-lg text-muted hover:text-secondary hover:bg-surface-muted transition-colors"
-            >
-              <Paperclip size={15} />
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                setActiveMode(
-                  activeMode === "payment-link" ? "default" : "payment-link",
-                )
-              }
-              title="Create Payment Link"
-              className={`flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-xs font-medium font-intert transition-colors ${
-                activeMode === "payment-link"
-                  ? "bg-brand/15 text-brand"
-                  : "text-muted hover:text-secondary hover:bg-surface-muted"
-              }`}
-            >
-              <Link2 size={13} />
-              <span className="hidden sm:inline">Pay Link</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                setActiveMode(activeMode === "catalog" ? "default" : "catalog")
-              }
-              title="Check Inventory & Catalog"
-              className={`flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-xs font-medium font-intert transition-colors ${
-                activeMode === "catalog"
-                  ? "bg-brand/15 text-brand"
-                  : "text-muted hover:text-secondary hover:bg-surface-muted"
-              }`}
-            >
-              <Package size={13} />
-              <span className="hidden sm:inline">Catalog</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                setActiveMode(
-                  activeMode === "campaign" ? "default" : "campaign",
-                )
-              }
-              title="Draft Discount Campaign"
-              className={`flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-xs font-medium font-intert transition-colors ${
-                activeMode === "campaign"
-                  ? "bg-brand/15 text-brand"
-                  : "text-muted hover:text-secondary hover:bg-surface-muted"
-              }`}
-            >
-              <Megaphone size={13} />
-              <span className="hidden sm:inline">Campaign</span>
-            </button>
-
+          <div className="flex items-center gap-1.5">
             <div className="relative" ref={customerDropdownRef}>
               <button
                 type="button"
@@ -429,31 +432,36 @@ export function ChatInput({
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isSpeechSupported && (
+              <button
+                type="button"
+                onClick={toggleSpeechRecognition}
+                title={isListening ? "Stop listening" : "Speak in Hinglish / Hindi to write in real time"}
+                aria-label={isListening ? "Stop listening" : "Speak to write"}
+                className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  isListening
+                    ? "bg-red-500 text-white animate-pulse shadow-xs"
+                    : "text-muted hover:text-secondary hover:bg-surface-muted"
+                }`}
+              >
+                {isListening ? <MicOff size={14} /> : <Mic size={14} />}
+                <span className="hidden sm:inline">{isListening ? "Listening..." : "Speak"}</span>
+              </button>
+            )}
 
             <button
               type="button"
-              onClick={() => setDeepReasoning(!deepReasoning)}
-              title="Toggle Merchant Agent Deep Reasoning"
-              className={`flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-xs font-medium font-intert transition-colors ${
-                deepReasoning
-                  ? "bg-brand/15 text-brand"
-                  : "text-muted hover:text-secondary hover:bg-surface-muted"
-              }`}
+              onClick={handleSend}
+              disabled={!value.trim() || disabled}
+              aria-label="Send message"
+              className="flex items-center justify-center w-8 h-8 rounded-lg btn-brand-solid disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 shadow-xs cursor-pointer"
             >
-              <Sparkles size={13} />
-              <span className="hidden md:inline">Agent Copilot</span>
+              <ArrowUp size={16} strokeWidth={2.5} />
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={!value.trim() || disabled}
-            aria-label="Send message"
-            className="flex items-center justify-center w-8 h-8 rounded-lg btn-brand-solid disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 shadow-xs"
-          >
-            <ArrowUp size={16} strokeWidth={2.5} />
-          </button>
         </div>
       </div>
     </div>

@@ -1,58 +1,31 @@
 "use client";
 
 import React, { useState } from "react";
-import { Copy, Check, ArrowRight } from "lucide-react";
+import { Copy, Check, ArrowRight, Volume2, Square, Loader2 } from "lucide-react";
 import { ThinkingOrb } from "thinking-orbs";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { AgentThinking, AgentStep } from "./AgentThinking";
+import { AgentThinking } from "./AgentThinking";
 import { PaymentLinkCard } from "./PaymentLinkCard";
-import { CatalogStockCard, StockItem } from "./CatalogStockCard";
+import { CatalogStockCard } from "./CatalogStockCard";
 import { CampaignGateCard } from "./CampaignGateCard";
-import { RevenueSummaryCard, RevenueMetric } from "./RevenueSummaryCard";
+import { RevenueSummaryCard } from "./RevenueSummaryCard";
 import { MessageSnippetCard } from "./MessageSnippetCard";
 import { RateLimitCard } from "./RateLimitCard";
 import { normalizeMessageContent } from "./messageNormalizer";
-
-export interface ChatMessageData {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  thinking?: {
-    durationSeconds: number;
-    summary?: string;
-    steps?: AgentStep[];
-    detailedThought?: string;
-  };
-  paymentLink?: {
-    customerName: string;
-    customerPhone?: string;
-    amount: string;
-    description: string;
-    linkUrl: string;
-    status?: "active" | "paid" | "expired";
-  };
-  catalogStock?: {
-    title?: string;
-    items: StockItem[];
-  };
-  campaignGate?: {
-    campaignName: string;
-    segmentDescription: string;
-    targetCount: number;
-    discountPercent: string;
-    offerMessage: string;
-  };
-  revenueSummary?: RevenueMetric;
-  rateLimit?: {
-    isRateLimited: boolean;
-  };
-}
+import { useTTS } from "../../../../hooks/useTTS";
+import type {
+  ChatMessageData,
+  AgentStep,
+  StockItem,
+  RevenueMetric,
+} from "../../../../types";
 
 interface ChatMessageItemProps {
   message: ChatMessageData;
   isStreaming?: boolean;
 }
+
 
 function extractText(node: React.ReactNode): string {
   if (typeof node === "string" || typeof node === "number") {
@@ -91,6 +64,13 @@ export function ChatMessageItem({
   isStreaming = false,
 }: ChatMessageItemProps) {
   const [copied, setCopied] = useState(false);
+  const {
+    speak,
+    stop,
+    status: ttsStatus,
+    activeId: ttsActiveId,
+    supported: ttsSupported,
+  } = useTTS();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content);
@@ -384,6 +364,7 @@ export function ChatMessageItem({
 
         {message.campaignGate && (
           <CampaignGateCard
+            campaignId={message.campaignGate.campaignId}
             campaignName={message.campaignGate.campaignName}
             segmentDescription={message.campaignGate.segmentDescription}
             targetCount={message.campaignGate.targetCount}
@@ -406,7 +387,7 @@ export function ChatMessageItem({
               type="button"
               onClick={handleCopy}
               title="Copy response"
-              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs text-muted hover:text-primary hover:bg-surface-muted transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs text-muted hover:text-primary hover:bg-surface-muted transition-colors cursor-pointer"
             >
               {copied ? (
                 <Check size={13} className="text-emerald-500" />
@@ -415,6 +396,54 @@ export function ChatMessageItem({
               )}
               <span>{copied ? "Copied" : "Copy"}</span>
             </button>
+
+            {ttsSupported && (() => {
+              const isThisActive = ttsActiveId === message.id;
+              const isThisLoading = isThisActive && ttsStatus === "loading";
+              const isThisSpeaking = isThisActive && ttsStatus === "speaking";
+
+              return (
+                <button
+                  type="button"
+                  onClick={() =>
+                    isThisSpeaking || isThisLoading
+                      ? stop()
+                      : speak(message.content, "hi-IN", undefined, message.id)
+                  }
+                  title={
+                    isThisLoading
+                      ? "Generating voice..."
+                      : isThisSpeaking
+                        ? "Stop voice"
+                        : "Listen in Hindi"
+                  }
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors cursor-pointer ${
+                    isThisSpeaking
+                      ? "bg-brand/10 text-brand border border-brand/25 font-medium"
+                      : isThisLoading
+                        ? "bg-surface-muted text-brand border border-border font-medium"
+                        : "text-muted hover:text-primary hover:bg-surface-muted border border-transparent"
+                  }`}
+                >
+                  {isThisLoading ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin text-brand" />
+                      <span>Loading...</span>
+                    </>
+                  ) : isThisSpeaking ? (
+                    <>
+                      <Square size={12} className="fill-current text-brand" />
+                      <span>Stop</span>
+                    </>
+                  ) : (
+                    <>
+                      <Volume2 size={13} />
+                      <span>Listen</span>
+                    </>
+                  )}
+                </button>
+              );
+            })()}
           </div>
         )}
       </div>

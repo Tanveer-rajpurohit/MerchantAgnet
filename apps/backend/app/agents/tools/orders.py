@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from pydantic_ai import RunContext
 
 from app.agents.deps import MerchantAgentDeps
+from app.models.agent_run import AgentPersona
 from app.agents.base_agent import merchant_agent
 from app.models.customer_connection import CustomerConnection
 from app.models.order import OrderStatus, ActorType
@@ -19,7 +20,7 @@ from app.repositories import (
     product_repository,
 )
 from app.schemas.order import OrderItemCreate
-from app.agents.tools.common import _merchant_id, _actor_user_id, _guard_merchant
+from app.agents.tools.common import _merchant_id, _actor_user_id, _guard_merchant, lock_db
 from app.agents.tools.customers import resolve_customer
 
 logger = logging.getLogger(__name__)
@@ -33,27 +34,15 @@ async def create_order(
     items: list[dict] = None,
     price_type: str = "selling",
 ) -> str:
-    """Create an UNPAID order for a customer. Call EXACTLY ONCE per request.
+    """Create an order for a customer. Specify customer_name and items.
 
-    Proactive resolution (do NOT ask the merchant for things you can look up):
-      - If `customer_id` is not given but `customer_name` is, resolve it via the
-        customer_connections + users tables (fuzzy name match). If no match,
-        tell the merchant that customer isn't connected yet.
-      - For each item, if `unit_price_snapshot` is not given, look up the
-        `product_name` in the catalog. If `price_type` is "cost" (or wholesale),
-        use `cost_price`. Otherwise, use `selling_price`.
-        Never ask the merchant for the cost price or selling price if the product is in the catalog!
-
-    `price_type`: "selling" (default) or "cost" (for wholesale / cost-price orders).
-    `items` is a list of dicts. Each dict may contain:
-      { "product_name": "Amul Milk 1L", "quantity": 2 }
-      { "product_name": "Amul Butter", "quantity": 1, "price_type": "cost" }
-      { "product_id": "<uuid>", "quantity": 1 }
-      { "product_name": "Custom Item", "quantity": 1, "unit_price_snapshot": 99.00 }
+    NEVER ask the merchant for a UUID — pass customer_name and the tool resolves it.
+    `items` is a list of dicts: [{"product_name": "Parle G", "quantity": 2}].
+    Pass `price_type="cost"` for wholesale/cost-price orders.
     """
-    guard = _guard_merchant(ctx)
-    if guard:
-        return guard
+    is_customer = ctx.deps.persona == AgentPersona.customer_shopfront
+    if is_customer:
+        price_type = "selling"
 
     if items is None or len(items) == 0:
         return "No items supplied. Pass a list of items like [{\"product_name\": \"rice\", \"quantity\": 1}]."
@@ -70,50 +59,70 @@ async def create_order(
             return (
                 f"ORDER_ALREADY_CREATED\n"
                 f"An identical order for {target_name} with these items was already created in this turn (Order #{prev.get('id', '')}). "
-                f"DO NOT create duplicate orders. Confirm the order to the merchant."
+                f"DO NOT create duplicate orders. Confirm the order to the {'customer' if is_customer else 'merchant'}."
             )
 
     try:
         merchant_id = _merchant_id(ctx)
 
-        if not customer_id and not customer_name:
-            if ctx.deps.target_customer_name:
-                customer_name = ctx.deps.target_customer_name
-            elif ctx.deps.target_customer_id:
-                customer_id = str(ctx.deps.target_customer_id)
-
         cust_uuid: uuid.UUID | None = None
-        if customer_id:
-            cust_uuid = uuid.UUID(str(customer_id))
-        elif customer_name:
-            resolved = await resolve_customer(ctx, customer_name)
-            like_term = f"%{customer_name.strip()}%"
-            stmt = (
-                select(CustomerConnection)
-                .join(User, User.id == CustomerConnection.customer_id)
-                .where(
-                    CustomerConnection.merchant_id == merchant_id,
-                    User.full_name.ilike(like_term),
-                )
-                .options(selectinload(CustomerConnection.customer))
-                .limit(1)
+        if is_customer:
+            cust_uuid = ctx.deps.user.id if ctx.deps.user else (ctx.deps.target_customer_id or None)
+            if not cust_uuid and customer_id:
+                try:
+                    cust_uuid = uuid.UUID(str(customer_id))
+                except (ValueError, TypeError):
+                    pass
+            target_name = (
+                (ctx.deps.user.full_name if ctx.deps.user else None)
+                or ctx.deps.target_customer_name
+                or customer_name
+                or "Customer"
             )
-            conn = (await ctx.deps.db.execute(stmt)).scalars().first()
-            if not conn:
-                return (
-                    f"Could not find a connected customer named '{customer_name}'. "
-                    f"Ask the merchant to confirm the spelling, or call get_recent_customers "
-                    f"to list everyone. Do NOT ask for a UUID — the merchant does not know UUIDs."
-                )
-            cust_uuid = conn.customer_id
+            if not cust_uuid:
+                return "Please log in to your customer account to place an order."
         else:
-            return "Either customer_name or customer_id is required. Prefer customer_name — the merchant does not know UUIDs."
+            if not customer_id and not customer_name:
+                if ctx.deps.target_customer_name:
+                    customer_name = ctx.deps.target_customer_name
+                elif ctx.deps.target_customer_id:
+                    customer_id = str(ctx.deps.target_customer_id)
 
-        conn = await customer_connection_repository.get_or_create_connection(
-            db=ctx.deps.db,
-            merchant_id=merchant_id,
-            customer_id=cust_uuid,
-        )
+            if customer_id:
+                cust_uuid = uuid.UUID(str(customer_id))
+            elif customer_name:
+                resolved = await resolve_customer(ctx, customer_name)
+                like_term = f"%{customer_name.strip()}%"
+                stmt = (
+                    select(CustomerConnection)
+                    .join(User, User.id == CustomerConnection.customer_id)
+                    .where(
+                        CustomerConnection.merchant_id == merchant_id,
+                        User.full_name.ilike(like_term),
+                    )
+                    .options(selectinload(CustomerConnection.customer))
+                    .limit(1)
+                )
+                conn = (await ctx.deps.db.execute(stmt)).scalars().first()
+                if not conn:
+                    return (
+                        f"Could not find a connected customer named '{customer_name}'. "
+                        f"Ask the merchant to confirm the spelling, or call get_recent_customers "
+                        f"to list everyone. Do NOT ask for a UUID — the merchant does not know UUIDs."
+                    )
+                cust_uuid = conn.customer_id
+            else:
+                return "Either customer_name or customer_id is required. Prefer customer_name — the merchant does not know UUIDs."
+
+        conn_id = ctx.deps.target_customer_connection_id
+        if not conn_id:
+            conn = await customer_connection_repository.get_or_create_connection(
+                db=ctx.deps.db,
+                merchant_id=merchant_id,
+                customer_id=cust_uuid,
+            )
+            conn_id = conn.id
+
         order_items: list[OrderItemCreate] = []
         unresolved: list[str] = []
         for raw in items:
@@ -121,10 +130,10 @@ async def create_order(
             if qty < 1:
                 return f"Quantity must be >= 1 for item {raw}"
 
-            unit_price = raw.get("unit_price_snapshot")
+            unit_price = raw.get("unit_price_snapshot") if not is_customer else None
             prod_id_raw = raw.get("product_id")
             prod_name = raw.get("product_name") or raw.get("name")
-            use_cost = (
+            use_cost = False if is_customer else (
                 raw.get("price_type") == "cost"
                 or raw.get("use_cost_price") is True
                 or str(price_type).lower() in ("cost", "wholesale", "cost_price")
@@ -132,8 +141,11 @@ async def create_order(
 
             product_id_uuid: uuid.UUID | None = None
             if prod_id_raw:
-                product_id_uuid = uuid.UUID(str(prod_id_raw))
-                if unit_price is None:
+                try:
+                    product_id_uuid = uuid.UUID(str(prod_id_raw))
+                except (ValueError, TypeError):
+                    pass
+                if unit_price is None and product_id_uuid:
                     p = await product_repository.get_by_id(ctx.deps.db, product_id_uuid, merchant_id)
                     if p:
                         unit_price = float(p.cost_price if use_cost else p.selling_price)
@@ -158,6 +170,8 @@ async def create_order(
                     unresolved.append(prod_name)
 
             if unit_price is None:
+                if is_customer:
+                    return f"Product '{prod_name}' is not found in the store catalog or currently unavailable."
                 return (
                     f"I couldn't find '{prod_name}' in your catalog and no price was given. "
                     f"Either add the product first with add_product, or tell me the price to "
@@ -178,17 +192,18 @@ async def create_order(
             Decimal("0.00"),
         )
 
+        actor = ActorType.customer if is_customer else ActorType.ai_agent
         order = await order_repository.create_order(
             db=ctx.deps.db,
             merchant_id=merchant_id,
             customer_id=cust_uuid,
-            customer_connection_id=conn.id,
+            customer_connection_id=conn_id,
             items=order_items,
             total_amount=total_amount,
             paid_amount=Decimal("0.00"),
             status=OrderStatus.unpaid,
-            changed_by=ActorType.ai_agent,
-            reason="Order created by MerchantAgent",
+            changed_by=actor,
+            reason="Order placed via customer store chat" if is_customer else "Order created by MerchantAgent",
         )
 
         await audit_log_repository.log_action(
@@ -202,6 +217,7 @@ async def create_order(
                 "customer_id": str(cust_uuid),
                 "total_amount": str(total_amount),
                 "item_count": len(order_items),
+                "actor": actor.value,
             },
         )
         await ctx.deps.db.commit()
@@ -217,6 +233,15 @@ async def create_order(
             f"- {it.product_name_snapshot} x{it.quantity} @ ₹{it.unit_price_snapshot:.2f} = ₹{(it.quantity * it.unit_price_snapshot):.2f}"
             for it in order_items
         )
+        if is_customer:
+            return (
+                f"Order created successfully for {target_name}.\n"
+                f"ORDER_ID: {order.id}\n"
+                f"STATUS: {order.status.value}\n"
+                f"TOTAL: ₹{total_amount:.2f}\n"
+                f"ITEMS:\n{item_lines}\n"
+                f"Now generate the payment link for this order so the customer can pay."
+            )
         return (
             f"Order created.\n"
             f"ORDER_ID: {order.id}\n"
@@ -357,34 +382,35 @@ async def list_orders(
         return guard
 
     try:
-        merchant_id = _merchant_id(ctx)
-        st_filter = None
-        if status:
-            try:
-                st_filter = OrderStatus(status.strip().lower())
-            except ValueError:
-                pass
+        async with lock_db(ctx):
+            merchant_id = _merchant_id(ctx)
+            st_filter = None
+            if status:
+                try:
+                    st_filter = OrderStatus(status.strip().lower())
+                except ValueError:
+                    pass
 
-        orders = await order_repository.list_by_merchant(
-            db=ctx.deps.db,
-            merchant_id=merchant_id,
-            status=st_filter,
-            search=customer_name,
-            limit=limit,
-        )
-
-        if not orders:
-            return "No orders found matching the criteria."
-
-        lines = []
-        for o in orders:
-            cname = o.customer.full_name if o.customer else "Unknown"
-            items_str = ", ".join(f"{it.product_name_snapshot} x{it.quantity}" for it in (o.items or []))
-            lines.append(
-                f"- Order {o.id}: {cname} | Status: {o.status.value} | "
-                f"Total: ₹{o.total_amount:.2f} (Paid: ₹{o.paid_amount:.2f}) | Items: {items_str}"
+            orders = await order_repository.list_by_merchant(
+                db=ctx.deps.db,
+                merchant_id=merchant_id,
+                status=st_filter,
+                search=customer_name,
+                limit=limit,
             )
-        return "\n".join(lines)
+
+            if not orders:
+                return "No orders found matching the criteria."
+
+            lines = []
+            for o in orders:
+                cname = o.customer.full_name if o.customer else "Unknown"
+                items_str = ", ".join(f"{it.product_name_snapshot} x{it.quantity}" for it in (o.items or []))
+                lines.append(
+                    f"- Order {o.id}: {cname} | Status: {o.status.value} | "
+                    f"Total: ₹{o.total_amount:.2f} (Paid: ₹{o.paid_amount:.2f}) | Items: {items_str}"
+                )
+            return "\n".join(lines)
     except Exception as e:
         logger.error("Error in list_orders: %s", e, exc_info=True)
         return f"Failed to list orders: {str(e)}"

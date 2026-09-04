@@ -50,3 +50,11 @@ export interface ChatMessage {
   text: string;
   time: string;
 }
+
+export interface GetCustomerConnectionsParams {
+  cursor?: string;
+  limit?: number;
+  status?: string;
+  search?: string;
+}
+

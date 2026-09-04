@@ -2,12 +2,7 @@
 
 import { useEffect, useCallback } from "react";
 import { useSocketStore } from "../stores/useSocketStore";
-
-interface UseRealtimeChatOptions {
-  connectionId?: string | null;
-  role: "customer" | "merchant";
-  enabled?: boolean;
-}
+import type { UseRealtimeChatOptions } from "../types";
 
 export function useRealtimeChat({
   connectionId,

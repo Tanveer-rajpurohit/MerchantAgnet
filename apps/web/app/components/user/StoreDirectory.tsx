@@ -10,7 +10,8 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { AgentOrb } from "../app/utils";
-import { StoreItem, STORES, CATEGORIES } from "./types";
+import type { StoreItem } from "../../../types";
+import { STORES, CATEGORIES } from "./types";
 
 interface StoreDirectoryProps {
   searchQuery: string;

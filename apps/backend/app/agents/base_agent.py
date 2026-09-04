@@ -22,9 +22,10 @@ from app.models.address import Address
 
 @merchant_agent.system_prompt
 async def dynamic_system_prompt(ctx: RunContext[MerchantAgentDeps]) -> str:
-    target_name = ctx.deps.target_customer_name or ""
-    target_phone = ctx.deps.target_customer_phone or ""
+    target_name = ctx.deps.target_customer_name or (ctx.deps.user.full_name if ctx.deps.user else "") or ""
+    target_phone = ctx.deps.target_customer_phone or (ctx.deps.user.phone_number if ctx.deps.user else "") or ""
     target_conn_id = str(ctx.deps.target_customer_connection_id) if ctx.deps.target_customer_connection_id else ""
+    target_cust_id = str(ctx.deps.target_customer_id) if ctx.deps.target_customer_id else (str(ctx.deps.user.id) if ctx.deps.user else "")
 
     sp = ctx.deps.store_profile
     if sp:
@@ -39,6 +40,7 @@ async def dynamic_system_prompt(ctx: RunContext[MerchantAgentDeps]) -> str:
             target_customer_name=target_name,
             target_customer_phone=target_phone,
             target_customer_connection_id=target_conn_id,
+            target_customer_id=target_cust_id,
             target_customers=ctx.deps.target_customers,
         )
 
@@ -70,5 +72,6 @@ async def dynamic_system_prompt(ctx: RunContext[MerchantAgentDeps]) -> str:
         target_customer_name=target_name,
         target_customer_phone=target_phone,
         target_customer_connection_id=target_conn_id,
+        target_customer_id=target_cust_id,
         target_customers=ctx.deps.target_customers,
     )

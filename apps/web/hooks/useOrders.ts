@@ -2,11 +2,7 @@
 
 import { useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  orderService,
-  type GetMerchantOrdersParams,
-  type GetCustomerOrdersParams,
-} from "../lib/api/services/orderService";
+import { orderService } from "../lib/api/services/orderService";
 import { queryKeys } from "../lib/api/utils/queryKeys";
 import { useOrderDirectoryStore } from "../stores/useOrderDirectoryStore";
 import type {
@@ -14,6 +10,8 @@ import type {
   OrderUpdatePayload,
   OrderResponse,
   PaginatedOrderResponse,
+  GetMerchantOrdersParams,
+  GetCustomerOrdersParams,
 } from "../types";
 
 export function useOrders(params?: GetMerchantOrdersParams) {
