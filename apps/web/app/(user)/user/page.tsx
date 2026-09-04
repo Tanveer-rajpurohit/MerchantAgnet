@@ -38,21 +38,7 @@ function UserShoppingContent() {
       if (match) {
         setSelectedShop(match);
       } else if (detailData) {
-        setSelectedShop({
-          id: detailData.id,
-          business_name: detailData.business_name,
-          business_type: detailData.business_type,
-          description: detailData.description || "",
-          popular_products: [],
-          city: detailData.address?.city || "",
-          area: detailData.address?.line2 || "",
-          address: detailData.address ? {
-            line1: detailData.address.line1,
-            city: detailData.address.city,
-            pincode: detailData.address.pincode,
-          } : undefined,
-          is_active: detailData.is_active,
-        });
+        setSelectedShop(detailData);
       }
     } else if (!shopIdFromUrl && selectedShop) {
       setSelectedShop(null);

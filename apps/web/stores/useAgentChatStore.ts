@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AgentRunRecord, ToolInvocation, AgentChatState } from "../types";
+import type { AgentRunRecord, AgentChatState } from "../types";
 
 export const useAgentChatStore = create<AgentChatState>((set) => ({
   activeSessionId: null,

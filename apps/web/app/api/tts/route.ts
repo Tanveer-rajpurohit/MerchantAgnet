@@ -29,7 +29,7 @@ function pickVoice(lang: string | null, customVoice?: string | null): string {
   if (VOICE_MAP[lang]) return VOICE_MAP[lang];
   const family = lang.split("-")[0];
   const match = Object.keys(VOICE_MAP).find((k) => k.startsWith(family + "-"));
-  return match ? VOICE_MAP[match] : "en-IN-PrabhatNeural";
+  return (match && VOICE_MAP[match]) || "en-IN-PrabhatNeural";
 }
 
 export async function GET(req: NextRequest) {

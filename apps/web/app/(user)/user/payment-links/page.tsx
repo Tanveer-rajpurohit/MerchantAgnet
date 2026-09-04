@@ -14,7 +14,6 @@ import {
 import { useCustomerPaymentLinks } from "../../../../hooks/useCustomerPaymentLinks";
 import { StatusBadge } from "../../../components/app/utils";
 import type {
-  PaymentLinkRecord,
   PaymentLinkStatus,
   CustomerPaymentLinksFilterTab,
 } from "../../../../types";
@@ -91,7 +90,7 @@ export default function UserPaymentLinksPage() {
         </div>
 
         <div className="flex items-center gap-1 mb-5 p-1 rounded-xl border border-border bg-surface w-fit">
-          {(["all", "pending", "paid"] as FilterTab[]).map((t) => (
+          {(["all", "pending", "paid"] as CustomerPaymentLinksFilterTab[]).map((t) => (
             <button
               key={t}
               type="button"

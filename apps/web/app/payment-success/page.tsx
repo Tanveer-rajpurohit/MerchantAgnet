@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -54,13 +54,13 @@ function PaymentSuccessContent() {
   const [copiedId, setCopiedId] = useState(false);
 
   const verifyMutation = useVerifyPayment();
-  const { data: detailRecord, isLoading: isDetailLoading } = usePaymentLinkDetail(
+  const { data: detailRecord } = usePaymentLinkDetail(
     linkId || "",
   );
 
   const isVerifyingRef = useRef(false);
 
-  const doVerify = () => {
+  const doVerify = useCallback(() => {
     if (
       razorpayPaymentId &&
       razorpayPaymentLinkId &&
@@ -84,7 +84,14 @@ function PaymentSuccessContent() {
         },
       );
     }
-  };
+  }, [
+    razorpayPaymentId,
+    razorpayPaymentLinkId,
+    razorpaySignature,
+    razorpayPaymentLinkReferenceId,
+    razorpayPaymentLinkStatus,
+    verifyMutation,
+  ]);
 
   useEffect(() => {
     if (
@@ -102,9 +109,8 @@ function PaymentSuccessContent() {
     razorpayPaymentId,
     razorpayPaymentLinkId,
     razorpaySignature,
-    razorpayPaymentLinkReferenceId,
-    razorpayPaymentLinkStatus,
     verifiedRecord,
+    doVerify,
   ]);
 
   const activePaymentId =

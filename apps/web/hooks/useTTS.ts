@@ -7,19 +7,19 @@ import type { TTSStatus, UseTTSReturn } from "../types";
 export function stripMarkdownForSpeech(text: string): { cleanText: string; detectedLang: string } {
   if (!text) return { cleanText: "", detectedLang: "hi-IN" };
 
-  const emojiRegex = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}\u{200D}\u{FE0F}]/gu;
-  const withoutEmojis = text.replace(emojiRegex, "");
+  const emojiRegex = /\p{Extended_Pictographic}/gu;
+  const withoutEmojis = text.replace(emojiRegex, "").replace(/\u200D|\uFE0F/g, "");
 
   const hindiRegex = /[\u0900-\u097F]/;
   const hinglishWords = /\b(hai|hain|ke|ka|ki|ko|se|mein|par|aur|karna|karo|hoga|hogi|hoge|aapka|aapke|aapki|rupaye|rupee|batao|diya|bheja|kya|nahi|chahiye|banao|bana|gaya|gayi|milega|lekin|abhi|aaj|kal|kitna|customer|order|stock|link|bhai|sir|namaste)\b/i;
   const isHindiOrHinglish = hindiRegex.test(withoutEmojis) || hinglishWords.test(withoutEmojis);
   const detectedLang = isHindiOrHinglish ? "hi-IN" : "en-IN";
 
-  let clean = withoutEmojis
+  const clean = withoutEmojis
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/`([^`]+)`/g, "$1")
-    .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
-    .replace(/https?:\/\/[^\s\)\"\'\<\>]+/g, "link")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/https?:\/\/[^\s)"'<>]+/g, "link")
     .replace(/(\|[^\n]+\|)/g, " ")
     .replace(/^#+\s+/gm, "")
     .replace(/(\*\*|__)(.*?)\1/g, "$2")

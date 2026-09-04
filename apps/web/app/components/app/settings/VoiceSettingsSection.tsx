@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Volume2, Square, Check, Sparkles } from "lucide-react";
-import { useVoiceStore, AVAILABLE_VOICES, type VoiceOption } from "../../../../stores";
+import { useVoiceStore, AVAILABLE_VOICES } from "../../../../stores";
+import type { VoiceOption } from "../../../../types";
 
 export function VoiceSettingsSection() {
   const { selectedVoice, setSelectedVoice } = useVoiceStore();

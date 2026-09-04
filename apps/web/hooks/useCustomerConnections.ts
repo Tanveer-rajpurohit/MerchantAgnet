@@ -2,13 +2,14 @@
 
 import { useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { customerService, type GetCustomerConnectionsParams } from "../lib/api/services/customerService";
+import { customerService } from "../lib/api/services/customerService";
 import { queryKeys } from "../lib/api/utils/queryKeys";
 import { useCustomerDirectoryStore } from "../stores/useCustomerDirectoryStore";
 import type {
   CustomerConnectionResponse,
   CustomerConnectionCreatePayload,
   ShopDetail,
+  GetCustomerConnectionsParams,
 } from "../types";
 
 export function useCustomerConnections(params?: GetCustomerConnectionsParams) {

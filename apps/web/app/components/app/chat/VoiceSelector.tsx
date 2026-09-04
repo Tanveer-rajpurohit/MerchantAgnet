@@ -35,7 +35,7 @@ export function VoiceSelector() {
         className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium border border-border bg-surface hover:bg-surface-muted text-secondary hover:text-primary transition-colors cursor-pointer shadow-2xs"
       >
         <Volume2 size={12} className="text-brand shrink-0" />
-        <span className="truncate max-w-[90px]">{current.name}</span>
+        <span className="truncate max-w-[90px]">{current?.name || "Voice"}</span>
         <ChevronDown size={11} className="text-muted shrink-0" />
       </button>
 

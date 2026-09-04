@@ -42,7 +42,7 @@ function ChatContent() {
   const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
     const el = scrollContainerRef.current;
     if (!el) return;
-    el.scrollTop = el.scrollHeight;
+    el.scrollTo({ top: el.scrollHeight, behavior });
   };
 
   const handleScroll = () => {
@@ -147,7 +147,7 @@ function ChatContent() {
       content: run.agent_response,
       thinking: {
         durationSeconds: run.latency_ms ? Math.max(1, Math.round(run.latency_ms / 1000)) : 2,
-        summary: `Analyzed store records in ${formatLatency(run.latency_ms)}`,
+        summary: `Analyzed store records in ${formatLatency(run.latency_ms ?? undefined)}`,
         steps,
         detailedThought: `User asked: "${run.user_message}"\nVerified against store catalog and operational database.\nRendered live response with pricing and stock levels.`,
       },

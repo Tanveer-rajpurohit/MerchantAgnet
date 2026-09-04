@@ -30,6 +30,8 @@ export function useAutoScroll<T extends HTMLElement = HTMLDivElement>({
     []
   );
 
+  const depsKey = JSON.stringify(deps);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -44,7 +46,7 @@ export function useAutoScroll<T extends HTMLElement = HTMLDivElement>({
     if (isAtBottomRef.current) {
       endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }
-  }, deps);
+  }, [depsKey]);
 
   return {
     scrollRef,

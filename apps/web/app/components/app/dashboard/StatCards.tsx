@@ -7,12 +7,12 @@ import { useProducts } from "../../../../hooks/useProducts";
 
 export function StatCards() {
   const { data: linkData } = usePaymentLinks({ page: 1, count: 100 });
-  const { data: ordersData } = useOrders({ limit: 100 });
+  const { orders } = useOrders({ limit: 100 });
   const { data: products } = useProducts();
 
   const stats = useMemo(() => {
     const links = linkData?.items ?? [];
-    const orders = ordersData?.items ?? [];
+    const ordersList = orders ?? [];
     const prods = products ?? [];
 
     const today = new Date();
@@ -37,10 +37,10 @@ export function StatCards() {
       (p) => p.current_stock <= (p.low_stock_alert || 0)
     ).length;
 
-    const activeOrders = orders.filter((o) => o.status === "unpaid").length;
+    const activeOrders = ordersList.filter((o) => o.status === "unpaid").length;
 
     return { todayCollection, pendingLinks, lowStockItems, activeOrders };
-  }, [linkData, ordersData, products]);
+  }, [linkData, orders, products]);
 
   const fmtINR = (n: number) =>
     "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 0 });

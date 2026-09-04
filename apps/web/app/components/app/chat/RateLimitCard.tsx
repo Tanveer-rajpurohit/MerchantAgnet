@@ -10,7 +10,6 @@ interface RateLimitCardProps {
 export function RateLimitCard({ onRetry }: RateLimitCardProps) {
   return (
     <div className="w-full max-w-lg my-4 rounded-2xl border border-amber-500/20 bg-surface p-4 sm:p-5 font-intert shadow-xs">
-      {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-border">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
@@ -36,7 +35,6 @@ export function RateLimitCard({ onRetry }: RateLimitCardProps) {
         Current AI load is unusually high. Please wait a few seconds before retrying, or upgrade to a dedicated plan for uninterrupted copilot access.
       </p>
 
-      {/* Mini Pricing Card */}
       <div className="p-3.5 rounded-xl bg-bg border border-border space-y-3">
         <div className="flex items-baseline justify-between">
           <div>
@@ -68,7 +66,6 @@ export function RateLimitCard({ onRetry }: RateLimitCardProps) {
         </div>
       </div>
 
-      {/* Action Buttons */}
       <div className="flex items-center justify-end gap-2.5 pt-3 mt-3 border-t border-border-subtle">
         {onRetry && (
           <button

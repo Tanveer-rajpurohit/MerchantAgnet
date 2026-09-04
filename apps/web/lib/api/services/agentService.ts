@@ -112,7 +112,8 @@ export const agentService = {
                 hasReceivedDone = true;
                 callbacks.onError?.(new Error(event.content || "Agent error occurred"));
               }
-            } catch {
+            } catch (parseErr) {
+              void parseErr;
             }
           }
         }

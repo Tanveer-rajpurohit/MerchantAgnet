@@ -1,8 +1,8 @@
-import type { AgentRunRecord, ChatMessageData } from "../../../types";
+import type { AgentRunRecord, ChatMessageData, ToolInvocation } from "../../../../types";
 
 export function extractCardsFromRun(
   run: AgentRunRecord
-): Pick<ChatMessageData, "paymentLink" | "campaignGate" | "catalogStock" | "revenueSummary" | "rateLimit"> {
+): Partial<Pick<ChatMessageData, "paymentLink" | "campaignGate" | "catalogStock" | "revenueSummary" | "rateLimit">> {
   return extractCardsFromData(run.agent_response, run.tools_invoked, run.user_message);
 }
 
@@ -10,15 +10,15 @@ export function extractCardsFromData(
   responseText: string,
   toolsInvoked?: AgentRunRecord["tools_invoked"],
   userMessage?: string
-): Pick<ChatMessageData, "paymentLink" | "campaignGate" | "catalogStock" | "revenueSummary" | "rateLimit"> {
-  const result: Pick<ChatMessageData, "paymentLink" | "campaignGate" | "catalogStock" | "revenueSummary" | "rateLimit"> = {};
+): Partial<Pick<ChatMessageData, "paymentLink" | "campaignGate" | "catalogStock" | "revenueSummary" | "rateLimit">> {
+  const result: Partial<Pick<ChatMessageData, "paymentLink" | "campaignGate" | "catalogStock" | "revenueSummary" | "rateLimit">> = {};
 
   if (!responseText && (!toolsInvoked || toolsInvoked.length === 0)) {
     return result;
   }
 
   const paymentTool = toolsInvoked?.find(
-    (t) => t.tool === "create_payment_link" || (t as { name?: string }).name === "create_payment_link"
+    (t: ToolInvocation) => t.tool === "create_payment_link" || (t as { name?: string }).name === "create_payment_link"
   );
 
   let paymentUrl: string | null = null;
@@ -28,7 +28,7 @@ export function extractCardsFromData(
   let description: string = "Payment Request";
 
   const urlMatch = responseText.match(/https?:\/\/(?:rzp\.io\/[a-zA-Z0-9_\-\/]+|[\w-]+\.razorpay\.com\/[^\s\)\"\'\<\>]+)/i);
-  if (urlMatch) {
+  if (urlMatch && urlMatch[0]) {
     paymentUrl = urlMatch[0].replace(/[.,;:!?]+$/, "");
   }
 
@@ -36,7 +36,7 @@ export function extractCardsFromData(
     const args = (paymentTool.args || {}) as Record<string, unknown>;
     const content = String(paymentTool.content || "");
     const toolUrlMatch = content.match(/LINK_URL:\s*(https?:\/\/[^\s\n]+)/i);
-    if (toolUrlMatch) {
+    if (toolUrlMatch && toolUrlMatch[1]) {
       paymentUrl = toolUrlMatch[1].replace(/[.,;:!?]+$/, "");
     }
     if (args.customer_name) customerName = String(args.customer_name);
@@ -51,7 +51,7 @@ export function extractCardsFromData(
   if (paymentUrl) {
     if (!paymentAmount) {
       const amountMatch = responseText.match(/(?:AMOUNT|Amount|Total|total|₹|Rs\.?)\s*[:=]?\s*(?:₹|INR\s*|Rs\.?)?\s*([\d,]+(?:\.\d+)?)/i);
-      if (amountMatch) {
+      if (amountMatch && amountMatch[1]) {
         paymentAmount = `₹${amountMatch[1]}`;
       } else {
         paymentAmount = "₹0";
@@ -59,7 +59,7 @@ export function extractCardsFromData(
     }
     if (customerName === "Customer" && userMessage) {
       const custMatch = userMessage.match(/(?:for|to)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
-      if (custMatch) {
+      if (custMatch && custMatch[1]) {
         customerName = custMatch[1];
       }
     }
@@ -75,7 +75,7 @@ export function extractCardsFromData(
   }
 
   const campaignTool = toolsInvoked?.find(
-    (t) => t.tool === "create_campaign" || (t as { name?: string }).name === "create_campaign"
+    (t: ToolInvocation) => t.tool === "create_campaign" || (t as { name?: string }).name === "create_campaign"
   );
 
   let isCampaignDraft = Boolean(campaignTool);
@@ -90,7 +90,7 @@ export function extractCardsFromData(
     const args = (campaignTool.args || {}) as Record<string, unknown>;
     const content = String(campaignTool.content || "");
     const idMatch = content.match(/CAMPAIGN_ID:\s*([a-f0-9\-]+)/i);
-    if (idMatch) campaignId = idMatch[1];
+    if (idMatch && idMatch[1]) campaignId = idMatch[1];
 
     if (args.offer_description) campaignName = String(args.offer_description);
     if (args.segment_description) segmentDescription = String(args.segment_description);
@@ -98,7 +98,7 @@ export function extractCardsFromData(
     if (args.message_template) offerMessage = String(args.message_template);
 
     const countMatch = content.match(/TARGET_COUNT:\s*(\d+)/i);
-    if (countMatch) {
+    if (countMatch && countMatch[1]) {
       targetCount = parseInt(countMatch[1], 10);
     } else if (Array.isArray(args.customer_connection_ids)) {
       targetCount = args.customer_connection_ids.length;
@@ -110,7 +110,7 @@ export function extractCardsFromData(
   ) {
     isCampaignDraft = true;
     const idMatch = responseText.match(/CAMPAIGN_ID:\s*([a-f0-9\-]+)/i);
-    if (idMatch) campaignId = idMatch[1];
+    if (idMatch && idMatch[1]) campaignId = idMatch[1];
 
     const offerMatch = responseText.match(
       /(?:OFFER|Offer(?:\s+Description)?|Campaign(?:\s+Name)?):\s*([^\n]+)/i
@@ -127,13 +127,13 @@ export function extractCardsFromData(
     const draftBlockMatch = responseText.match(/```(?:draft|whatsapp)?\s*([\s\S]*?)```/i);
     const msgMatch = responseText.match(/(?:MESSAGE(?:\s*PREVIEW)?|Message Preview):\s*"?([^\n"]+)"?/i);
 
-    if (offerMatch) campaignName = offerMatch[1].trim();
-    if (segMatch) segmentDescription = segMatch[1].trim();
-    if (discMatch) discountPercent = discMatch[1].trim();
-    if (targetMatch) targetCount = parseInt(targetMatch[1], 10);
-    if (draftBlockMatch) {
+    if (offerMatch && offerMatch[1]) campaignName = offerMatch[1].trim();
+    if (segMatch && segMatch[1]) segmentDescription = segMatch[1].trim();
+    if (discMatch && discMatch[1]) discountPercent = discMatch[1].trim();
+    if (targetMatch && targetMatch[1]) targetCount = parseInt(targetMatch[1], 10);
+    if (draftBlockMatch && draftBlockMatch[1]) {
       offerMessage = draftBlockMatch[1].trim();
-    } else if (msgMatch) {
+    } else if (msgMatch && msgMatch[1]) {
       offerMessage = msgMatch[1].trim();
     }
   }

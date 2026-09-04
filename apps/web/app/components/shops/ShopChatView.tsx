@@ -24,7 +24,7 @@ interface ShopChatViewProps {
 }
 
 const RZP_URL_REGEX =
-  /https?:\/\/(?:rzp\.io\/[a-zA-Z0-9_\-\/]+|[\w-]+\.razorpay\.com\/[^\s\)\"\'\<\>]+)/i;
+  /https?:\/\/(?:rzp\.io\/[a-zA-Z0-9_\-/]+|[\w-]+\.razorpay\.com\/[^\s)"'<>]+)/i;
 
 function extractAmount(text: string): number | null {
   const m = text.match(
@@ -231,7 +231,8 @@ export function ShopChatView({ shop, onBack }: ShopChatViewProps) {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
+    } catch (e) {
+      void e;
     }
   };
 

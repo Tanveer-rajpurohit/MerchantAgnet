@@ -316,7 +316,7 @@ async def run_customer_chat(
             past_msgs = await message_repository.list_messages_by_connection(
                 db=db,
                 customer_connection_id=connection_id,
-                limit=15,
+                limit=6,
             )
             if past_msgs and past_msgs[0].content.strip() == message.strip() and past_msgs[0].sender_type == SenderType.customer:
                 past_msgs = past_msgs[1:]
@@ -336,14 +336,14 @@ async def run_customer_chat(
     tools_invoked: list[dict] = []
 
     try:
-        async with customer_agent.run_stream(
+        run_res = await customer_agent.run(
             message,
             deps=deps,
             message_history=message_history if message_history else None,
-        ) as stream:
-            async for chunk in stream.stream_text(delta=True):
-                full_response += chunk
-            for msg in stream.all_messages():
+        )
+        full_response = getattr(run_res, "output", getattr(run_res, "data", "")) or ""
+        if hasattr(run_res, "all_messages"):
+            for msg in run_res.all_messages():
                 if hasattr(msg, "parts"):
                     for part in msg.parts:
                         if hasattr(part, "tool_name"):
@@ -351,23 +351,6 @@ async def run_customer_chat(
                                 "tool": getattr(part, "tool_name", ""),
                                 "args": getattr(part, "args", {}),
                             })
-        if (not full_response or not full_response.strip()) and tools_invoked:
-            logger.info("Customer stream emitted tool calls without final text. Running fallback customer_agent.run...")
-            fallback_res = await customer_agent.run(
-                message,
-                deps=deps,
-                message_history=message_history if message_history else None,
-            )
-            full_response = getattr(fallback_res, "output", getattr(fallback_res, "data", "")) or ""
-            if hasattr(fallback_res, "all_messages"):
-                for msg in fallback_res.all_messages():
-                    if hasattr(msg, "parts"):
-                        for part in msg.parts:
-                            if hasattr(part, "tool_name"):
-                                tools_invoked.append({
-                                    "tool": getattr(part, "tool_name", ""),
-                                    "args": getattr(part, "args", {}),
-                                })
         run_status = AgentRunStatus.success
         error_detail = None
     except Exception as agent_err:

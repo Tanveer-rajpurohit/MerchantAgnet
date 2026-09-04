@@ -14,12 +14,7 @@ import { MessageSnippetCard } from "./MessageSnippetCard";
 import { RateLimitCard } from "./RateLimitCard";
 import { normalizeMessageContent } from "./messageNormalizer";
 import { useTTS } from "../../../../hooks/useTTS";
-import type {
-  ChatMessageData,
-  AgentStep,
-  StockItem,
-  RevenueMetric,
-} from "../../../../types";
+import type { ChatMessageData } from "../../../../types";
 
 interface ChatMessageItemProps {
   message: ChatMessageData;
@@ -257,7 +252,7 @@ export function ChatMessageItem({
                     );
                   }
                   const actionPrefixMatch = cleanText.match(/^(NEXT STEPS?|ACTIONABLE NEXT STEPS?|ACTION|RECOMMENDATIONS?)\s*[:\-–—]\s*(.*)$/i);
-                  if (actionPrefixMatch) {
+                  if (actionPrefixMatch && actionPrefixMatch[1] && actionPrefixMatch[2]) {
                     return (
                       <span className="inline-flex flex-wrap items-center gap-1.5 my-1 align-middle">
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-brand bg-brand/10 border border-brand/20 uppercase tracking-wider align-middle shadow-xs">
@@ -369,7 +364,7 @@ export function ChatMessageItem({
             segmentDescription={message.campaignGate.segmentDescription}
             targetCount={message.campaignGate.targetCount}
             discountPercent={message.campaignGate.discountPercent}
-            offerMessage={message.campaignGate.offerMessage}
+            offerMessage={message.campaignGate.offerMessage || ""}
           />
         )}
 

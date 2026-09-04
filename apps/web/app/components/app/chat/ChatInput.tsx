@@ -161,6 +161,7 @@ export function ChatInput({
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const res = event.results[i];
+          if (!res) continue;
           const transcript = res[0]?.transcript || "";
           if (res.isFinal) {
             accumulatedRef.current += (accumulatedRef.current ? " " : "") + transcript.trim();
@@ -219,14 +220,14 @@ export function ChatInput({
           <div className="flex flex-wrap items-center gap-2 px-4 pt-2.5">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-brand/10 text-brand border border-brand/20 shadow-2xs">
               <Users size={12} className="shrink-0" />
-              {selectedCustomers.length === 1 ? (
+              {selectedCustomers.length === 1 && selectedCustomers[0] ? (
                 <>
                   <span>To: <strong>{selectedCustomers[0].customer_name}</strong></span>
                   {selectedCustomers[0].customer_phone && (
                     <span className="text-[10px] text-muted">({selectedCustomers[0].customer_phone})</span>
                   )}
                 </>
-              ) : (
+              ) : selectedCustomers[0] ? (
                 <>
                   <span>
                     To: <strong>{selectedCustomers[0].customer_name}</strong> + {selectedCustomers.length - 1} other{selectedCustomers.length > 2 ? "s" : ""}
@@ -235,7 +236,7 @@ export function ChatInput({
                     {selectedCustomers.length} selected
                   </span>
                 </>
-              )}
+              ) : null}
               <button
                 type="button"
                 onClick={() => setSelectedCustomers([])}
@@ -322,7 +323,7 @@ export function ChatInput({
                   {selectedCustomers.length === 0
                     ? "Customer"
                     : selectedCustomers.length === 1
-                    ? selectedCustomers[0].customer_name
+                    ? selectedCustomers[0]?.customer_name || "Customer"
                     : `${selectedCustomers.length} Customers`}
                 </span>
                 <ChevronDown
