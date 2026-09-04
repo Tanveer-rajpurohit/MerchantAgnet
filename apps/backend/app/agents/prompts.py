@@ -232,22 +232,12 @@ def build_merchant_constitution(
     target_customer_id: str = "",
     target_customers: list[dict] | None = None,
 ) -> str:
-    """Builds the dynamic system prompt injected into the PydanticAI agent run.
+    """Builds the dynamic system prompt injected into the PydanticAI merchant agent run.
 
-    Switches between the customer shopfront and merchant admin personas based on
-    `persona`. The merchant prompt enforces proactivity: the agent looks up
-    customers, prices, payment status, expenses, and audit logs ITSELF rather
-    than asking the merchant for that information.
+    The merchant prompt enforces proactivity: the agent looks up customers,
+    prices, payment status, expenses, and audit logs ITSELF rather than asking
+    the merchant for that information.
     """
-    if persona == AgentPersona.customer_shopfront:
-        return _build_customer_prompt(
-            store_name=store_name,
-            category=category,
-            address=address,
-            upi_vpa=upi_vpa,
-            customer_name=target_customer_name,
-            customer_phone=target_customer_phone,
-        )
     return _build_merchant_prompt(
         store_name=store_name,
         category=category,

@@ -6,7 +6,7 @@ import crypto from "node:crypto";
 import { URL } from "node:url";
 import { EdgeTTS } from "node-edge-tts";
 
-const PORT = 3004;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3004;
 
 const VOICE_MAP: Record<string, string> = {
   "en-IN": "en-IN-PrabhatNeural",

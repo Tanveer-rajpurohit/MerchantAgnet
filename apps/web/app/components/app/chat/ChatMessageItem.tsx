@@ -142,7 +142,7 @@ export function ChatMessageItem({
                       </h3>
                     );
                   }
-                  const cleanPText = text.replace(/^[\s\uFFFD\u25C6\u25C7\u25CA\u25C8\u25C9\u25CE\u25CF\u25B6\u25B7\u25BA\u25BB\u25C4\u25C5\u25E6\u2022\u2219◆◇◈►▶▸→\-–—\.]+\s*/, "");
+                  const cleanPText = text.replace(/^[\s\uFFFD\u25C6\u25C7\u25CA\u25C8\u25C9\u25CE\u25CF\u25B6\u25B7\u25BA\u25BB\u25C4\u25C5\u25E6\u2022\u2219◆◇◈►▶▸→\-–—.]+\s*/, "");
                   const actionInPMatch = cleanPText.match(/^(NEXT STEPS?|ACTIONABLE NEXT STEPS?)\s*[:\-–—]\s*([\s\S]*)$/i);
                   if (actionInPMatch) {
                     return (
@@ -238,7 +238,7 @@ export function ChatMessageItem({
                 },
                 strong: ({ children }) => {
                   const rawText = extractText(children).trim();
-                  const cleanText = rawText.replace(/^[\s\uFFFD\u25C6\u25C7\u25CA\u25C8\u25C9\u25CE\u25CF\u25B6\u25B7\u25BA\u25BB\u25C4\u25C5\u25E6\u2022\u2219◆◇◈►▶▸→\-–—\.]+\s*/, "");
+                  const cleanText = rawText.replace(/^[\s\uFFFD\u25C6\u25C7\u25CA\u25C8\u25C9\u25CE\u25CF\u25B6\u25B7\u25BA\u25BB\u25C4\u25C5\u25E6\u2022\u2219◆◇◈►▶▸→\-–—.]+\s*/, "");
                   const isActionLabel =
                     /^(?:NEXT STEPS?|ACTIONABLE NEXT STEPS?|ACTION|RECOMMENDATIONS?):?$/i.test(
                       cleanText
@@ -403,14 +403,14 @@ export function ChatMessageItem({
                   onClick={() =>
                     isThisSpeaking || isThisLoading
                       ? stop()
-                      : speak(message.content, "hi-IN", undefined, message.id)
+                      : speak(message.content, undefined, undefined, message.id)
                   }
                   title={
                     isThisLoading
                       ? "Generating voice..."
                       : isThisSpeaking
                         ? "Stop voice"
-                        : "Listen in Hindi"
+                        : "Read aloud"
                   }
                   className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors cursor-pointer ${
                     isThisSpeaking

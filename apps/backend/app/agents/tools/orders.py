@@ -40,10 +40,6 @@ async def create_order(
     `items` is a list of dicts: [{"product_name": "Parle G", "quantity": 2}].
     Pass `price_type="cost"` for wholesale/cost-price orders.
     """
-    is_customer = ctx.deps.persona == AgentPersona.customer_shopfront
-    if is_customer:
-        price_type = "selling"
-
     if items is None or len(items) == 0:
         return "No items supplied. Pass a list of items like [{\"product_name\": \"rice\", \"quantity\": 1}]."
 
@@ -59,60 +55,46 @@ async def create_order(
             return (
                 f"ORDER_ALREADY_CREATED\n"
                 f"An identical order for {target_name} with these items was already created in this turn (Order #{prev.get('id', '')}). "
-                f"DO NOT create duplicate orders. Confirm the order to the {'customer' if is_customer else 'merchant'}."
+                f"DO NOT create duplicate orders. Confirm the order to the merchant."
             )
 
     try:
         merchant_id = _merchant_id(ctx)
 
         cust_uuid: uuid.UUID | None = None
-        if is_customer:
-            cust_uuid = ctx.deps.user.id if ctx.deps.user else (ctx.deps.target_customer_id or None)
-            if not cust_uuid and customer_id:
-                try:
-                    cust_uuid = uuid.UUID(str(customer_id))
-                except (ValueError, TypeError):
-                    pass
-            target_name = (
-                (ctx.deps.user.full_name if ctx.deps.user else None)
-                or ctx.deps.target_customer_name
-                or customer_name
-                or "Customer"
-            )
-            if not cust_uuid:
-                return "Please log in to your customer account to place an order."
-        else:
-            if not customer_id and not customer_name:
-                if ctx.deps.target_customer_name:
-                    customer_name = ctx.deps.target_customer_name
-                elif ctx.deps.target_customer_id:
-                    customer_id = str(ctx.deps.target_customer_id)
+        if not customer_id and not customer_name:
+            if ctx.deps.target_customer_name:
+                customer_name = ctx.deps.target_customer_name
+            elif ctx.deps.target_customer_id:
+                customer_id = str(ctx.deps.target_customer_id)
 
-            if customer_id:
-                cust_uuid = uuid.UUID(str(customer_id))
-            elif customer_name:
-                resolved = await resolve_customer(ctx, customer_name)
-                like_term = f"%{customer_name.strip()}%"
-                stmt = (
-                    select(CustomerConnection)
-                    .join(User, User.id == CustomerConnection.customer_id)
-                    .where(
-                        CustomerConnection.merchant_id == merchant_id,
-                        User.full_name.ilike(like_term),
-                    )
-                    .options(selectinload(CustomerConnection.customer))
-                    .limit(1)
+        is_customer = False
+
+        if customer_id:
+            cust_uuid = uuid.UUID(str(customer_id))
+        elif customer_name:
+            resolved = await resolve_customer(ctx, customer_name)
+            like_term = f"%{customer_name.strip()}%"
+            stmt = (
+                select(CustomerConnection)
+                .join(User, User.id == CustomerConnection.customer_id)
+                .where(
+                    CustomerConnection.merchant_id == merchant_id,
+                    User.full_name.ilike(like_term),
                 )
-                conn = (await ctx.deps.db.execute(stmt)).scalars().first()
-                if not conn:
-                    return (
-                        f"Could not find a connected customer named '{customer_name}'. "
-                        f"Ask the merchant to confirm the spelling, or call get_recent_customers "
-                        f"to list everyone. Do NOT ask for a UUID — the merchant does not know UUIDs."
-                    )
-                cust_uuid = conn.customer_id
-            else:
-                return "Either customer_name or customer_id is required. Prefer customer_name — the merchant does not know UUIDs."
+                .options(selectinload(CustomerConnection.customer))
+                .limit(1)
+            )
+            conn = (await ctx.deps.db.execute(stmt)).scalars().first()
+            if not conn:
+                return (
+                    f"Could not find a connected customer named '{customer_name}'. "
+                    f"Ask the merchant to confirm the spelling, or call get_recent_customers "
+                    f"to list everyone. Do NOT ask for a UUID — the merchant does not know UUIDs."
+                )
+            cust_uuid = conn.customer_id
+        else:
+            return "Either customer_name or customer_id is required. Prefer customer_name — the merchant does not know UUIDs."
 
         conn_id = ctx.deps.target_customer_connection_id
         if not conn_id:
@@ -277,21 +259,17 @@ async def update_order_status(
 
         st_clean = status.strip().lower()
         target_status: OrderStatus
-        if st_clean in ("paid", "completed", "success", "cleared"):
+        if st_clean in ("paid", "completed", "success", "cleared", "delivered", "fulfilled"):
             target_status = OrderStatus.paid
-        elif st_clean in ("cancelled", "canceled", "void"):
+        elif st_clean in ("cancelled", "canceled", "void", "refunded", "returned"):
             target_status = OrderStatus.cancelled
-        elif st_clean in ("delivered", "fulfilled"):
-            target_status = OrderStatus.delivered
-        elif st_clean in ("refunded", "returned"):
-            target_status = OrderStatus.refunded
         elif st_clean in ("unpaid", "pending"):
             target_status = OrderStatus.unpaid
         else:
             try:
                 target_status = OrderStatus(st_clean)
             except ValueError:
-                return f"Invalid order status '{status}'. Valid options: paid, unpaid, cancelled, delivered, refunded."
+                return f"Invalid order status '{status}'. Valid options: paid, unpaid, cancelled."
 
         order = None
 

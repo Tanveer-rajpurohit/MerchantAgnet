@@ -1,141 +1,111 @@
-# MerchantAgent Backend (FastAPI)
+# MerchantAgent Backend (FastAPI + PydanticAI)
 
-AI agent backend for Track 1 (AI Growth & Agentic Commerce) of the Razorpay Buildathon — a growth agent for small Indian merchants, with a catalog other AI agents can query.
+Backend service for MerchantAgent — powering both the merchant management copilot and the customer shopfront AI.
 
 ## Tech Stack
 
-- **Framework:** FastAPI 0.141
-- **Database:** PostgreSQL + SQLAlchemy 2.0 (async, via `asyncpg`)
-- **Migrations:** Alembic (async-configured)
-- **Cache / sessions:** Redis (refresh token storage)
-- **Auth:** JWT (access + refresh token rotation) + Google OAuth
-- **File storage:** AWS S3 (avatars, assets)
-- **Rate limiting:** Custom limiter in `app/core/rate_limiter.py`
+- **Framework:** FastAPI 0.115+
+- **AI Agent Engine:** PydanticAI with OpenAI-compatible inference providers (Cerebras / Groq / Sarvam)
+- **Database:** PostgreSQL 16 with pgvector extension (via async SQLAlchemy 2.0 and `asyncpg`)
+- **Embeddings:** FastEmbed (`BAAI/bge-small-en-v1.5`, 384 dimensions)
+- **Migrations:** Alembic (async configured)
+- **Cache & Token Storage:** Redis 7 (JWT refresh tokens, session revocation)
+- **Payments:** Razorpay Python SDK (test-mode payment links, webhooks, signature verification)
+- **Realtime:** WebSockets (`/ws/chat/{connection_id}`) for customer-store communication; SSE (`/agent/chat/stream`) for merchant copilot streaming
 
 ## Prerequisites
 
-Before Step 1 below, make sure these are actually running/available — the app will fail to start without them:
-- **PostgreSQL** running locally (or a connection string to a hosted instance)
-- **Redis** running locally (`redis-server`, or `docker run -p 6379:6379 redis`) — required for refresh tokens, not optional
-- A **Google OAuth Client ID/Secret** (from Google Cloud Console) if you want Google sign-in to work — the app still runs without it, but that login path will fail
-- An **AWS S3 bucket** + IAM credentials if you want avatar upload to work
+Ensure the following services are running:
+- **PostgreSQL 16** with pgvector:
+  ```bash
+  psql -U postgres -c "CREATE EXTENSION IF NOT EXISTS vector;"
+  ```
+- **Redis**:
+  ```bash
+  docker run -d -p 6379:6379 --name merchant-redis redis:7-alpine
+  ```
+- **Razorpay Test Keys**: `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`
 
-## 1. Setup Virtual Environment
+## Setup & Running
 
-### Windows (PowerShell)
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-```
-
-### Windows (Command Prompt)
-```cmd
-python -m venv venv
-venv\Scripts\activate
-```
-
-### macOS / Linux
+### 1. Create Virtual Environment
 ```bash
+# Windows
+python -m venv venv
+.\venv\Scripts\activate
+
+# macOS / Linux
 python3 -m venv venv
 source venv/bin/activate
 ```
 
----
-
-## 2. Install Dependencies
-
+### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
----
-
-## 3. Environment Configuration
-
+### 3. Environment Variables
 ```bash
 cp .env.example .env
 ```
+Ensure `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY`, `AGENT_API_KEY`, `AGENT_BASE_URL`, and `RAZORPAY_*` keys are set.
 
-Then fill in real values for `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY` (generate a real random 32-byte value, don't ship the placeholder), and the Google/AWS credentials if you need those flows working locally.
-
----
-
-## 4. Database Migrations (Alembic)
-
-### Initialize Async Alembic (already configured)
-```bash
-alembic init -t async alembic
-```
-
-### Generate Migration from SQLAlchemy Models
-```bash
-alembic revision --autogenerate -m "your migration description"
-```
-
-### Apply Migrations to Database
+### 4. Database Migrations
 ```bash
 alembic upgrade head
 ```
 
-### Rollback Migration (if needed)
-```bash
-alembic downgrade -1
-```
-
----
-
-## 5. Run Development Server
-
+### 5. Run Server
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
+- Interactive Swagger docs: http://localhost:8000/docs
+- Health endpoint: http://localhost:8000/health/
 
----
-
-## 6. API Documentation & Health Check
-
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-- Health Check: http://localhost:8000/health/
-
----
-
-## Project Structure
+## Directory Structure
 
 ```
-app/
-├── main.py                  # App factory, middleware, router mounting
+apps/backend/app/
+├── main.py                  # Application factory, middleware, router registration
 ├── core/
-│   ├── config.py            # Settings (env vars)
-│   ├── security.py          # Password hashing, JWT
-│   ├── google_auth.py       # Google OAuth verification
-│   ├── s3.py                # Avatar/asset upload
-│   └── rate_limiter.py      # Request rate limiting
+│   ├── config.py            # Pydantic Settings
+│   ├── security.py          # JWT, Argon2/bcrypt password hashing
+│   └── rate_limiter.py      # Token-bucket endpoint rate limiting
 ├── db/
-│   ├── session.py           # Async Postgres engine + session
-│   ├── redis.py             # Redis client (refresh tokens)
-│   └── base.py              # SQLAlchemy declarative base
-├── models/                  # SQLAlchemy ORM models
-├── schemas/                 # Pydantic request/response models
-├── routers/                 # HTTP endpoints (auth, profile, onboarding, health)
-├── services/                # Business logic
-└── repositories/            # DB queries
+│   ├── session.py           # Async SQLAlchemy engine & AsyncSessionLocal
+│   ├── redis.py             # Redis async connection pool
+│   └── base.py              # Base metadata
+├── models/                  # Declarative SQLAlchemy models (users, merchants, products, orders, etc.)
+├── schemas/                 # Pydantic validation schemas
+├── routers/                 # Modular API endpoints
+│   ├── auth/                # Register, login, refresh, me
+│   ├── profile/             # Merchant profile & settings
+│   ├── onboarding/          # Stepwise merchant setup
+│   ├── products/            # Catalog CRUD & low-stock filtering
+│   ├── expenses/            # Daily operational expense logging
+│   ├── customers/           # Merchant customer connections & metrics
+│   ├── orders/              # Orders, items, status transitions
+│   ├── payment_links/       # Merchant and customer payment link views
+│   ├── campaigns/           # Campaign generation, approve/decline gates
+│   ├── audit/               # Immutable compliance and action logs
+│   ├── agent/               # SSE chat streaming, session history, rename/delete
+│   ├── shops/               # Public customer store directory & catalog
+│   └── websockets/          # Real-time WebSocket customer chat room
+├── agents/                  # AI agent definitions
+│   ├── pydanticai_tool.py   # merchant_agent definition and tool registry
+│   ├── customer_agent.py    # Dedicated customer shopfront agent
+│   ├── prompts.py           # Merchant copilot system prompts
+│   ├── customer_prompt.py   # Customer shopfront system prompts
+│   └── tools/               # 23 isolated domain tools
+└── services/                # Business logic and cross-domain orchestration
 ```
 
-## What's Implemented So Far
+## Dual-Agent Architecture
 
-- **Auth** — register, login, Google OAuth, JWT access + refresh token rotation (Redis-backed), rate-limited on sensitive routes
-- **Profile** — view/edit profile, avatar upload to S3
-- **Onboarding** — merchant business profile, products, expenses, AI context (`info_ai`)
-- **Products** — full CRUD repository layer
-
-## Not Yet Implemented
-
-- Payment links (Razorpay test-mode integration)
-- Campaigns + approval gating
-- Customer connections + conversations (chat)
-- Orders + order status history
-- Audit log
-- The actual Claude Agent SDK integration for the chat agent itself
-
-See `docs/Database Design.md` and `docs/db-schema-addendum-remaining-tables.md` for the schema these still need.
+1. **Merchant Admin Agent (`merchant_agent`)**:
+   - Streams text and structured card payloads via SSE to `/api/v1/agent/chat/stream`.
+   - Equipped with tools for product management, stock inquiry, expense recording, customer search, order creation, and marketing campaign drafting.
+   - Includes automatic non-streaming tool-resolution fallback to maintain uninterrupted typing cadence even when upstream LLM providers close streaming on tool calls.
+2. **Customer Shopfront Agent (`customer_agent`)**:
+   - Operates over persistent WebSockets (`/ws/chat/{connection_id}`).
+   - Strictly intent-gated: answers catalog and payment inquiries conversationally; invokes order creation (`place_order`) and checkout links (`request_payment_link`) only upon explicit customer buying commands.

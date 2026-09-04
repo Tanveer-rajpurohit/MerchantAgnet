@@ -11,6 +11,7 @@ import {
   MicOff,
 } from "lucide-react";
 import { useCustomerConnections } from "../../../../hooks";
+import { VoiceSelector } from "./VoiceSelector";
 import type {
   CustomerConnectionResponse,
   ActionMode,
@@ -96,7 +97,9 @@ export function ChatInput({
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
-      } catch {}
+      } catch (e) {
+        void e;
+      }
       recognitionRef.current = null;
     }
   };
@@ -436,6 +439,7 @@ export function ChatInput({
           </div>
 
           <div className="flex items-center gap-2">
+            <VoiceSelector />
             {isSpeechSupported && (
               <button
                 type="button"

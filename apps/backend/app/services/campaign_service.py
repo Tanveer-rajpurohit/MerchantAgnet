@@ -173,7 +173,7 @@ async def approve_and_send(
 
             # Send campaign message directly into customer's chat connection
             if conn:
-                msg_content = campaign.message_template
+                msg_content = target.message_content
                 if link and link.razorpay_link_url:
                     msg_content += f"\n\nPayment Link: {link.razorpay_link_url}"
 
