@@ -13,6 +13,7 @@ import {
   Link2,
 } from "lucide-react";
 import type { OrderResponse } from "../../../../types";
+import { orderService } from "../../../../lib/api/services/orderService";
 
 interface WhatsAppAIModalProps {
   isOpen: boolean;
@@ -62,11 +63,14 @@ export function WhatsAppAIModal({
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [messageText, setMessageText] = useState("");
+  const [livePaymentLink, setLivePaymentLink] = useState("");
+  const [liveDueAmount, setLiveDueAmount] = useState<number | null>(null);
 
   const total = order ? Number(order.total_amount) || 0 : 0;
   const paid = order ? Number(order.paid_amount) || 0 : 0;
   const dueAmount = Math.max(0, total - paid);
-  const paymentLink = order ? `https://rzp.io/l/ord-${order.id.slice(0, 8)}` : "";
+  const currentPaymentLink = mode === "both" ? livePaymentLink : "";
+  const currentDue = liveDueAmount !== null ? liveDueAmount : dueAmount;
 
   useEffect(() => {
     if (!isOpen || !order) {
@@ -75,51 +79,57 @@ export function WhatsAppAIModal({
       setStepIndex(0);
       setMessageText("");
       setMode("both");
+      setLivePaymentLink("");
+      setLiveDueAmount(null);
     }
   }, [isOpen, order]);
 
   if (!isOpen || !order) return null;
 
-  const triggerGeneration = (selectedMode: GenerationMode) => {
+  const triggerGeneration = async (selectedMode: GenerationMode) => {
     setMode(selectedMode);
     setHasStarted(true);
     setIsGenerating(true);
-    setStepIndex(0);
+    setStepIndex(1);
 
-    const timer1 = setTimeout(() => setStepIndex(1), 350);
-    const timer2 = setTimeout(() => setStepIndex(2), 700);
-    const timer3 = setTimeout(() => {
-      setIsGenerating(false);
+    const stepTimer = setTimeout(() => {
+      setStepIndex(2);
+    }, 450);
+
+    try {
+      const res = await orderService.generateWhatsAppMessage(order.id, selectedMode);
       setStepIndex(3);
-
+      setMessageText(res.message);
+      if (selectedMode === "both" && res.payment_link) {
+        setLivePaymentLink(res.payment_link);
+      } else {
+        setLivePaymentLink("");
+      }
+      setLiveDueAmount(res.due_amount);
+    } catch {
+      setStepIndex(3);
+      const fallbackLink = selectedMode === "both" ? livePaymentLink : "";
       const itemsList = order.items
         .map(
           (item) =>
             `• ${item.product_name_snapshot} x ${item.quantity} - ₹${(Number(item.unit_price_snapshot) * item.quantity).toLocaleString("en-IN")}`,
         )
         .join("\n");
+      const storeName = order.store_name || "Our Store";
 
-      const storeName = order.store_name || "Sharma Store";
-
-      let draft = "";
-      if (selectedMode === "both") {
-        draft = `Namaste ${order.customer_name} ji! 🙏\nHere is your order summary from ${storeName}:\n\n📦 Order Items:\n${itemsList}\n\n💵 Total Bill: ₹${total.toLocaleString("en-IN")}\n⏳ Amount Due: ₹${dueAmount.toLocaleString("en-IN")}\n\n💳 Pay online instantly via Razorpay:\n${paymentLink}\n\nThank you for shopping with us!`;
-      } else {
-        draft = `Namaste ${order.customer_name} ji! 🙏\nThis is a gentle reminder regarding your outstanding payment of ₹${dueAmount.toLocaleString("en-IN")} for your recent order at ${storeName}.\n\n💳 Quick Online Payment Link:\n${paymentLink}\n\nPlease let us know once paid. Thank you!`;
-      }
-
+      const draft =
+        selectedMode === "both"
+          ? `Namaste ${order.customer_name} ji! 🙏\n\nHere is your order summary from *${storeName}*:\n\n📦 Order Items:\n${itemsList}\n\n💵 Total Bill: ₹${total.toLocaleString("en-IN")}\n⏳ Amount Due: ₹${dueAmount.toLocaleString("en-IN")}\n\n💳 Pay online instantly via Razorpay:\n${fallbackLink}\n\nThank you for shopping with us!`
+          : `Namaste ${order.customer_name} ji! 🙏\n\nThis is a gentle payment reminder from *${storeName}* regarding your pending balance of ₹${dueAmount.toLocaleString("en-IN")} for your recent order.\n\nKindly arrange the payment at your earliest convenience.\n\nThank you for shopping with us!`;
       setMessageText(draft);
-    }, 1100);
-
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-    };
+    } finally {
+      clearTimeout(stepTimer);
+      setIsGenerating(false);
+    }
   };
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(paymentLink);
+    navigator.clipboard.writeText(currentPaymentLink);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
   };
@@ -150,10 +160,10 @@ export function WhatsAppAIModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-intert">
-      <div className="relative w-full max-w-lg bg-surface border border-border rounded-2xl shadow-2xl p-6 overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-auto">
+      <div className="relative w-full max-w-lg bg-surface border border-border rounded-xl shadow-2xl p-6 overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-auto">
         <div className="flex items-center justify-between pb-4 mb-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-[#25D366]/10 text-[#25D366] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-[#25D366]/10 text-[#25D366] flex items-center justify-center">
               <WhatsAppIcon size={18} />
             </div>
             <div>
@@ -168,7 +178,7 @@ export function WhatsAppAIModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-primary hover:bg-surface-muted transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-md flex items-center justify-center text-muted hover:text-primary hover:bg-surface-muted transition-colors cursor-pointer"
           >
             <X size={16} />
           </button>
@@ -176,7 +186,7 @@ export function WhatsAppAIModal({
 
         {!hasStarted ? (
           <div className="space-y-4">
-            <div className="p-3.5 rounded-xl border border-border bg-bg/50 flex items-center justify-between gap-3">
+            <div className="p-3.5 rounded-lg border border-border bg-bg/50 flex items-center justify-between gap-3">
               <div>
                 <span className="text-[11px] text-muted block">Customer</span>
                 <span className="text-sm font-medium text-primary">
@@ -204,18 +214,17 @@ export function WhatsAppAIModal({
                 <button
                   type="button"
                   onClick={() => triggerGeneration("both")}
-                  className="w-full flex items-start gap-3 p-3.5 rounded-xl border border-border bg-bg hover:border-brand/50 hover:bg-surface-muted/40 transition-colors text-left cursor-pointer group"
+                  className="w-full flex items-start gap-3 p-3.5 rounded-lg border border-border bg-bg hover:border-brand/50 hover:bg-surface-muted/40 transition-colors text-left cursor-pointer group"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-8 h-8 rounded-md bg-brand/10 text-brand flex items-center justify-center shrink-0 mt-0.5">
                     <Link2 size={16} />
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-primary group-hover:text-brand transition-colors">
-                      Payment Link & Bill Summary
+                      Payment Link with Reminder Message
                     </p>
                     <p className="text-[11px] text-muted mt-0.5">
-                      Creates instant Razorpay link and formats an itemized
-                      WhatsApp message with due balance.
+                      Generates secure Razorpay link and formats complete bill summary with link.
                     </p>
                   </div>
                 </button>
@@ -223,18 +232,17 @@ export function WhatsAppAIModal({
                 <button
                   type="button"
                   onClick={() => triggerGeneration("reminder")}
-                  className="w-full flex items-start gap-3 p-3.5 rounded-xl border border-border bg-bg hover:border-brand/50 hover:bg-surface-muted/40 transition-colors text-left cursor-pointer group"
+                  className="w-full flex items-start gap-3 p-3.5 rounded-lg border border-border bg-bg hover:border-brand/50 hover:bg-surface-muted/40 transition-colors text-left cursor-pointer group"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-8 h-8 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
                     <BellRing size={16} />
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-primary group-hover:text-brand transition-colors">
-                      Payment Reminder Message
+                      Reminder Message Only (No Payment Link)
                     </p>
                     <p className="text-[11px] text-muted mt-0.5">
-                      Polite reminder message for pending ₹{dueAmount.toLocaleString("en-IN")} with
-                      direct payment link.
+                      Polite balance reminder message for ₹{dueAmount.toLocaleString("en-IN")}. No link generated.
                     </p>
                   </div>
                 </button>
@@ -268,55 +276,57 @@ export function WhatsAppAIModal({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-xl border border-border bg-bg p-3.5">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-5 w-5 items-center justify-center rounded-sm bg-[#02042B] text-[#3395FF] shrink-0">
-                    <RazorpayIcon size={11} />
+            {mode === "both" && currentPaymentLink && (
+              <div className="rounded-lg border border-border bg-bg p-3.5">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-sm bg-[#02042B] text-[#3395FF] shrink-0">
+                      <RazorpayIcon size={11} />
+                    </div>
+                    <span className="text-xs font-medium text-primary">
+                      Razorpay Payment Link
+                    </span>
                   </div>
-                  <span className="text-xs font-medium text-primary">
-                    Razorpay Payment Link
-                  </span>
+                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-medium border border-emerald-500/20">
+                    <ShieldCheck size={11} />
+                    <span>Due ₹{currentDue.toLocaleString("en-IN")}</span>
+                  </div>
                 </div>
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-medium border border-emerald-500/20">
-                  <ShieldCheck size={11} />
-                  <span>Due ₹{dueAmount.toLocaleString("en-IN")}</span>
-                </div>
-              </div>
 
-              <div className="flex items-center justify-between gap-2 bg-surface p-2 rounded-lg border border-border">
-                <span className="font-mono text-xs text-primary truncate select-all">
-                  {paymentLink}
-                </span>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleCopyLink}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-surface-muted hover:bg-surface border border-border text-xs font-medium text-secondary hover:text-primary transition-colors cursor-pointer"
-                  >
-                    {copiedLink ? (
-                      <>
-                        <Check size={12} className="text-emerald-500" />
-                        <span>Copied</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={12} />
-                        <span>Copy</span>
-                      </>
-                    )}
-                  </button>
-                  <a
-                    href={paymentLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-surface-muted hover:bg-surface border border-border text-secondary hover:text-primary transition-colors"
-                  >
-                    <ExternalLink size={12} />
-                  </a>
+                <div className="flex items-center justify-between gap-2 bg-surface p-2 rounded-md border border-border">
+                  <span className="font-mono text-xs text-primary truncate select-all">
+                    {currentPaymentLink}
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleCopyLink}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-surface-muted hover:bg-surface border border-border text-xs font-medium text-secondary hover:text-primary transition-colors cursor-pointer"
+                    >
+                      {copiedLink ? (
+                        <>
+                          <Check size={12} className="text-emerald-500" />
+                          <span>Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={12} />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                    <a
+                      href={currentPaymentLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-surface-muted hover:bg-surface border border-border text-secondary hover:text-primary transition-colors"
+                    >
+                      <ExternalLink size={12} />
+                    </a>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -337,7 +347,7 @@ export function WhatsAppAIModal({
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 rows={mode === "reminder" ? 6 : 8}
-                className="w-full p-3 text-xs leading-relaxed font-intert rounded-xl border border-border bg-bg text-primary focus:outline-none focus:border-brand/50 resize-y"
+                className="w-full p-3 text-xs leading-relaxed font-intert rounded-lg border border-border bg-bg text-primary focus:outline-none focus:border-brand/50 resize-y"
               />
             </div>
 
@@ -345,7 +355,7 @@ export function WhatsAppAIModal({
               <button
                 type="button"
                 onClick={handleCopyMessage}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-border bg-surface hover:bg-surface-muted text-xs font-medium text-primary transition-colors cursor-pointer"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg border border-border bg-surface hover:bg-surface-muted text-xs font-medium text-primary transition-colors cursor-pointer"
               >
                 {copiedMessage ? (
                   <>
@@ -363,7 +373,7 @@ export function WhatsAppAIModal({
               <button
                 type="button"
                 onClick={handleSendWhatsApp}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white text-xs font-medium transition-colors shadow-sm cursor-pointer"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white text-xs font-medium transition-colors shadow-sm cursor-pointer"
               >
                 <WhatsAppIcon size={16} />
                 <span>Send on WhatsApp</span>

@@ -100,11 +100,29 @@ export default function OrdersPage() {
 
   const handleSaveOrder = async (orderData: OrderCreatePayload) => {
     if (editingOrder) {
+      const isMarkingPaid = orderData.status === "paid";
+      const isPartiallyPaid = orderData.status === "partially_paid";
+      const totalAmount = orderData.items.reduce(
+        (acc, it) =>
+          acc + (Number(it.quantity) || 0) * (Number(it.unit_price_snapshot) || 0),
+        0,
+      );
+      const paidAmount = isMarkingPaid
+        ? totalAmount
+        : orderData.status === "unpaid"
+        ? 0
+        : isPartiallyPaid
+        ? (Number(editingOrder.paid_amount) > 0 ? Number(editingOrder.paid_amount) : totalAmount / 2)
+        : orderData.paid_amount !== undefined
+        ? orderData.paid_amount
+        : Number(editingOrder.paid_amount);
+
       await updateOrderMutation.mutateAsync({
         orderId: editingOrder.id,
         payload: {
           status: orderData.status,
-          paid_amount: orderData.paid_amount,
+          paid_amount: paidAmount,
+          items: orderData.items,
         },
       });
     } else {

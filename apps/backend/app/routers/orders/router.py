@@ -12,6 +12,8 @@ from app.schemas.order import (
     OrderUpdateRequest,
     OrderResponse,
     PaginatedOrderResponse,
+    OrderWhatsAppMessageRequest,
+    OrderWhatsAppMessageResponse,
 )
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -102,6 +104,10 @@ async def create_order(
     "/{order_id}",
     response_model=OrderResponse,
 )
+@router.patch(
+    "/{order_id}",
+    response_model=OrderResponse,
+)
 async def update_order(
     order_id: uuid.UUID,
     payload: OrderUpdateRequest,
@@ -122,3 +128,29 @@ async def update_order(
         payload=payload,
         actor=ActorType.merchant,
     )
+
+
+@router.post(
+    "/{order_id}/whatsapp-message",
+    response_model=OrderWhatsAppMessageResponse,
+)
+async def generate_order_whatsapp_message(
+    order_id: uuid.UUID,
+    payload: OrderWhatsAppMessageRequest | None = None,
+    current_user: User = Depends(get_current_merchant),
+    db: AsyncSession = Depends(get_db),
+):
+    if not current_user.merchant_profile:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Merchant profile not found",
+        )
+
+    mode = payload.mode if payload else "both"
+    return await order_service.generate_order_whatsapp_message(
+        db=db,
+        order_id=order_id,
+        merchant_id=current_user.merchant_profile.id,
+        mode=mode,
+    )
+

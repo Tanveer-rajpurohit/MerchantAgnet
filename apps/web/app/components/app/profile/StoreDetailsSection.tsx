@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Store, Tag, MapPin, FileText } from "lucide-react";
+import { Select } from "../../ui/Select";
 
 export interface StoreDetailsData {
   storeName?: string;
@@ -24,6 +26,16 @@ const CATEGORIES = [
 ];
 
 export function StoreDetailsSection({ data }: StoreDetailsSectionProps) {
+  const [category, setCategory] = useState<string>(
+    data?.category || CATEGORIES[0] || "Kirana / Grocery"
+  );
+
+  useEffect(() => {
+    if (data?.category) {
+      setCategory(data.category);
+    }
+  }, [data?.category]);
+
   return (
     <section className="rounded-2xl border border-border bg-surface p-5 sm:p-6 font-intert">
       <div className="mb-4 pb-3 border-b border-border">
@@ -57,18 +69,13 @@ export function StoreDetailsSection({ data }: StoreDetailsSectionProps) {
             <Tag size={13} className="text-muted" />
             <span>Business Category</span>
           </label>
-          <select
-            name="category"
-            defaultValue={data?.category || CATEGORIES[0]}
-            key={data?.category || CATEGORIES[0]}
-            className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-border bg-bg text-primary focus:outline-none focus:border-brand/50 transition-colors cursor-pointer"
-          >
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
+          <input type="hidden" name="category" value={category} />
+          <Select
+            size="sm"
+            value={category}
+            onChange={setCategory}
+            options={CATEGORIES}
+          />
         </div>
 
         <div className="sm:col-span-2">

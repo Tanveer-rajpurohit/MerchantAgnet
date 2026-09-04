@@ -39,6 +39,7 @@ export interface OrderCreatePayload {
 export interface OrderUpdatePayload {
   status?: OrderStatus;
   paid_amount?: number;
+  items?: OrderItemCreate[];
   reason?: string;
 }
 
@@ -98,4 +99,15 @@ export interface GetCustomerOrdersParams {
   cursor?: string;
   limit?: number;
 }
+
+export interface OrderWhatsAppMessageRequest {
+  mode?: "both" | "reminder";
+}
+
+export interface OrderWhatsAppMessageResponse {
+  message: string;
+  payment_link: string;
+  due_amount: number;
+}
+
 

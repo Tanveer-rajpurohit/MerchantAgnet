@@ -62,7 +62,7 @@ export default function RegisterPage() {
   const handleSuccessfulAuth = async () => {
     const me = await authService.getMe();
     if (me.role === "merchant") {
-      router.push(me.onboarding_completed_at ? "/dashboard" : "/onboarding");
+      router.push(me.onboarding_completed_at ? "/chat" : "/onboarding");
     } else {
       router.push("/user");
     }

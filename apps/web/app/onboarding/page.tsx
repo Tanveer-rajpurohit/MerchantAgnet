@@ -324,7 +324,7 @@ export default function OnboardingPage() {
       });
 
       refetchUser();
-      router.push("/dashboard");
+      router.push("/chat");
     } catch {
       setStepError("Failed to complete onboarding. Please try again.");
     }

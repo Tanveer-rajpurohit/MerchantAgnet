@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Plus, Trash2, Search, ChevronDown, UserCheck } from "lucide-react";
+import { Select } from "../../ui/Select";
 import { useCustomerConnections } from "../../../../hooks/useCustomerConnections";
 import { useProducts } from "../../../../hooks/useProducts";
 import type {
   OrderResponse,
+  OrderStatus,
   OrderCreatePayload,
   OrderItemCreate,
   ProductResponse,
@@ -19,6 +21,13 @@ interface OrderModalProps {
   initialOrder?: OrderResponse | null;
   isPending?: boolean;
 }
+
+const STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
+  { value: "unpaid", label: "Unpaid" },
+  { value: "partially_paid", label: "Partially Paid" },
+  { value: "paid", label: "Paid" },
+  { value: "cancelled", label: "Cancelled" },
+];
 
 export function OrderModal({
   isOpen,
@@ -34,6 +43,7 @@ export function OrderModal({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
 
+  const [orderStatus, setOrderStatus] = useState<OrderStatus>("unpaid");
   const [items, setItems] = useState<OrderItemCreate[]>([
     { product_name_snapshot: "", quantity: 1, unit_price_snapshot: 0 },
   ]);
@@ -48,6 +58,7 @@ export function OrderModal({
   useEffect(() => {
     if (initialOrder) {
       setCustomerSearch(initialOrder.customer_name);
+      setOrderStatus(initialOrder.status);
       setItems(
         initialOrder.items.map((it) => ({
           product_id: it.product_id,
@@ -59,6 +70,7 @@ export function OrderModal({
     } else {
       setSelectedCustomer(null);
       setCustomerSearch("");
+      setOrderStatus("unpaid");
       setItems([
         { product_name_snapshot: "", quantity: 1, unit_price_snapshot: 0 },
       ]);
@@ -155,7 +167,7 @@ export function OrderModal({
         quantity: Number(it.quantity) || 1,
         unit_price_snapshot: Number(it.unit_price_snapshot) || 0,
       })),
-      status: initialOrder?.status || "unpaid",
+      status: orderStatus,
       created_by: "merchant",
     });
 
@@ -406,11 +418,25 @@ export function OrderModal({
             </div>
           </div>
 
-          <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-bg relative z-0">
-            <span className="text-xs text-muted font-normal">Total Amount:</span>
-            <span className="text-xl font-instrument text-primary font-normal">
-              ₹{totalAmount.toLocaleString("en-IN")}
-            </span>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-xl border border-border bg-surface-muted/30">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-secondary shrink-0">
+                Order Status:
+              </span>
+              <Select
+                size="sm"
+                className="w-36"
+                value={orderStatus}
+                onChange={(val) => setOrderStatus(val as OrderStatus)}
+                options={STATUS_OPTIONS}
+              />
+            </div>
+            <div className="flex items-center justify-between sm:justify-end gap-3">
+              <span className="text-xs text-muted">Total Amount</span>
+              <span className="text-base sm:text-lg font-instrument text-primary font-medium">
+                ₹{totalAmount.toLocaleString("en-IN")}
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 justify-end pt-2 relative z-0">

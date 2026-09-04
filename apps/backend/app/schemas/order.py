@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.models.order import OrderStatus, ActorType
 
 class OrderItemCreate(BaseModel):
@@ -19,10 +19,45 @@ class OrderCreateRequest(BaseModel):
     status: OrderStatus = OrderStatus.unpaid
     created_by: ActorType = ActorType.merchant
 
+    @field_validator("status", mode="before")
+    @classmethod
+    def normalize_status(cls, v):
+        if isinstance(v, str):
+            v_clean = v.strip().lower()
+            if v_clean in ("partially_paid", "partial", "partially paid"):
+                return OrderStatus.unpaid
+            if v_clean in ("delivered", "fulfilled", "complete", "completed"):
+                return OrderStatus.paid
+            if v_clean in ("refunded", "returned"):
+                return OrderStatus.cancelled
+        return v
+
 class OrderUpdateRequest(BaseModel):
     status: OrderStatus | None = None
     paid_amount: Decimal | None = Field(None, ge=0)
+    items: list[OrderItemCreate] | None = None
     reason: str | None = Field(None, max_length=500)
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def normalize_status(cls, v):
+        if isinstance(v, str):
+            v_clean = v.strip().lower()
+            if v_clean in ("partially_paid", "partial", "partially paid"):
+                return OrderStatus.unpaid
+            if v_clean in ("delivered", "fulfilled", "complete", "completed"):
+                return OrderStatus.paid
+            if v_clean in ("refunded", "returned"):
+                return OrderStatus.cancelled
+        return v
+
+class OrderWhatsAppMessageRequest(BaseModel):
+    mode: str = "both"
+
+class OrderWhatsAppMessageResponse(BaseModel):
+    message: str
+    payment_link: str
+    due_amount: float
 
 class OrderItemResponse(BaseModel):
     id: uuid.UUID

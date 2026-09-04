@@ -6,6 +6,7 @@ import type {
   PaginatedOrderResponse,
   GetMerchantOrdersParams,
   GetCustomerOrdersParams,
+  OrderWhatsAppMessageResponse,
 } from "../../../types";
 
 export const orderService = {
@@ -32,4 +33,15 @@ export const orderService = {
   async updateOrder(orderId: string, payload: OrderUpdatePayload): Promise<OrderResponse> {
     return await api.put<OrderResponse>(`/orders/${orderId}`, payload);
   },
+
+  async generateWhatsAppMessage(
+    orderId: string,
+    mode: "both" | "reminder" = "both"
+  ): Promise<OrderWhatsAppMessageResponse> {
+    return await api.post<OrderWhatsAppMessageResponse>(
+      `/orders/${orderId}/whatsapp-message`,
+      { mode }
+    );
+  },
 };
+

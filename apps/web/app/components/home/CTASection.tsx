@@ -5,7 +5,7 @@ import { useAuth } from "../../../context/AuthContext";
 
 export default function CTASection() {
   const { user, isAuthenticated, isOnboarded } = useAuth();
-  const destination = !isAuthenticated ? "/register" : user?.role === "merchant" ? (isOnboarded ? "/dashboard" : "/onboarding") : "/user";
+  const destination = !isAuthenticated ? "/register" : user?.role === "merchant" ? (isOnboarded ? "/chat" : "/onboarding") : "/user";
 
   return (
     <section className="brand-glow w-full border-b border-border py-16 sm:py-24">
@@ -22,7 +22,7 @@ export default function CTASection() {
           href={destination}
           className="btn-brand-solid h-12 px-10 rounded-xl shadow-xs flex justify-center items-center text-sm font-medium font-intert active:scale-95 transition-all"
         >
-          {isAuthenticated ? "Go to Dashboard" : "Get started free"}
+          {isAuthenticated ? (user?.role === "merchant" ? "Go to Chat" : "Go to Shop") : "Get started free"}
         </Link>
       </div>
     </section>

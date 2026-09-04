@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, delete
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
@@ -168,9 +168,26 @@ async def update_order(
     order: Order,
     new_status: OrderStatus | None = None,
     paid_amount: Decimal | None = None,
+    items: list[OrderItemCreate] | None = None,
     changed_by: ActorType = ActorType.merchant,
     reason: str | None = None,
 ) -> Order:
+    if items is not None and len(items) > 0:
+        await db.execute(delete(OrderItem).where(OrderItem.order_id == order.id))
+        new_total = Decimal("0.00")
+        for item_data in items:
+            subtotal = Decimal(str(item_data.quantity)) * Decimal(str(item_data.unit_price_snapshot))
+            new_total += subtotal
+            order_item = OrderItem(
+                order_id=order.id,
+                product_id=item_data.product_id,
+                product_name_snapshot=item_data.product_name_snapshot.strip(),
+                quantity=item_data.quantity,
+                unit_price_snapshot=item_data.unit_price_snapshot,
+            )
+            db.add(order_item)
+        order.total_amount = new_total
+
     if new_status is not None and new_status != order.status:
         history = OrderStatusHistory(
             order_id=order.id,
@@ -186,7 +203,7 @@ async def update_order(
         order.paid_amount = paid_amount
 
     await db.flush()
-    await db.refresh(order)
+    await db.commit()
 
     loaded = await get_by_id(db, order.id)
     return loaded if loaded is not None else order

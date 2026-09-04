@@ -245,20 +245,10 @@ function OrderRow({
             )}
 
             {order.status === "paid" && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                  <Check size={13} />
-                  Fully Paid
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onWhatsAppClick?.(order)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-surface hover:bg-surface-muted text-xs font-medium text-secondary cursor-pointer"
-                >
-                  <WhatsAppIcon size={13} />
-                  <span>Send Receipt</span>
-                </button>
-              </div>
+              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                <Check size={13} />
+                Fully Paid
+              </span>
             )}
 
             {order.status === "cancelled" && (
