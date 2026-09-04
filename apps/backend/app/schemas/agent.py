@@ -3,10 +3,21 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 from app.models.agent_run import AgentPersona, AgentRunStatus
 
+class AttachedCustomerDTO(BaseModel):
+    customer_id: uuid.UUID | None = None
+    customer_connection_id: uuid.UUID | None = None
+    customer_name: str | None = None
+    customer_phone: str | None = None
+
 class AgentChatRequest(BaseModel):
     message: str
     session_id: uuid.UUID | None = None
     persona: AgentPersona = AgentPersona.merchant_admin
+    target_customer_id: uuid.UUID | None = None
+    target_customer_connection_id: uuid.UUID | None = None
+    target_customer_name: str | None = None
+    target_customer_phone: str | None = None
+    target_customers: list[AttachedCustomerDTO] | None = None
 
 class RenameSessionRequest(BaseModel):
     title: str

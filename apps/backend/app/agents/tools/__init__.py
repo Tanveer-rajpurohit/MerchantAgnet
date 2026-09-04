@@ -1,15 +1,3 @@
-"""
-PydanticAI tool registry for the MerchantAgent.
-  - catalog.py   : get_product_catalog, search_store_knowledge, add_product, update_product, delete_product
-  - expenses.py  : record_expense, get_current_expenses, update_expense, delete_expense
-  - customers.py : get_recent_customers, resolve_customer
-  - orders.py    : create_order
-  - payments.py  : create_payment_link, check_payment_status, list_payment_links
-  - campaigns.py : create_campaign
-  - audit.py     : get_audit_log
-"""
-
-from app.agents.base_agent import merchant_agent
 from app.agents.tools.common import (
     _is_merchant,
     _merchant_id,
@@ -53,30 +41,37 @@ from app.agents.tools.audit import (
 )
 
 __all__ = [
-    "merchant_agent",
+    # Helpers
     "_is_merchant",
     "_merchant_id",
     "_actor_user_id",
     "_guard_merchant",
+    # Catalog
     "get_product_catalog",
     "search_store_knowledge",
     "add_product",
     "update_product",
     "delete_product",
+    # Expenses
     "record_expense",
     "get_current_expenses",
     "update_expense",
     "delete_expense",
+    # Customers
     "get_recent_customers",
     "resolve_customer",
     "send_message_to_customer",
+    # Orders
     "create_order",
     "update_order_status",
     "list_orders",
+    # Payments
     "create_payment_link",
     "check_payment_status",
     "list_payment_links",
     "_format_link_status",
+    # Campaigns
     "create_campaign",
+    # Audit
     "get_audit_log",
 ]

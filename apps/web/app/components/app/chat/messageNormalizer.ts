@@ -43,7 +43,10 @@ export function normalizeMessageContent(content: string): string {
     return "\n\n" + lines.map((l: string) => `> ${l}`).join("\n") + "\n\n";
   });
 
-  // 5. Remove raw decorative emoji slop from headings
+  // 5. Strip broken Unicode replacement characters and decorative bullets
+  text = text.replace(/\uFFFD/g, "");
+  text = text.replace(/^[ \t]*[\u25C6\u25C7\u25CA\u25C8\u25C9\u25CE\u25CF\u25B6\u25B7\u25BA\u25BB\u25C4\u25C5\u25E6\u2022\u2219◆◇◈►▶▸→]\s*/gm, "");
+  text = text.replace(/(?:^|\n)[ \t]*[\u25C6◆◈]\s*(?:Next Step|NEXT STEP)/gim, "\n**NEXT STEP:**");
   text = text.replace(/^[ \t]*[🚀📌✅📈📊💡🛍️⚠️⚡🎯]\s*/gm, "");
 
   // 6. Auto-wrap unwrapped message templates (including Dear / Hi / Subject: lines) into blockquotes

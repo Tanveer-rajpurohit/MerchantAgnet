@@ -36,14 +36,14 @@ class Settings(BaseSettings):
     )
 
     AGENT_BASE_URL: str = Field(
-        default="https://api.groq.com/openai/v1",
+        default="https://api.sarvam.ai/v1",
         validation_alias=AliasChoices("AGENT_BASE_URL"),
     )
     AGENT_API_KEY: str = Field(
         validation_alias=AliasChoices("AGENT_API_KEY"),
     )
     AGENT_MODEL: str = Field(
-        default="qwen/qwen3.8-27b",
+        default="sarvam-105b",
         validation_alias=AliasChoices("AGENT_MODEL"),
     )
     

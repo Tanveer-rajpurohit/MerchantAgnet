@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, ArrowRight } from "lucide-react";
 import { ThinkingOrb } from "thinking-orbs";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -11,6 +11,7 @@ import { CatalogStockCard, StockItem } from "./CatalogStockCard";
 import { CampaignGateCard } from "./CampaignGateCard";
 import { RevenueSummaryCard, RevenueMetric } from "./RevenueSummaryCard";
 import { MessageSnippetCard } from "./MessageSnippetCard";
+import { RateLimitCard } from "./RateLimitCard";
 import { normalizeMessageContent } from "./messageNormalizer";
 
 export interface ChatMessageData {
@@ -43,6 +44,9 @@ export interface ChatMessageData {
     offerMessage: string;
   };
   revenueSummary?: RevenueMetric;
+  rateLimit?: {
+    isRateLimited: boolean;
+  };
 }
 
 interface ChatMessageItemProps {
@@ -163,6 +167,19 @@ export function ChatMessageItem({
                       </h3>
                     );
                   }
+                  const cleanPText = text.replace(/^[\s\uFFFD\u25C6\u25C7\u25CA\u25C8\u25C9\u25CE\u25CF\u25B6\u25B7\u25BA\u25BB\u25C4\u25C5\u25E6\u2022\u2219◆◇◈►▶▸→\-–—\.]+\s*/, "");
+                  const actionInPMatch = cleanPText.match(/^(NEXT STEPS?|ACTIONABLE NEXT STEPS?)\s*[:\-–—]\s*([\s\S]*)$/i);
+                  if (actionInPMatch) {
+                    return (
+                      <div className="my-3 flex items-start gap-2">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-brand bg-brand/10 border border-brand/20 uppercase tracking-wider shrink-0 shadow-xs mt-0.5">
+                          <ArrowRight size={11} className="shrink-0" />
+                          <span>NEXT STEP</span>
+                        </span>
+                        <span className="text-secondary text-sm leading-relaxed">{actionInPMatch[2]}</span>
+                      </div>
+                    );
+                  }
                   const isSectionDivider =
                     /^(?:EXECUTIVE SUMMARY|DATA TABLES?(?:\s*\/\s*SCENARIO COMPARISONS?)?|KEY (?:BUSINESS )?INSIGHTS?|NEXT STEP|ACTIONABLE NEXT STEP|ARITHMETIC BREAKDOWN|STATUS|STOCK HEALTH|RECOMMENDATION|SCENARIOS?|QUICK BUSINESS TAKE|INVENTORY STATUS|QUICK CHECKLIST.*|EXAMPLE.*):?$/i.test(
                       text
@@ -245,26 +262,40 @@ export function ChatMessageItem({
                   );
                 },
                 strong: ({ children }) => {
-                  const text = extractText(children).trim();
+                  const rawText = extractText(children).trim();
+                  const cleanText = rawText.replace(/^[\s\uFFFD\u25C6\u25C7\u25CA\u25C8\u25C9\u25CE\u25CF\u25B6\u25B7\u25BA\u25BB\u25C4\u25C5\u25E6\u2022\u2219◆◇◈►▶▸→\-–—\.]+\s*/, "");
                   const isActionLabel =
-                    /^(?:NEXT STEP|ACTIONABLE NEXT STEP|ACTION|RECOMMENDATION):?$/i.test(
-                      text
+                    /^(?:NEXT STEPS?|ACTIONABLE NEXT STEPS?|ACTION|RECOMMENDATIONS?):?$/i.test(
+                      cleanText
                     );
                   if (isActionLabel) {
                     return (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-brand bg-brand/10 border border-brand/20 uppercase tracking-wider mr-2 my-0.5 align-middle shadow-xs">
-                        {text.replace(/:$/, "")}
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-brand bg-brand/10 border border-brand/20 uppercase tracking-wider mr-2 my-0.5 align-middle shadow-xs">
+                        <ArrowRight size={11} className="shrink-0" />
+                        <span>{cleanText.replace(/:$/, "")}</span>
+                      </span>
+                    );
+                  }
+                  const actionPrefixMatch = cleanText.match(/^(NEXT STEPS?|ACTIONABLE NEXT STEPS?|ACTION|RECOMMENDATIONS?)\s*[:\-–—]\s*(.*)$/i);
+                  if (actionPrefixMatch) {
+                    return (
+                      <span className="inline-flex flex-wrap items-center gap-1.5 my-1 align-middle">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-brand bg-brand/10 border border-brand/20 uppercase tracking-wider align-middle shadow-xs">
+                          <ArrowRight size={11} className="shrink-0" />
+                          <span>{actionPrefixMatch[1].toUpperCase()}</span>
+                        </span>
+                        <span className="font-semibold text-primary">{actionPrefixMatch[2]}</span>
                       </span>
                     );
                   }
                   const isMetricLabel =
                     /^(?:Velocity Signal|Margin Insight|Margin Watch|Restock Alert|Revenue Snapshot|Fastest-Selling Signal|Stock after|High-Margin Drivers|Cross-Sell Pairing|Total|Remaining stock):?$/i.test(
-                      text
+                      cleanText
                     );
                   if (isMetricLabel) {
                     return (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium text-primary bg-surface-muted border border-border uppercase tracking-wider mr-2 my-0.5 align-middle shadow-xs">
-                        {text.replace(/:$/, "")}
+                        {cleanText.replace(/:$/, "")}
                       </span>
                     );
                   }
@@ -363,6 +394,10 @@ export function ChatMessageItem({
 
         {message.revenueSummary && (
           <RevenueSummaryCard data={message.revenueSummary} />
+        )}
+
+        {message.rateLimit?.isRateLimited && (
+          <RateLimitCard />
         )}
 
         {message.content && !isStreaming && (

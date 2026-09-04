@@ -5,6 +5,8 @@ import { ThinkingOrb } from "thinking-orbs";
 import {
   ChatInput,
   ChatMessageItem,
+  extractCardsFromRun,
+  extractCardsFromData,
 } from "../../../components/app/chat";
 import type { ActionMode, ChatMessageData } from "../../../components/app/chat";
 import type { AgentStep } from "../../../components/app/chat/AgentThinking";
@@ -12,6 +14,7 @@ import {
   useSessionHistory,
   useAgentStream,
 } from "../../../../hooks";
+import { useAgentChatStore } from "../../../../stores/useAgentChatStore";
 
 function formatLatency(ms?: number): string {
   if (!ms || ms <= 0) return "240ms";
@@ -38,8 +41,23 @@ export default function ChatSessionPage({
 
   const { data: historyData, isLoading } = useSessionHistory(chatId);
   const { sendMessage, isStreaming, streamingUserMessage, streamingAssistantResponse } = useAgentStream();
+  const storeRuns = useAgentChatStore((s) => s.runs);
 
-  const runs = historyData?.runs || [];
+  const historyRuns = historyData?.runs || [];
+  const runs = [...historyRuns];
+  for (const sr of storeRuns) {
+    if (
+      sr.session_id === chatId &&
+      !runs.some(
+        (r) =>
+          r.id === sr.id ||
+          (r.user_message === sr.user_message &&
+            Math.abs(new Date(r.created_at).getTime() - new Date(sr.created_at).getTime()) < 10000)
+      )
+    ) {
+      runs.push(sr);
+    }
+  }
   const sessionTitle = runs.length > 0 ? runs[0]?.user_message.slice(0, 45) : "Merchant Conversation";
 
   const handleScroll = () => {
@@ -63,11 +81,15 @@ export default function ChatSessionPage({
     el.scrollTop = el.scrollHeight;
   }, [runs.length]);
 
-  const handleSend = (text: string, _mode?: ActionMode) => {
+  const handleSend = (
+    text: string,
+    _mode?: ActionMode,
+    attachedCustomer?: any,
+  ) => {
     const trimmed = text.trim();
-    if (!trimmed || isStreaming) return;
+    if (!trimmed) return;
     setQuery("");
-    sendMessage(trimmed, "merchant_admin", chatId);
+    sendMessage(trimmed, "merchant_admin", chatId, attachedCustomer);
   };
 
   const messages: ChatMessageData[] = [];
@@ -103,6 +125,8 @@ export default function ChatSessionPage({
       });
     }
 
+    const cards = extractCardsFromRun(run);
+
     messages.push({
       id: `assistant-${run.id}`,
       role: "assistant",
@@ -113,6 +137,7 @@ export default function ChatSessionPage({
         steps,
         detailedThought: `User asked: "${run.user_message}"\nVerified against store catalog and operational database.\nRendered live response with pricing and stock levels.`,
       },
+      ...cards,
     });
   });
 
@@ -154,6 +179,7 @@ export default function ChatSessionPage({
                     id: "active-assistant-turn",
                     role: "assistant",
                     content: streamingAssistantResponse,
+                    ...extractCardsFromData(streamingAssistantResponse, undefined, streamingUserMessage),
                     thinking: {
                       durationSeconds: 2,
                       summary: "Analyzing live store inventory & policies...",

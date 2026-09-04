@@ -16,7 +16,10 @@ def cosine_similarity(a: list[float], b: list[float]) -> float:
     return float(np.dot(v1, v2) / denom)
 
 async def index_product(db: AsyncSession, merchant_id: uuid.UUID, product: Product) -> KnowledgeChunk:
-    content = f"{product.product_name} - Selling Price: ₹{product.selling_price}, Current Stock: {product.current_stock} units"
+    content = (
+        f"{product.product_name} - Selling Price: ₹{product.selling_price:.2f}, "
+        f"Cost Price: ₹{product.cost_price:.2f}, Current Stock: {product.current_stock} units"
+    )
     vector = get_embedding(content)
     
     stmt = select(KnowledgeChunk).where(
@@ -38,6 +41,15 @@ async def index_product(db: AsyncSession, merchant_id: uuid.UUID, product: Produ
         db.add(chunk)
     await db.flush()
     return chunk
+
+async def delete_product_chunk(db: AsyncSession, merchant_id: uuid.UUID, product_id: uuid.UUID) -> None:
+    from sqlalchemy import delete
+    stmt = delete(KnowledgeChunk).where(
+        KnowledgeChunk.merchant_id == merchant_id,
+        KnowledgeChunk.source_id == product_id,
+    )
+    await db.execute(stmt)
+    await db.flush()
 
 from app.models.address import Address
 
@@ -154,7 +166,11 @@ async def search_catalog_chunks(
             prod = await db.get(Product, chunk.source_id)
             if prod:
                 results.append(
-                    f"{prod.product_name}: ₹{prod.selling_price} ({prod.current_stock} in stock)"
+                    f"- {prod.product_name}: Selling Price ₹{prod.selling_price:.2f} | "
+                    f"Cost Price ₹{prod.cost_price:.2f} | "
+                    f"Current Stock: {prod.current_stock} units | "
+                    f"Low Stock Threshold: {prod.low_stock_alert or 5} | "
+                    f"PRODUCT_ID: {prod.id}"
                 )
                 continue
         results.append(chunk.content)

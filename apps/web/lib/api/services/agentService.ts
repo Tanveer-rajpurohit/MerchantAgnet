@@ -79,6 +79,10 @@ export const agentService = {
     const decoder = new TextDecoder();
     let buffer = "";
 
+    let hasReceivedDone = false;
+    let finalSessionId = "";
+    let finalRunId = "";
+
     try {
       while (true) {
         const { done, value } = await reader.read();
@@ -92,14 +96,22 @@ export const agentService = {
           const trimmed = line.trim();
           if (trimmed.startsWith("data: ")) {
             const raw = trimmed.slice(6);
-            if (raw === "[DONE]") break;
+            if (raw === "[DONE]") {
+              hasReceivedDone = true;
+              break;
+            }
             try {
               const event: AgentStreamEvent = JSON.parse(raw);
+              if (event.session_id) finalSessionId = event.session_id;
+              if (event.run_id) finalRunId = event.run_id;
+
               if (event.type === "token" && event.content) {
                 callbacks.onToken(event.content, event.session_id || "");
               } else if (event.type === "done") {
+                hasReceivedDone = true;
                 callbacks.onDone?.(event.session_id || "", event.run_id || "");
               } else if (event.type === "error") {
+                hasReceivedDone = true;
                 callbacks.onError?.(new Error(event.content || "Agent error occurred"));
               }
             } catch {
@@ -107,6 +119,10 @@ export const agentService = {
             }
           }
         }
+      }
+
+      if (!hasReceivedDone) {
+        callbacks.onDone?.(finalSessionId || payload.session_id || "", finalRunId || "");
       }
     } catch (err) {
       if ((err as Error).name === "AbortError") return;

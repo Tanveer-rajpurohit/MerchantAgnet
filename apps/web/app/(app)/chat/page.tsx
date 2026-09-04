@@ -7,6 +7,8 @@ import {
   ChatInput,
   ChatSuggestions,
   ChatMessageItem,
+  extractCardsFromRun,
+  extractCardsFromData,
 } from "../../components/app/chat";
 import type { ActionMode, ChatMessageData } from "../../components/app/chat";
 import type { AgentStep } from "../../components/app/chat/AgentThinking";
@@ -33,8 +35,11 @@ function ChatContent() {
   const { runs, clearChat } = useAgentChatStore();
 
   useEffect(() => {
-    clearChat();
-  }, [clearChat]);
+    if (!isStreaming) {
+      clearChat();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleScroll = () => {
     const el = scrollContainerRef.current;
@@ -58,11 +63,11 @@ function ChatContent() {
   }, [runs.length]);
 
   const handleSend = useCallback(
-    (text: string, _mode?: ActionMode) => {
+    (text: string, _mode?: ActionMode, attachedCustomer?: any) => {
       const trimmed = text.trim();
-      if (!trimmed || isStreaming) return;
+      if (!trimmed) return;
       setQuery("");
-      sendMessage(trimmed, "merchant_admin", null);
+      sendMessage(trimmed, "merchant_admin", null, attachedCustomer);
     },
     [isStreaming, sendMessage]
   );
@@ -127,6 +132,8 @@ function ChatContent() {
       });
     }
 
+    const cards = extractCardsFromRun(run);
+
     messages.push({
       id: `assistant-${run.id}`,
       role: "assistant",
@@ -137,6 +144,7 @@ function ChatContent() {
         steps,
         detailedThought: `User asked: "${run.user_message}"\nVerified against store catalog and operational database.\nRendered live response with pricing and stock levels.`,
       },
+      ...cards,
     });
   });
 
@@ -189,6 +197,7 @@ function ChatContent() {
                       id: "active-assistant-turn",
                       role: "assistant",
                       content: streamingAssistantResponse,
+                      ...extractCardsFromData(streamingAssistantResponse, undefined, streamingUserMessage),
                       thinking: {
                         durationSeconds: 2,
                         summary: "Analyzing live store inventory & policies...",

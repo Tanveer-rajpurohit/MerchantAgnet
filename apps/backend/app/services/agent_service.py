@@ -1,12 +1,18 @@
+import asyncio
+import logging
 import time
 import uuid
 from datetime import datetime
 from typing import AsyncGenerator
+
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.user import User
-from app.models.agent_run import AgentRun, AgentPersona, AgentRunStatus
 from app.models.merchant_profile import MerchantProfile
+from app.models.agent_run import AgentRun, AgentPersona, AgentRunStatus
+from app.models.address import Address
 from app.schemas.agent import (
     AgentChatRequest,
     AgentRunDTO,
@@ -14,33 +20,16 @@ from app.schemas.agent import (
     ChatSessionListResponse,
     ChatSessionHistoryResponse,
 )
-from app.agents.deps import MerchantAgentDeps
-from app.agents.base_agent import merchant_agent
+from app.agents.deps import MerchantAgentDeps, StoreProfileContext
+from app.agents.pydanticai_tool import merchant_agent
 from app.repositories import agent_repository
-from sqlalchemy import select
 from pydantic_ai.messages import ModelRequest, ModelResponse, UserPromptPart, TextPart
 
-async def stream_merchant_chat(
-    db: AsyncSession,
-    user: User,
-    payload: AgentChatRequest,
-) -> AsyncGenerator[dict, None]:
-    start_time = time.time()
-    session_id = payload.session_id or uuid.uuid4()
+logger = logging.getLogger(__name__)
 
-    res = await db.execute(select(MerchantProfile).where(MerchantProfile.user_id == user.id))
-    profile = res.scalar_one_or_none()
-    if not profile:
-        yield {"type": "error", "content": "Merchant profile not found for this user."}
-        return
 
-    from app.models.address import Address
-    from app.agents.deps import StoreProfileContext
-
-    addr_stmt = select(Address).where(Address.user_id == user.id).order_by(Address.is_default.desc())
-    addr = (await db.execute(addr_stmt)).scalars().first()
-
-    store_profile = StoreProfileContext(
+def _build_store_profile(profile: MerchantProfile, user: User, addr: Address | None) -> StoreProfileContext:
+    return StoreProfileContext(
         store_name=profile.business_name if profile else "Your Store",
         category=profile.business_type if profile else "Retail Store",
         owner_name=user.full_name or "Store Owner",
@@ -54,73 +43,305 @@ async def stream_merchant_chat(
         upi_vpa=profile.upi_vpa if profile and profile.upi_vpa else "",
     )
 
+
+async def _load_merchant_context(db: AsyncSession, user: User) -> tuple[MerchantProfile, StoreProfileContext]:
+    """Resolve the merchant profile + assembled store profile for a user."""
+    res = await db.execute(select(MerchantProfile).where(MerchantProfile.user_id == user.id))
+    profile = res.scalar_one_or_none()
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Merchant profile not found for this user.",
+        )
+    addr_stmt = select(Address).where(Address.user_id == user.id).order_by(Address.is_default.desc())
+    addr = (await db.execute(addr_stmt)).scalars().first()
+    return profile, _build_store_profile(profile, user, addr)
+
+
+
+async def stream_merchant_chat(
+    db: AsyncSession,
+    user: User,
+    payload: AgentChatRequest,
+) -> AsyncGenerator[dict, None]:
+    """Stream one merchant_admin chat turn over SSE."""
+    start_time = time.time()
+    session_id = payload.session_id or uuid.uuid4()
+
+    try:
+        profile, store_profile = await _load_merchant_context(db, user)
+    except HTTPException as he:
+        yield {"type": "error", "content": he.detail}
+        return
+
+    target_cust_list = [
+        {
+            "customer_id": str(tc.customer_id) if tc.customer_id else None,
+            "customer_connection_id": str(tc.customer_connection_id) if tc.customer_connection_id else None,
+            "customer_name": tc.customer_name or "Customer",
+            "customer_phone": tc.customer_phone,
+        }
+        for tc in (payload.target_customers or [])
+    ]
+    if not target_cust_list and payload.target_customer_name:
+        target_cust_list.append({
+            "customer_id": str(payload.target_customer_id) if payload.target_customer_id else None,
+            "customer_connection_id": str(payload.target_customer_connection_id) if payload.target_customer_connection_id else None,
+            "customer_name": payload.target_customer_name,
+            "customer_phone": payload.target_customer_phone,
+        })
+
+    t_name = payload.target_customer_name or (target_cust_list[0]["customer_name"] if target_cust_list else None)
+    t_phone = payload.target_customer_phone or (target_cust_list[0]["customer_phone"] if target_cust_list else None)
+    t_conn_id = payload.target_customer_connection_id
+    if not t_conn_id and target_cust_list and target_cust_list[0].get("customer_connection_id"):
+        try:
+            t_conn_id = uuid.UUID(target_cust_list[0]["customer_connection_id"])
+        except (ValueError, TypeError):
+            pass
+
+    t_cust_id = payload.target_customer_id
+    if not t_cust_id and target_cust_list and target_cust_list[0].get("customer_id"):
+        try:
+            t_cust_id = uuid.UUID(target_cust_list[0]["customer_id"])
+        except (ValueError, TypeError):
+            pass
+
     deps = MerchantAgentDeps(
         db=db,
         merchant=profile,
         user=user,
+        user_id=user.id,
         session_id=session_id,
         persona=payload.persona,
         store_profile=store_profile,
         current_date=datetime.now().strftime("%B %d, %Y"),
+        target_customer_id=t_cust_id,
+        target_customer_connection_id=t_conn_id,
+        target_customer_name=t_name,
+        target_customer_phone=t_phone,
+        target_customers=target_cust_list,
     )
 
-    # 1. Multi-turn memory: load previous turns for this session
+    # 1. Multi-turn memory: last 2 turns of this session (budget capped to prevent token bloat)
     previous_runs = await agent_repository.get_session_runs(
-        db=db,
-        merchant_id=profile.id,
-        session_id=session_id,
+        db=db, merchant_id=profile.id, session_id=session_id,
     )
-    
     message_history: list[ModelRequest | ModelResponse] = []
-    # Take last 6 turns for optimal token budget and to avoid TPM rate limits
-    for run in previous_runs[-6:]:
-        message_history.append(
-            ModelRequest(parts=[UserPromptPart(content=run.user_message)])
-        )
-        message_history.append(
-            ModelResponse(parts=[TextPart(content=run.agent_response)])
-        )
+    for run in previous_runs[-2:]:
+        resp_text = run.agent_response or ""
+        if len(resp_text) > 500:
+            resp_text = resp_text[:500] + "..."
+        message_history.append(ModelRequest(parts=[UserPromptPart(content=run.user_message)]))
+        message_history.append(ModelResponse(parts=[TextPart(content=resp_text)]))
 
     full_response = ""
     tools_invoked: list[dict] = []
+    run_status = AgentRunStatus.success
+    error_detail: str | None = None
 
-    # 2. Execute streaming with conversation memory
-    async with merchant_agent.run_stream(
-        payload.message,
-        deps=deps,
-        message_history=message_history if message_history else None,
-    ) as stream:
-        async for chunk in stream.stream_text(delta=True):
-            full_response += chunk
-            yield {"type": "token", "content": chunk, "session_id": str(session_id)}
+    # 2. Stream the agent
+    try:
+        async with merchant_agent.run_stream(
+            payload.message,
+            deps=deps,
+            message_history=message_history if message_history else None,
+        ) as stream:
+            async for chunk in stream.stream_text(delta=True):
+                full_response += chunk
+                yield {"type": "token", "content": chunk, "session_id": str(session_id)}
 
-        for msg in stream.all_messages():
-            if hasattr(msg, "parts"):
-                for part in msg.parts:
-                    if hasattr(part, "tool_name"):
-                        tools_invoked.append({
-                            "tool": getattr(part, "tool_name", ""),
-                            "args": getattr(part, "args", {}),
-                            "content": getattr(part, "content", ""),
-                        })
+            for msg in stream.all_messages():
+                if hasattr(msg, "parts"):
+                    for part in msg.parts:
+                        if hasattr(part, "tool_name"):
+                            tools_invoked.append({
+                                "tool": getattr(part, "tool_name", ""),
+                                "args": getattr(part, "args", {}),
+                                "content": getattr(part, "content", ""),
+                            })
+
+        # Fallback if streaming endpoint closed before post-tool completion (e.g. Sarvam / certain OpenAI-compatible endpoints)
+        if not full_response.strip():
+            summary_lines = []
+            if deps.created_payment_links:
+                for pl in deps.created_payment_links:
+                    cname = pl.get("customer_name") or deps.target_customer_name or "the customer"
+                    summary_lines.append(f"Payment link for ₹{pl['amount']:.2f} created for {cname}: {pl['url']}")
+            if deps.created_orders:
+                for ord_info in deps.created_orders:
+                    cname = ord_info.get("customer_name") or "Customer"
+                    summary_lines.append(f"Order created for {cname} (Total: ₹{ord_info.get('total', 0):.2f}).")
+            if deps.sent_messages:
+                for sm in deps.sent_messages:
+                    recs = sm.get("recipients", [])
+                    rec_str = f" to {', '.join(recs)}" if recs else ""
+                    summary_lines.append(f"Message successfully delivered{rec_str}.")
+
+            if summary_lines:
+                full_response = "\n".join(summary_lines)
+            else:
+                logger.info("Streaming yielded empty text after tool call. Executing non-streaming synthesis fallback...")
+                run_res = await merchant_agent.run(
+                    payload.message,
+                    deps=deps,
+                    message_history=message_history if message_history else None,
+                )
+                full_response = getattr(run_res, "output", getattr(run_res, "data", "")) or ""
+                if not tools_invoked:
+                    for msg in run_res.all_messages():
+                        if hasattr(msg, "parts"):
+                            for part in msg.parts:
+                                if hasattr(part, "tool_name"):
+                                    tools_invoked.append({
+                                        "tool": getattr(part, "tool_name", ""),
+                                        "args": getattr(part, "args", {}),
+                                        "content": getattr(part, "content", ""),
+                                    })
+
+            words = full_response.split(" ")
+            for i, w in enumerate(words):
+                token = w if i == len(words) - 1 else w + " "
+                yield {"type": "token", "content": token, "session_id": str(session_id)}
+                await asyncio.sleep(0.01)
+    except Exception as agent_err:
+        logger.exception("Agent run failed: %s", agent_err)
+        run_status = AgentRunStatus.failed
+        error_detail = str(agent_err)
+        err_str = str(agent_err).lower()
+
+        is_rate_limit = (
+            "429" in err_str
+            or "rate_limit" in err_str
+            or "rate limit" in err_str
+            or "quota" in err_str
+            or "resource_exhausted" in err_str
+            or "too many requests" in err_str
+        )
+
+        if is_rate_limit:
+            friendly_text = (
+                "Current load is too high. Please wait a few seconds, or upgrade to Premium for dedicated AI capacity."
+            )
+        else:
+            friendly_text = (
+                "The agent encountered a temporary issue while processing your request. Please try again or rephrase."
+            )
+
+        # Emit the token so the live chat displays the friendly notice and mounts the upgrade card
+        yield {"type": "token", "content": friendly_text, "session_id": str(session_id)}
+        full_response = friendly_text
 
     latency_ms = int((time.time() - start_time) * 1000)
 
-    # 3. Persist this turn to agent_runs
+    # 3. Persist the run (success OR failure) for the audit trail
     agent_run = AgentRun(
         session_id=session_id,
         merchant_id=profile.id,
         persona=payload.persona,
         user_message=payload.message,
-        agent_response=full_response,
+        agent_response=full_response or "(no response)",
         tools_invoked=tools_invoked,
-        status=AgentRunStatus.success,
+        status=run_status,
         latency_ms=latency_ms,
+        error_detail=error_detail,
     )
     db.add(agent_run)
     await db.commit()
 
     yield {"type": "done", "session_id": str(session_id), "run_id": str(agent_run.id)}
+
+
+
+async def run_customer_chat(
+    db: AsyncSession,
+    merchant_profile: MerchantProfile,
+    store_profile: StoreProfileContext,
+    customer: User | None,
+    message: str,
+) -> tuple[str, list[dict]]:
+
+    start_time = time.time()
+    deps = MerchantAgentDeps(
+        db=db,
+        merchant=merchant_profile,
+        user=customer,
+        user_id=customer.id if customer else None,
+        persona=AgentPersona.customer_shopfront,
+        store_profile=store_profile,
+        current_date=datetime.now().strftime("%B %d, %Y"),
+    )
+
+    full_response = ""
+    tools_invoked: list[dict] = []
+
+    try:
+        async with merchant_agent.run_stream(message, deps=deps) as stream:
+            async for chunk in stream.stream_text(delta=True):
+                full_response += chunk
+            for msg in stream.all_messages():
+                if hasattr(msg, "parts"):
+                    for part in msg.parts:
+                        if hasattr(part, "tool_name"):
+                            tools_invoked.append({
+                                "tool": getattr(part, "tool_name", ""),
+                                "args": getattr(part, "args", {}),
+                            })
+        if (not full_response or not full_response.strip()) and tools_invoked:
+            logger.info("Customer stream emitted tool calls without final text. Running fallback merchant_agent.run...")
+            fallback_res = await merchant_agent.run(message, deps=deps)
+            full_response = getattr(fallback_res, "output", getattr(fallback_res, "data", "")) or ""
+            if hasattr(fallback_res, "all_messages"):
+                for msg in fallback_res.all_messages():
+                    if hasattr(msg, "parts"):
+                        for part in msg.parts:
+                            if hasattr(part, "tool_name"):
+                                tools_invoked.append({
+                                    "tool": getattr(part, "tool_name", ""),
+                                    "args": getattr(part, "args", {}),
+                                })
+        run_status = AgentRunStatus.success
+        error_detail = None
+    except Exception as agent_err:
+        logger.exception("Customer agent run failed: %s", agent_err)
+        err_str = str(agent_err).lower()
+        if (
+            "429" in err_str
+            or "rate_limit" in err_str
+            or "rate limit" in err_str
+            or "quota" in err_str
+            or "too many requests" in err_str
+        ):
+            full_response = (
+                "The store assistant is currently experiencing high demand. Please try again in a few moments."
+            )
+        else:
+            full_response = (
+                "I'm sorry, I couldn't process that just now. Please message the store "
+                "directly and the owner will get back to you."
+            )
+        run_status = AgentRunStatus.failed
+        error_detail = str(agent_err)
+
+    latency_ms = int((time.time() - start_time) * 1000)
+
+    # Persist the customer-side run (merchant_id scopes it to this store)
+    agent_run = AgentRun(
+        merchant_id=merchant_profile.id,
+        persona=AgentPersona.customer_shopfront,
+        user_message=message,
+        agent_response=full_response,
+        tools_invoked=tools_invoked,
+        status=run_status,
+        latency_ms=latency_ms,
+        error_detail=error_detail,
+    )
+    db.add(agent_run)
+    await db.commit()
+
+    return full_response, tools_invoked
+
+
 
 async def list_merchant_sessions(
     db: AsyncSession,
@@ -129,16 +350,12 @@ async def list_merchant_sessions(
     limit: int = 20,
 ) -> ChatSessionListResponse:
     sessions, next_cursor, has_more = await agent_repository.list_merchant_sessions(
-        db=db,
-        merchant_id=merchant_id,
-        cursor=cursor,
-        limit=limit,
+        db=db, merchant_id=merchant_id, cursor=cursor, limit=limit,
     )
     return ChatSessionListResponse(
-        sessions=sessions,
-        next_cursor=next_cursor,
-        has_more=has_more,
+        sessions=sessions, next_cursor=next_cursor, has_more=has_more,
     )
+
 
 async def rename_session(
     db: AsyncSession,
@@ -152,10 +369,7 @@ async def rename_session(
             detail="Session title cannot be empty",
         )
     summary = await agent_repository.rename_session(
-        db=db,
-        merchant_id=merchant_id,
-        session_id=session_id,
-        new_title=new_title.strip(),
+        db=db, merchant_id=merchant_id, session_id=session_id, new_title=new_title.strip(),
     )
     if not summary:
         raise HTTPException(
@@ -165,15 +379,14 @@ async def rename_session(
     await db.commit()
     return summary
 
+
 async def get_session_history(
     db: AsyncSession,
     merchant_id: uuid.UUID,
     session_id: uuid.UUID,
 ) -> ChatSessionHistoryResponse:
     runs = await agent_repository.get_session_runs(
-        db=db,
-        merchant_id=merchant_id,
-        session_id=session_id,
+        db=db, merchant_id=merchant_id, session_id=session_id,
     )
     if not runs:
         raise HTTPException(
@@ -182,10 +395,9 @@ async def get_session_history(
         )
     run_dtos = [AgentRunDTO.model_validate(r) for r in runs]
     return ChatSessionHistoryResponse(
-        session_id=session_id,
-        runs=run_dtos,
-        total_turns=len(run_dtos),
+        session_id=session_id, runs=run_dtos, total_turns=len(run_dtos),
     )
+
 
 async def delete_session(
     db: AsyncSession,
@@ -193,9 +405,7 @@ async def delete_session(
     session_id: uuid.UUID,
 ) -> dict[str, str]:
     deleted_count = await agent_repository.delete_session_runs(
-        db=db,
-        merchant_id=merchant_id,
-        session_id=session_id,
+        db=db, merchant_id=merchant_id, session_id=session_id,
     )
     if deleted_count == 0:
         raise HTTPException(

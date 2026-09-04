@@ -5,6 +5,7 @@ from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
+from app.models.customer_connection import CustomerConnection
 from app.models.order import Order, OrderItem, OrderStatusHistory, OrderStatus, ActorType
 from app.schemas.order import OrderItemCreate
 
@@ -31,7 +32,12 @@ async def get_by_id(
 
     if customer_id is not None:
         c_id = uuid.UUID(str(customer_id)) if isinstance(customer_id, str) else customer_id
-        query = query.where(Order.customer_id == c_id)
+        query = query.outerjoin(CustomerConnection, Order.customer_connection_id == CustomerConnection.id).where(
+            or_(
+                Order.customer_id == c_id,
+                CustomerConnection.customer_id == c_id,
+            )
+        )
 
     result = await db.execute(query)
     return result.scalar_one_or_none()
@@ -87,7 +93,17 @@ async def list_by_customer(
     limit: int = 30,
 ) -> list[Order]:
     c_id = uuid.UUID(str(customer_id)) if isinstance(customer_id, str) else customer_id
-    query = select(Order).options(*order_eager_options()).where(Order.customer_id == c_id)
+    query = (
+        select(Order)
+        .options(*order_eager_options())
+        .outerjoin(CustomerConnection, Order.customer_connection_id == CustomerConnection.id)
+        .where(
+            or_(
+                Order.customer_id == c_id,
+                CustomerConnection.customer_id == c_id,
+            )
+        )
+    )
 
     if status is not None:
         query = query.where(Order.status == status)

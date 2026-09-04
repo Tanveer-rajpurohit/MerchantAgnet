@@ -46,10 +46,22 @@ export interface RenameSessionRequest {
   title: string;
 }
 
+export interface AttachedCustomerDTO {
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  customer_connection_id?: string | null;
+  customer_id?: string | null;
+}
+
 export interface AgentChatRequest {
   message: string;
   session_id?: string | null;
   persona?: AgentPersona;
+  target_customer_id?: string | null;
+  target_customer_connection_id?: string | null;
+  target_customer_name?: string | null;
+  target_customer_phone?: string | null;
+  target_customers?: AttachedCustomerDTO[] | null;
 }
 
 export interface AgentStreamEvent {
