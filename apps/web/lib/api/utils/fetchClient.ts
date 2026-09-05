@@ -9,6 +9,8 @@ const NO_REFRESH_ROUTES = [
   "/auth/register",
   "/auth/refresh",
   "/auth/google",
+  "/auth/forgot-password",
+  "/auth/reset-password",
 ];
 
 export class ApiError extends Error {

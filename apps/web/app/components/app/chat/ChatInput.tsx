@@ -47,7 +47,8 @@ export function ChatInput({
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const isListeningRef = useRef<boolean>(false);
   const baseTextRef = useRef<string>("");
-  const accumulatedRef = useRef<string>("");
+  const finalAccumulatedRef = useRef<string>("");
+  const lastFinalIndexRef = useRef<number>(-1);
 
   const [selectedCustomers, setSelectedCustomers] = useState<CustomerConnectionResponse[]>([]);
   const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
@@ -129,19 +130,21 @@ export function ChatInput({
     }
   };
 
-  const toggleSpeechRecognition = () => {
+  const startRecognitionSession = () => {
     if (typeof window === "undefined") return;
     const speechWin = window as unknown as SpeechWindow;
     const SpeechRecognition =
       speechWin.SpeechRecognition || speechWin.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
 
-    if (isListeningRef.current || isListening) {
-      stopRecognition();
-      return;
-    }
-
     try {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {}
+        recognitionRef.current = null;
+      }
+
       const recognition = new SpeechRecognition();
       const lang = selectedVoice.startsWith("hi") ? "hi-IN" : "en-IN";
       recognition.lang = lang;
@@ -149,33 +152,44 @@ export function ChatInput({
       recognition.interimResults = true;
       recognition.maxAlternatives = 1;
 
-      baseTextRef.current = value.trim();
-      accumulatedRef.current = "";
-      isListeningRef.current = true;
-      setIsListening(true);
-
       recognition.onstart = () => {
         isListeningRef.current = true;
         setIsListening(true);
       };
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
-        let finalTrans = "";
         let interimTrans = "";
+        let newFinalThisRound = "";
 
         for (let i = 0; i < event.results.length; ++i) {
           const item = event.results[i];
           if (!item || !item[0]) continue;
+          const transcript = item[0].transcript.trim();
+
           if (item.isFinal) {
-            finalTrans += (finalTrans ? " " : "") + item[0].transcript.trim();
-          } else {
-            interimTrans += (interimTrans ? " " : "") + item[0].transcript.trim();
+            if (i > lastFinalIndexRef.current && transcript) {
+              newFinalThisRound += (newFinalThisRound ? " " : "") + transcript;
+            }
+          } else if (i === event.results.length - 1) {
+            interimTrans = transcript;
           }
         }
 
-        const currentSpoken = [finalTrans, interimTrans].filter(Boolean).join(" ");
+        if (newFinalThisRound) {
+          finalAccumulatedRef.current =
+            (finalAccumulatedRef.current ? finalAccumulatedRef.current + " " : "") + newFinalThisRound;
+        }
+
+        for (let i = event.results.length - 1; i >= 0; --i) {
+          if (event.results[i]?.isFinal) {
+            lastFinalIndexRef.current = i;
+            break;
+          }
+        }
+
         const base = baseTextRef.current;
-        const fullText = base ? `${base} ${currentSpoken}` : currentSpoken;
+        const spoken = [finalAccumulatedRef.current, interimTrans].filter(Boolean).join(" ");
+        const fullText = [base, spoken].filter(Boolean).join(" ");
         handleInput(fullText);
       };
 
@@ -183,20 +197,18 @@ export function ChatInput({
         if (event.error === "no-speech") {
           return;
         }
-        stopRecognition();
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+          stopRecognition();
+        }
       };
 
       recognition.onend = () => {
         if (isListeningRef.current) {
           setTimeout(() => {
             if (isListeningRef.current) {
-              try {
-                recognition.start();
-              } catch {
-                stopRecognition();
-              }
+              startRecognitionSession();
             }
-          }, 150);
+          }, 100);
         } else {
           stopRecognition();
         }
@@ -207,6 +219,29 @@ export function ChatInput({
     } catch {
       stopRecognition();
     }
+  };
+
+  const toggleSpeechRecognition = async () => {
+    if (isListeningRef.current || isListening) {
+      stopRecognition();
+      return;
+    }
+
+    if (typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+      } catch {
+        return;
+      }
+    }
+
+    baseTextRef.current = value.trim();
+    finalAccumulatedRef.current = "";
+    lastFinalIndexRef.current = -1;
+    isListeningRef.current = true;
+    setIsListening(true);
+    startRecognitionSession();
   };
 
   const isSpeechSupported =

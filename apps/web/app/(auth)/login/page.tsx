@@ -1,17 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AuthLayout, AuthFormCard, AuthInput, GoogleAuthButton } from "../../components/auth";
 import { useAuth } from "../../../context/AuthContext";
 import { authService } from "../../../lib/api/services/authService";
 import { ApiError } from "../../../lib/api/utils/fetchClient";
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const searchParams = useSearchParams();
+  const resetSuccess = searchParams.get("reset") === "success";
 
   const { login, isLoggingIn } = useAuth();
   const router = useRouter();
@@ -73,6 +76,12 @@ export default function LoginPage() {
             Sign in to your MerchantAgent workspace.
           </p>
         </div>
+
+        {resetSuccess && !errorMessage && (
+          <div className="mb-6 p-3.5 rounded-xl bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400 text-xs font-medium font-intert">
+            Password reset successfully! Please sign in with your new password.
+          </div>
+        )}
 
         {errorMessage && (
           <div className="mb-6 p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-medium font-intert">
@@ -156,5 +165,13 @@ export default function LoginPage() {
         </div>
       </AuthFormCard>
     </AuthLayout>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<AuthLayout><AuthFormCard><div className="flex justify-center p-8">Loading...</div></AuthFormCard></AuthLayout>}>
+      <LoginForm />
+    </Suspense>
   );
 }

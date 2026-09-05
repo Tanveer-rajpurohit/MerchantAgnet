@@ -54,7 +54,6 @@ export {
 } from "./useAgentChat";
 export { useAgentStream } from "./useAgentStream";
 export { useTTS } from "./useTTS";
-export { useAutoScroll } from "./useAutoScroll";
 export { useCustomerPaymentLinks } from "./useCustomerPaymentLinks";
 export { useApproveCampaign, useDeclineCampaign } from "./useCampaigns";
 export { queryKeys } from "../lib/api/utils/queryKeys";

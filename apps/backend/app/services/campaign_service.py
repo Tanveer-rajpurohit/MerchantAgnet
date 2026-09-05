@@ -119,63 +119,19 @@ async def approve_and_send(
 
     sent_count = 0
     failed_count = 0
-    can_create_links = bool(merchant and merchant.is_razorpay_active)
 
     for target in campaign.targets:
         try:
             conn = target.customer_connection
-            cust = conn.customer if conn else None
-            cust_name = cust.full_name if cust else "Customer"
-            cust_phone = cust.phone_number if cust else None
-
-            link = None
-            if can_create_links:
-                client = get_merchant_razorpay_client(merchant)
-                receipt = f"cmp_{campaign.id.hex[:8]}_{target.id.hex[:6]}"
-                callback_url = f"{settings.FRONTEND_URL}/payment-success"
-                payload = {
-                    "amount": 100,
-                    "currency": "INR",
-                    "accept_partial": False,
-                    "description": f"{campaign.offer_description} — {campaign.discount_percent} off",
-                    "customer": {"name": cust_name},
-                    "notify": {"sms": False, "email": False},
-                    "reminder_enable": True,
-                    "callback_url": callback_url,
-                    "callback_method": "get",
-                }
-                if cust_phone:
-                    clean = "".join(filter(str.isdigit, cust_phone))
-                    if len(clean) >= 10:
-                        payload["customer"]["contact"] = f"+91{clean[-10:]}"
-
-                rzp = client.payment_link.create(payload)
-                link = PaymentLink(
-                    merchant_id=merchant_id,
-                    customer_name=cust_name,
-                    customer_phone=cust_phone,
-                    customer_id=cust.id if cust else None,
-                    description=payload["description"],
-                    amount=1,
-                    currency="INR",
-                    receipt_number=receipt,
-                    razorpay_link_id=rzp.get("id"),
-                    razorpay_link_url=rzp.get("short_url"),
-                    callback_url=callback_url,
-                    callback_method="get",
-                    status=PaymentLinkStatus.created,
-                    notify_sms=False,
-                    notify_email=False,
-                )
-                db.add(link)
-                await db.flush()
-                await campaign_repository.attach_payment_link(db, target, link.id)
 
             # Send campaign message directly into customer's chat connection
             if conn:
                 msg_content = target.message_content
-                if link and link.razorpay_link_url:
-                    msg_content += f"\n\nPayment Link: {link.razorpay_link_url}"
+                
+                if merchant:
+                    shop_id = getattr(merchant, "slug", getattr(merchant, "business_name", ""))
+                    if shop_id:
+                        msg_content += f"\\n\\nShop Link: {settings.FRONTEND_URL}/shops/{shop_id}"
 
                 saved_msg = await message_repository.save_message_to_connection(
                     db=db,
@@ -218,7 +174,6 @@ async def approve_and_send(
         details={
             "sent": sent_count,
             "failed": failed_count,
-            "links_created": can_create_links,
         },
     )
     await db.commit()

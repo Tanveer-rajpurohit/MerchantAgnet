@@ -16,6 +16,8 @@ from app.schemas.auth import (
     AccessTokenResponse,
     MessageResponse,
     UserOut,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
 )
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -138,3 +140,45 @@ async def get_me(
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
     )
+
+@router.post(
+    "/forgot-password",
+    response_model=MessageResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def forgot_password(
+    payload: ForgotPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+):
+    ip = get_client_ip(request)
+    await check_rate_limit(
+        redis=redis,
+        key=f"rate_limit:forgot_pwd:ip:{ip}",
+        limit=5,
+        window_seconds=900,
+    )
+    await auth_service.request_password_reset(db, redis, payload.email)
+    return MessageResponse(message="If an account exists with this email, you will receive a reset link.")
+
+@router.post(
+    "/reset-password",
+    response_model=MessageResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def reset_password(
+    payload: ResetPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+):
+    ip = get_client_ip(request)
+    await check_rate_limit(
+        redis=redis,
+        key=f"rate_limit:reset_pwd:ip:{ip}",
+        limit=5,
+        window_seconds=900,
+    )
+    await auth_service.reset_password(db, redis, payload.email, payload.code, payload.new_password)
+    return MessageResponse(message="Password reset successfully. You can now log in with your new password.")

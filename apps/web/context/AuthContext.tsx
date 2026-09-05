@@ -20,7 +20,7 @@ export interface AuthContextValue {
   login: (payload: LoginPayload) => Promise<AuthTokensResponse>;
   register: (payload: RegisterPayload) => Promise<AuthTokensResponse>;
   googleAuth: (payload: GoogleAuthPayload) => Promise<AuthTokensResponse>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refetchUser: () => void;
   isLoggingIn: boolean;
   isRegistering: boolean;

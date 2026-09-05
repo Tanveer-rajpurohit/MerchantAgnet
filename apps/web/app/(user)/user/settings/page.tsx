@@ -13,8 +13,8 @@ export default function UserSettingsPage() {
   const router = useRouter();
   const { logout } = useAuth();
 
-  const handleSignOut = () => {
-    logout();
+  const handleSignOut = async () => {
+    await logout();
     router.push("/login");
   };
 

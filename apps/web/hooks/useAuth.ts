@@ -58,8 +58,8 @@ export function useAuthQuery() {
     return await googleAuthMutation.mutateAsync(payload);
   };
 
-  const logout = (): void => {
-    authService.logout();
+  const logout = async (): Promise<void> => {
+    await authService.logout();
     queryClient.setQueryData(queryKeys.auth.me, null);
     queryClient.removeQueries();
   };

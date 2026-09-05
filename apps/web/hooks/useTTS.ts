@@ -20,7 +20,8 @@ export function stripMarkdownForSpeech(text: string): { cleanText: string; detec
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/https?:\/\/[^\s)"'<>]+/g, "link")
-    .replace(/(\|[^\n]+\|)/g, " ")
+    .replace(/^\s*\|?[-:\s|]+\|?\s*$/gm, "")
+    .replace(/\|/g, ", ")
     .replace(/^#+\s+/gm, "")
     .replace(/(\*\*|__)(.*?)\1/g, "$2")
     .replace(/(\*|_)(.*?)\1/g, "$2")
@@ -30,7 +31,7 @@ export function stripMarkdownForSpeech(text: string): { cleanText: string; detec
     .replace(/^\s*\d+\.\s+/gm, "")
     .replace(/₹\s*([\d,]+(?:\.\d+)?)/g, isHindiOrHinglish ? "$1 rupaye" : "$1 rupees")
     .replace(/Rs\.?\s*([\d,]+(?:\.\d+)?)/gi, isHindiOrHinglish ? "$1 rupaye" : "$1 rupees")
-    .replace(/[#*_~`>|]/g, " ")
+    .replace(/[#*_~`>]/g, " ")
     .replace(/[\r\n]+/g, ". ")
     .replace(/,\s*,+/g, ", ")
     .replace(/\.\s*\.+/g, ". ")
@@ -105,7 +106,10 @@ export function useTTS(): UseTTSReturn {
       if (!cleanText) return;
 
       const langToUse = customLang || detectedLang;
-      const voiceToUse = customVoice || useVoiceStore.getState().selectedVoice || "en-IN-PrabhatNeural";
+      let voiceToUse = customVoice || useVoiceStore.getState().selectedVoice || "en-IN-PrabhatNeural";
+      if (detectedLang === "hi-IN" && voiceToUse.startsWith("en-")) {
+        voiceToUse = "hi-IN-MadhurNeural";
+      }
 
       const controller = new AbortController();
       globalController = controller;

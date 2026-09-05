@@ -53,11 +53,38 @@ export const authService = {
     return data;
   },
 
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    return await api.post<{ message: string }>(
+      "/auth/forgot-password",
+      { email },
+      { skipAuth: true }
+    );
+  },
+
+  async resetPassword(email: string, code: string, newPassword: string): Promise<{ message: string }> {
+    return await api.post<{ message: string }>(
+      "/auth/reset-password",
+      { email, code, new_password: newPassword },
+      { skipAuth: true }
+    );
+  },
+
   async getMe(): Promise<UserOut> {
     return await api.get<UserOut>("/auth/me");
   },
 
-  logout(): void {
+  async logout(): Promise<void> {
+    const refreshToken = tokenStorage.getRefreshToken();
+    if (refreshToken) {
+      try {
+        await api.post(
+          "/auth/logout",
+          { refresh_token: refreshToken },
+          { skipAuth: true }
+        );
+      } catch {
+      }
+    }
     tokenStorage.clearTokens();
   },
 };

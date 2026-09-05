@@ -23,8 +23,8 @@ export default function SettingsPage() {
   const [showRazorpayModal, setShowRazorpayModal] = useState(false);
   const [showDisconnectModal, setShowDisconnectModal] = useState(false);
 
-  const handleSignOut = () => {
-    logout();
+  const handleSignOut = async () => {
+    await logout();
     router.push("/login");
   };
 

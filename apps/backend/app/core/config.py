@@ -52,6 +52,13 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("EMBEDDING_DIM"),
     )
 
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "noreply@merchantagent.com"
+    SMTP_FROM_NAME: str = "MerchantAgent"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

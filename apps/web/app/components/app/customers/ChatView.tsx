@@ -9,6 +9,8 @@ import { useMessages } from "../../../../hooks/useMessages";
 import { useRealtimeChat } from "../../../../hooks/useRealtimeChat";
 import { useSocketStore } from "../../../../stores/useSocketStore";
 import { AgentOrb } from "../utils";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { CustomerConnectionResponse } from "../../../../types";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
@@ -394,7 +396,40 @@ export function ChatView({ connectionId }: ChatViewProps) {
                       <span className="truncate">{customer?.customer_name || "Customer"}</span>
                     </div>
                   )}
-                  <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  {isMerchant ? (
+                    <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  ) : (
+                    <div className="max-w-none text-xs sm:text-[13px] leading-relaxed">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: ({ children }) => (
+                            <p className="my-1 [&:first-child]:mt-0 whitespace-pre-wrap break-words">{children}</p>
+                          ),
+                          strong: ({ children }) => (
+                            <strong className="font-semibold text-primary">{children}</strong>
+                          ),
+                          ul: ({ children }) => (
+                            <ul className="list-disc pl-4 my-1.5 space-y-1">{children}</ul>
+                          ),
+                          ol: ({ children }) => (
+                            <ol className="list-decimal pl-4 my-1.5 space-y-1">{children}</ol>
+                          ),
+                          li: ({ children }) => (
+                            <li className="leading-relaxed">{children}</li>
+                          ),
+                          code: ({ children }) => (
+                            <code className="px-1.5 py-0.5 rounded bg-surface-muted border border-border text-[11px] font-mono">{children}</code>
+                          ),
+                          a: ({ href, children }) => (
+                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline underline-offset-2 break-all">{children}</a>
+                          ),
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    </div>
+                  )}
 
                   {payCard && (
                     <div

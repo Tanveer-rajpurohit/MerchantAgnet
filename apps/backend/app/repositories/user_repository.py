@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User, UserRole
@@ -105,4 +105,10 @@ async def link_google_id(
         user.profile_picture = profile_picture
     await db.flush()
     await db.refresh(user)
-    return user
+    return user 
+
+async def update_password(db: AsyncSession, user_id: uuid.UUID, password_hash: str) -> None:
+    await db.execute(
+        update(User).where(User.id == user_id).values(password_hash=password_hash)
+    )
+    await db.commit()
