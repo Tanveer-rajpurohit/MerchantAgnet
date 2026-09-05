@@ -42,34 +42,7 @@ The agent is configured in [`base_agent.py`](file:///D:/coding/project/ADVANCED/
 
 ## 2. System Architecture
 
-```text
-                              ┌────────────────────────────┐
-                              │       Next.js Frontend      │
-                              │  Merchant App  │  Customer   │
-                              │  (SSE stream)  │  Portal(WS) │
-                              └──────────┬─────────┬────────┘
-                                         │         │
-                              ┌──────────▼─────────▼────────┐
-                              │        FastAPI Backend       │
-                              │   Auth · Orders · Payments   │
-                              │   Campaigns · Audit Log      │
-                              └───┬───────────────────┬──────┘
-                                  │                   │
-                    ┌─────────────▼───────┐   ┌───────▼─────────────┐
-                    │   PydanticAI Agents   │   │   Razorpay (Test)   │
-                    │  Merchant persona     │   │  Payment links       │
-                    │  Customer persona     │   │  Settlement sync     │
-                    │  25 tools, one call   │   └──────────────────────┘
-                    │  each, per request    │
-                    └──────────┬────────────┘
-                                │
-                    ┌───────────▼────────────┐
-                    │   PostgreSQL + pgvector │
-                    │   Structured data +     │
-                    │   catalog embeddings    │
-                    │   (local, no API cost)  │
-                    └─────────────────────────┘
-```
+![MerchantAgent System Architecture](./assets/architecture-diagram.png)
 
 The whole thing runs on one database, doing double duty as both the regular relational store and the vector store for semantic catalog search. No separate vector database, no second service to keep alive. The merchant-facing chat streams over Server-Sent Events (one-way flow). The customer-facing chat runs over WebSocket (bidirectional - customer, shop owner, and agent may all be in the same thread).
 
@@ -117,7 +90,7 @@ Rule: Financial figures, pricing, and stock availability always use exact SQL qu
 
 ### Merchant Agent Execution Lifecycle
 1. Assemble store profile, recent turns (capped at last 2 turns, 500 char per response), and target customer context.
-2. Stream tokens over SSE (`/agent/chat/stream`) with `ModelSettings(max_tokens=8192)`.
+2. Stream tokens over SSE (`/agent/chat/stream`) with `ModelSettings(max_tokens=4096)`.
 3. If an upstream LLM provider closes the stream after tool invocation, an automatic non-streaming fallback runs `merchant_agent.run(...)` and streams synthesized tokens to maintain UI typing cadence.
 4. Record completion, latency, and tool invocations in the `agent_runs` audit table.
 

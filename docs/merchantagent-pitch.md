@@ -62,35 +62,8 @@ If the shop owner is around, they can jump into the same conversation and answer
 ---
 
 ## 5. Architecture
-
-```
-                              ┌────────────────────────────┐
-                              │       Next.js Frontend      │
-                              │  Merchant App  │  Customer   │
-                              │  (SSE stream)  │  Portal(WS) │
-                              └──────────┬─────────┬────────┘
-                                         │         │
-                              ┌──────────▼─────────▼────────┐
-                              │        FastAPI Backend       │
-                              │   Auth · Orders · Payments   │
-                              │   Campaigns · Audit Log      │
-                              └───┬───────────────────┬──────┘
-                                  │                   │
-                    ┌─────────────▼───────┐   ┌───────▼─────────────┐
-                    │   PydanticAI Agents   │   │   Razorpay (Test)   │
-                    │  Merchant persona     │   │  Payment links       │
-                    │  Customer persona     │   │  Settlement sync     │
-                    │  21 tools, one call   │   └──────────────────────┘
-                    │  each, per request    │
-                    └──────────┬────────────┘
-                                │
-                    ┌───────────▼────────────┐
-                    │   PostgreSQL + pgvector │
-                    │   Structured data +     │
-                    │   catalog embeddings    │
-                    │   (local, no API cost)  │
-                    └─────────────────────────┘
-```
+ 
+![MerchantAgent System Architecture](./assets/architecture-diagram.png)
 
 The whole thing runs on one database, doing double duty as both the regular relational store and the vector store for semantic catalog search. No separate vector database, no second service to keep alive. The merchant-facing chat streams over Server-Sent Events, since that's a one-way flow and doesn't need anything heavier. The customer-facing chat runs over a WebSocket, because a customer, the shop owner, and the agent might all be in the same thread at once, and that needs a two-way channel. Two different jobs, two different tools, not one hammer used everywhere.
 

@@ -144,18 +144,14 @@ pnpm start                     # http://localhost:3004
 
 ## Architecture Flow
 
-```text
-[Merchant] ──(Voice/Chat)──> SSE Stream ──> PydanticAI merchant_agent (25 tools)
-                                                  │
-                                                  ├── Razorpay: payment links, status sync
-                                                  ├── PostgreSQL: orders, catalog, expenses
-                                                  └── pgvector: semantic catalog search
+![MerchantAgent System Architecture](docs/assets/architecture-diagram.png)
 
-[Customer] ──(Chat/Order)──> WebSocket ──> PydanticAI customer_agent (3 tools)
-                                                  │
-                                                  ├── Browse catalog, place orders
-                                                  └── Real checkout link -> Razorpay payment
-```
+The platform features a closed-loop dual-agent architecture:
+1. **Client Layer**: Next.js 16 web application serving both merchant management copilot and customer storefronts with multilingual voice input.
+2. **Gateway**: FastAPI backend managing JWT authentication, rate limiting, SSE streams for merchants, and WebSockets for customers.
+3. **Dual Agents**: PydanticAI orchestrates dedicated merchant (25 tools) and customer (3 tools) agents powered by Sarvam AI 105B Indic LLM.
+4. **Tool Layer**: Isolated domain tools execute transactional mutations, pgvector semantic search, and external integrations (Razorpay, WhatsApp, Edge-TTS).
+5. **Data & Feedback Loop**: PostgreSQL 16 stores relational records and vector embeddings; Redis 7 provides session cache and mutex locks; tool execution payloads cycle back to the agent before streaming to the client.
 
 Every money-moving tool is executed with deduplication guards to prevent duplicate payment links or orders. The campaign approval gate is strictly enforced: the agent drafts the broadcast, but only the merchant can approve and initiate sending.
 
