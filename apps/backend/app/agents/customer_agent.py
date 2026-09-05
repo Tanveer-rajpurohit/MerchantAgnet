@@ -9,7 +9,7 @@ from app.agents.customer_prompt import build_customer_prompt
 
 custom_provider = OpenAIProvider(
     base_url=settings.AGENT_BASE_URL,
-    api_key=settings.AGENT_API_KEY,
+    api_key=settings.AGENT_API_KEY or "mock-agent-key",
 )
 
 customer_model = OpenAIChatModel(

@@ -8,7 +8,7 @@ from app.agents.prompts import build_merchant_constitution
 
 custom_provider = OpenAIProvider(
     base_url=settings.AGENT_BASE_URL,
-    api_key=settings.AGENT_API_KEY,
+    api_key=settings.AGENT_API_KEY or "mock-agent-key",
 )
 
 groq_model = OpenAIChatModel(model_name=settings.AGENT_MODEL, provider=custom_provider)
