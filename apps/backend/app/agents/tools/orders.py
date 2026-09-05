@@ -244,11 +244,16 @@ async def update_order_status(
     order_id: str | None = None,
     customer_name: str | None = None,
     paid_amount: float | None = None,
+    total_amount: float | None = None,
     reason: str | None = None,
 ) -> str:
-    """Update an order's status (e.g. from 'unpaid' to 'paid', 'cancelled', 'delivered', or 'refunded').
-    Call this when the merchant says an order is paid, settled, completed, or cancelled.
-    You can pass `order_id` or `customer_name`. NEVER demand a UUID from the merchant.
+    """Update or change an existing order's status (e.g. 'paid', 'cancelled', 'unpaid'), paid amount, or total.
+
+    Call this whenever the merchant asks to:
+    - "change order #123 to paid", "mark order as paid", "order is settled", "mark Rahul's order as paid"
+    - "change order status to cancelled", "cancel order for Rahul", "cancel order #456"
+    - "update order"
+    You can pass `order_id` (full UUID or short 8-char ID with or without #) or `customer_name`. NEVER demand a UUID from the merchant!
     """
     guard = _guard_merchant(ctx)
     if guard:
@@ -272,13 +277,31 @@ async def update_order_status(
                 return f"Invalid order status '{status}'. Valid options: paid, unpaid, cancelled."
 
         order = None
+        clean_id = str(order_id).replace("#", "").strip() if order_id else None
 
-        if order_id:
+        if clean_id:
             try:
-                oid = uuid.UUID(str(order_id).strip())
+                oid = uuid.UUID(clean_id)
                 order = await order_repository.get_by_id(ctx.deps.db, oid, merchant_id)
             except (ValueError, AttributeError):
                 pass
+
+            if not order and len(clean_id) >= 4:
+                from sqlalchemy import cast, String
+                stmt = (
+                    select(Order)
+                    .options(*order_repository.order_eager_options())
+                    .where(
+                        Order.merchant_id == merchant_id,
+                        cast(Order.id, String).ilike(f"{clean_id}%"),
+                    )
+                    .order_by(Order.created_at.desc())
+                    .limit(1)
+                )
+                order = (await ctx.deps.db.execute(stmt)).scalars().first()
+
+            if not order and not customer_name:
+                customer_name = clean_id
 
         if not order and customer_name:
             orders = await order_repository.list_by_merchant(
@@ -309,6 +332,9 @@ async def update_order_status(
         elif target_status == OrderStatus.paid:
             effective_paid_amount = order.total_amount
 
+        if total_amount is not None:
+            order.total_amount = Decimal(str(total_amount))
+
         updated_order = await order_repository.update_order(
             db=ctx.deps.db,
             order=order,
@@ -317,7 +343,6 @@ async def update_order_status(
             changed_by=ActorType.ai_agent,
             reason=reason or f"Status updated to {target_status.value} by MerchantAgent",
         )
-
         await audit_log_repository.log_action(
             db=ctx.deps.db,
             action="order.updated",
@@ -345,6 +370,28 @@ async def update_order_status(
     except Exception as e:
         logger.error("Error in update_order_status: %s", e, exc_info=True)
         return f"Failed to update order status: {str(e)}"
+
+
+@merchant_agent.tool
+async def update_order(
+    ctx: RunContext[MerchantAgentDeps],
+    order_id: str | None = None,
+    customer_name: str | None = None,
+    status: str = "paid",
+    paid_amount: float | None = None,
+    total_amount: float | None = None,
+    reason: str | None = None,
+) -> str:
+    """Update or change an existing order (status, payment, total). Alias for update_order_status."""
+    return await update_order_status(
+        ctx=ctx,
+        status=status,
+        order_id=order_id,
+        customer_name=customer_name,
+        paid_amount=paid_amount,
+        total_amount=total_amount,
+        reason=reason,
+    )
 
 
 @merchant_agent.tool

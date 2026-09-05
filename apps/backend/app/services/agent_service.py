@@ -63,6 +63,67 @@ async def _load_merchant_context(db: AsyncSession, user: User) -> tuple[Merchant
 
 
 
+def _extract_merged_tools(messages: list) -> list[dict]:
+    """Extract tool invocations from PydanticAI messages, merging tool call arguments and tool return content."""
+    merged_tools: list[dict] = []
+    by_call_id: dict[str, dict] = {}
+    pending_by_name: dict[str, list[dict]] = {}
+
+    for msg in messages:
+        if not hasattr(msg, "parts"):
+            continue
+        for part in msg.parts:
+            tool_name = getattr(part, "tool_name", "")
+            if not tool_name:
+                continue
+
+            tool_call_id = getattr(part, "tool_call_id", None)
+            args = getattr(part, "args", None)
+            content = getattr(part, "content", None)
+
+            is_return = content is not None
+
+            if not is_return:
+                tool_entry = {
+                    "tool": tool_name,
+                    "args": args if isinstance(args, (dict, list)) else {},
+                    "content": "",
+                }
+                if isinstance(args, str):
+                    try:
+                        import json
+                        tool_entry["args"] = json.loads(args)
+                    except Exception:
+                        tool_entry["args"] = {"raw": args}
+
+                merged_tools.append(tool_entry)
+
+                if tool_call_id:
+                    by_call_id[str(tool_call_id)] = tool_entry
+                else:
+                    if tool_name not in pending_by_name:
+                        pending_by_name[tool_name] = []
+                    pending_by_name[tool_name].append(tool_entry)
+            else:
+                target_entry = None
+                if tool_call_id and str(tool_call_id) in by_call_id:
+                    target_entry = by_call_id[str(tool_call_id)]
+                elif tool_name in pending_by_name and pending_by_name[tool_name]:
+                    target_entry = pending_by_name[tool_name].pop(0)
+
+                if target_entry:
+                    target_entry["content"] = str(content)
+                else:
+                    merged_tools.append({
+                        "tool": tool_name,
+                        "args": {},
+                        "content": str(content),
+                    })
+
+    return merged_tools
+
+
+
 async def stream_merchant_chat(
     db: AsyncSession,
     user: User,
@@ -177,15 +238,7 @@ async def stream_merchant_chat(
                 full_response += chunk
                 yield {"type": "token", "content": chunk, "session_id": str(session_id)}
 
-            for msg in stream.all_messages():
-                if hasattr(msg, "parts"):
-                    for part in msg.parts:
-                        if hasattr(part, "tool_name"):
-                            tools_invoked.append({
-                                "tool": getattr(part, "tool_name", ""),
-                                "args": getattr(part, "args", {}),
-                                "content": getattr(part, "content", ""),
-                            })
+            tools_invoked = _extract_merged_tools(stream.all_messages())
 
         # Check if tools were executed and whether the stream yielded a post-tool text completion
         has_post_tool_text = False
@@ -211,18 +264,10 @@ async def stream_merchant_chat(
             )
             fallback_text = getattr(run_res, "output", getattr(run_res, "data", "")) or ""
 
-            run_tools: list[dict] = []
-            for msg in run_res.all_messages():
-                if hasattr(msg, "parts"):
-                    for part in msg.parts:
-                        if hasattr(part, "tool_name"):
-                            run_tools.append({
-                                "tool": getattr(part, "tool_name", ""),
-                                "args": getattr(part, "args", {}),
-                                "content": getattr(part, "content", ""),
-                            })
-            if run_tools:
-                tools_invoked = run_tools
+            if hasattr(run_res, "all_messages"):
+                run_tools = _extract_merged_tools(run_res.all_messages())
+                if run_tools:
+                    tools_invoked = run_tools
 
             if not fallback_text.strip():
                 summary_lines = []
@@ -367,14 +412,7 @@ async def run_customer_chat(
         )
         full_response = getattr(run_res, "output", getattr(run_res, "data", "")) or ""
         if hasattr(run_res, "all_messages"):
-            for msg in run_res.all_messages():
-                if hasattr(msg, "parts"):
-                    for part in msg.parts:
-                        if hasattr(part, "tool_name"):
-                            tools_invoked.append({
-                                "tool": getattr(part, "tool_name", ""),
-                                "args": getattr(part, "args", {}),
-                            })
+            tools_invoked = _extract_merged_tools(run_res.all_messages())
         run_status = AgentRunStatus.success
         error_detail = None
     except Exception as agent_err:

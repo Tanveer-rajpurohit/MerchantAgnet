@@ -74,9 +74,12 @@ export function extractCardsFromData(
     };
   }
 
-  const campaignTool = toolsInvoked?.find(
+  const campaignTools = (toolsInvoked || []).filter(
     (t: ToolInvocation) => t.tool === "create_campaign" || (t as { name?: string }).name === "create_campaign"
   );
+  const campaignTool =
+    campaignTools.find((t) => Boolean(t.content && /CAMPAIGN_ID:/i.test(String(t.content)))) ||
+    campaignTools[0];
 
   let isCampaignDraft = Boolean(campaignTool);
   let campaignId: string | undefined = undefined;
@@ -86,11 +89,22 @@ export function extractCardsFromData(
   let discountPercent = "10%";
   let offerMessage = "";
 
+  for (const t of campaignTools) {
+    const c = String(t.content || "");
+    const idMatch = c.match(/CAMPAIGN_ID:\s*([a-f0-9\-]+)/i);
+    if (idMatch && idMatch[1]) {
+      campaignId = idMatch[1];
+      break;
+    }
+  }
+
   if (campaignTool) {
     const args = (campaignTool.args || {}) as Record<string, unknown>;
     const content = String(campaignTool.content || "");
-    const idMatch = content.match(/CAMPAIGN_ID:\s*([a-f0-9\-]+)/i);
-    if (idMatch && idMatch[1]) campaignId = idMatch[1];
+    if (!campaignId) {
+      const idMatch = content.match(/CAMPAIGN_ID:\s*([a-f0-9\-]+)/i);
+      if (idMatch && idMatch[1]) campaignId = idMatch[1];
+    }
 
     if (args.offer_description) campaignName = String(args.offer_description);
     if (args.segment_description) segmentDescription = String(args.segment_description);
@@ -136,6 +150,11 @@ export function extractCardsFromData(
     } else if (msgMatch && msgMatch[1]) {
       offerMessage = msgMatch[1].trim();
     }
+  }
+
+  if (!campaignId) {
+    const fallbackIdMatch = responseText.match(/CAMPAIGN_ID:\s*([a-f0-9\-]+)/i);
+    if (fallbackIdMatch && fallbackIdMatch[1]) campaignId = fallbackIdMatch[1];
   }
 
   if (isCampaignDraft) {

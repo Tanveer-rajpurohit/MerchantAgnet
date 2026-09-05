@@ -15,7 +15,9 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { customerService } from "../../../../lib/api/services/customerService";
 import { queryKeys } from "../../../../lib/api/utils/queryKeys";
+import { api } from "../../../../lib/api/utils/fetchClient";
 import { useApproveCampaign, useDeclineCampaign } from "../../../../hooks";
+import type { CampaignListResponse } from "../../../../types";
 
 interface CampaignGateCardProps {
   campaignId?: string;
@@ -48,6 +50,15 @@ export function CampaignGateCard({
   const approveMutation = useApproveCampaign();
   const declineMutation = useDeclineCampaign();
 
+  const { data: draftCampaigns } = useQuery({
+    queryKey: queryKeys.campaigns.list({ status: "draft" }),
+    queryFn: () => api.get<CampaignListResponse>("/campaigns?status=draft"),
+    enabled: !campaignId,
+    staleTime: 5 * 1000,
+  });
+
+  const effectiveCampaignId = campaignId || draftCampaigns?.items?.[0]?.id;
+
   const { data: customerData, isLoading: isLoadingCustomers } = useQuery({
     queryKey: queryKeys.customers.list({ limit: 100 }),
     queryFn: () => customerService.getConnections({ limit: 100 }),
@@ -77,35 +88,33 @@ export function CampaignGateCard({
 
   const handleApprove = async () => {
     setActionError(null);
-    if (campaignId) {
-      try {
-        await approveMutation.mutateAsync(campaignId);
-        setStatus("approved");
-        onApprove?.();
-      } catch (err: unknown) {
-        const error = err as Error;
-        setActionError(error.message || "Failed to approve campaign");
-      }
-    } else {
+    if (!effectiveCampaignId) {
+      setActionError("Campaign draft ID not found. Please refresh or create a new campaign.");
+      return;
+    }
+    try {
+      await approveMutation.mutateAsync(effectiveCampaignId);
       setStatus("approved");
       onApprove?.();
+    } catch (err: unknown) {
+      const error = err as Error;
+      setActionError(error.message || "Failed to approve campaign");
     }
   };
 
   const handleReject = async () => {
     setActionError(null);
-    if (campaignId) {
-      try {
-        await declineMutation.mutateAsync(campaignId);
-        setStatus("rejected");
-        onReject?.();
-      } catch (err: unknown) {
-        const error = err as Error;
-        setActionError(error.message || "Failed to decline campaign");
-      }
-    } else {
+    if (!effectiveCampaignId) {
+      setActionError("Campaign draft ID not found. Please refresh or create a new campaign.");
+      return;
+    }
+    try {
+      await declineMutation.mutateAsync(effectiveCampaignId);
       setStatus("rejected");
       onReject?.();
+    } catch (err: unknown) {
+      const error = err as Error;
+      setActionError(error.message || "Failed to decline campaign");
     }
   };
 

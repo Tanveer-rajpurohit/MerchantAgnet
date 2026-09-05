@@ -188,7 +188,11 @@ async def update_product(
     product_id: str | None = None,
     cost_price: float | None = None,
     selling_price: float | None = None,
+    price: float | None = None,
     current_stock: int | None = None,
+    stock: int | None = None,
+    new_product_name: str | None = None,
+    new_name: str | None = None,
     low_stock_alert: int | None = None,
 ) -> str:
     """Edit an existing product. Only the fields you pass will change (partial update).
@@ -203,6 +207,12 @@ async def update_product(
     try:
         merchant_id = _merchant_id(ctx)
         product = None
+
+        if selling_price is None and price is not None:
+            selling_price = price
+        if current_stock is None and stock is not None:
+            current_stock = stock
+        rename_to = new_product_name or new_name
 
         # 1. Try resolving by product_id if provided
         if product_id:
@@ -240,6 +250,28 @@ async def update_product(
                 product = (await ctx.deps.db.execute(stmt)).scalars().first()
 
         if not product:
+            if selling_price is not None:
+                target_name = (product_name or product_id or "Item").strip()
+                cost = Decimal(str(cost_price)) if cost_price is not None else Decimal(str(selling_price)) * Decimal("0.8")
+                new_p = await product_repository.create_product(
+                    db=ctx.deps.db,
+                    merchant_id=merchant_id,
+                    product_name=target_name,
+                    cost_price=cost,
+                    selling_price=Decimal(str(selling_price)),
+                    current_stock=int(current_stock or 0),
+                    low_stock_alert=int(low_stock_alert or 5),
+                )
+                await index_product(db=ctx.deps.db, merchant_id=merchant_id, product=new_p)
+                await ctx.deps.db.commit()
+                return (
+                    f"Product added.\n"
+                    f"PRODUCT_ID: {new_p.id}\n"
+                    f"Name: {new_p.product_name}\n"
+                    f"Selling Price: ₹{new_p.selling_price:.2f}\n"
+                    f"Stock: {new_p.current_stock} | Low Stock Alert: {new_p.low_stock_alert}"
+                )
+
             ident = product_name or product_id or "unknown"
             return (
                 f"Product '{ident}' not found in catalog. "
@@ -253,7 +285,9 @@ async def update_product(
             "stock": product.current_stock,
             "low_stock_alert": product.low_stock_alert,
         }
-        if product_name is not None and product_id and str(product_id).strip() != product_name.strip():
+        if rename_to:
+            product.product_name = rename_to.strip()
+        elif product_name is not None and product_id and str(product_id).strip() != product_name.strip():
             product.product_name = product_name.strip()
         if cost_price is not None:
             product.cost_price = Decimal(str(cost_price))
