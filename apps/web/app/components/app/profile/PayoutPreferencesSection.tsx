@@ -60,11 +60,11 @@ export function PayoutPreferencesSection({ data }: PayoutPreferencesSectionProps
                   Razorpay Test Node
                 </span>
                 <span className="text-[10px] text-muted font-mono">
-                  rzp_test_98kLsM2109xPQ
+                  rzp_test_••••••••••••
                 </span>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium border border-emerald-500/20">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-medium border border-emerald-500/20">
               <ShieldCheck size={10} />
               <span>Connected</span>
             </span>
