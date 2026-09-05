@@ -1,4 +1,5 @@
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.settings import ModelSettings
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
@@ -19,6 +20,7 @@ customer_model = OpenAIChatModel(
 customer_agent = Agent(
     customer_model,
     deps_type=CustomerAgentDeps,
+    model_settings=ModelSettings(max_tokens=8192),
 )
 
 

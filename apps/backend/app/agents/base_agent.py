@@ -1,4 +1,5 @@
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.settings import ModelSettings
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from app.core.config import settings
@@ -15,6 +16,7 @@ groq_model = OpenAIChatModel(model_name=settings.AGENT_MODEL, provider=custom_pr
 merchant_agent = Agent(
     groq_model,
     deps_type=MerchantAgentDeps,
+    model_settings=ModelSettings(max_tokens=8192),
 )
 
 from sqlalchemy import select

@@ -187,8 +187,22 @@ async def stream_merchant_chat(
                                 "content": getattr(part, "content", ""),
                             })
 
+        # Check if tools were executed and whether the stream yielded a post-tool text completion
+        has_post_tool_text = False
+        all_msgs = stream.all_messages()
+        if tools_invoked and all_msgs:
+            last_msg = all_msgs[-1]
+            if isinstance(last_msg, ModelResponse):
+                for part in getattr(last_msg, "parts", []):
+                    if hasattr(part, "content") and part.content and part.content.strip():
+                        has_post_tool_text = True
+                        break
+
         # Fallback if streaming endpoint closed before post-tool completion (e.g. Sarvam / certain OpenAI-compatible endpoints)
-        if not full_response.strip():
+        needs_fallback = (not full_response.strip()) or (bool(tools_invoked) and not has_post_tool_text)
+
+        if needs_fallback:
+            fallback_text = ""
             summary_lines = []
             if deps.created_payment_links:
                 for pl in deps.created_payment_links:
@@ -205,15 +219,15 @@ async def stream_merchant_chat(
                     summary_lines.append(f"Message successfully delivered{rec_str}.")
 
             if summary_lines:
-                full_response = "\n".join(summary_lines)
+                fallback_text = "\n".join(summary_lines)
             else:
-                logger.info("Streaming yielded empty text after tool call. Executing non-streaming synthesis fallback...")
+                logger.info("Executing non-streaming synthesis fallback after stream closed...")
                 run_res = await merchant_agent.run(
                     payload.message,
                     deps=deps,
                     message_history=message_history if message_history else None,
                 )
-                full_response = getattr(run_res, "output", getattr(run_res, "data", "")) or ""
+                fallback_text = getattr(run_res, "output", getattr(run_res, "data", "")) or ""
                 if not tools_invoked:
                     for msg in run_res.all_messages():
                         if hasattr(msg, "parts"):
@@ -225,11 +239,18 @@ async def stream_merchant_chat(
                                         "content": getattr(part, "content", ""),
                                     })
 
-            words = full_response.split(" ")
-            for i, w in enumerate(words):
-                token = w if i == len(words) - 1 else w + " "
-                yield {"type": "token", "content": token, "session_id": str(session_id)}
-                await asyncio.sleep(0.01)
+            if fallback_text:
+                if full_response.strip():
+                    full_response = f"{full_response}\n\n{fallback_text}"
+                    yield {"type": "token", "content": "\n\n", "session_id": str(session_id)}
+                else:
+                    full_response = fallback_text
+
+                words = fallback_text.split(" ")
+                for i, w in enumerate(words):
+                    token = w if i == len(words) - 1 else w + " "
+                    yield {"type": "token", "content": token, "session_id": str(session_id)}
+                    await asyncio.sleep(0.01)
     except Exception as agent_err:
         logger.exception("Agent run failed: %s", agent_err)
         run_status = AgentRunStatus.failed

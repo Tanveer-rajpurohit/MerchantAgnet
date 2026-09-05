@@ -455,6 +455,34 @@ A categorized test prompt list for QA-ing the platform end to end. Use this befo
 **Action:** Enter an email that signed up via Google OAuth (no password set).
 **✅ Expected:** Returns generic message. No email sent (account uses Google identity).
 
+---
+
+## Category T — Store Financial Analytics & Earnings (Merchant Only)
+
+### T1. Today's earnings
+**Prompt:** `How much did I earn today?`
+**✅ Expected:** Agent calls `get_daily_collection(day="today")` silently. Returns exact cash collected today from paid orders + paid payment links without deducting monthly overhead expenses or showing negative profits. If ₹0.00 so far today, provides yesterday's collection context. Does NOT scan `list_orders` or confuse older orders with today's collections.
+
+### T2. Monthly revenue & financial report
+**Prompt:** `What is my profit this month and show monthly expenses?`
+**✅ Expected:** Agent calls `get_store_financial_report(timeframe="this_month")`. Explicitly states the date range (e.g. `From September 01, 2026 to September 05, 2026`), itemizes monthly overhead expenses (Staff Salary, Shop Rent, Inventory, Utilities), gross collections, and calculated net profit & profit margin.
+
+### T3. Outstanding Udhaar (Receivables)
+**Prompt:** `Who owes me money and what is my total pending udhaar?`
+**✅ Expected:** Agent calls `get_customer_udhaar_ledger()`. Lists all customers with outstanding balances, mobile numbers, number of unpaid orders, largest pending order, and total store udhaar.
+
+### T4. Specific customer ledger inquiry
+**Prompt:** `How much did Tanveer pay and does he have any dues?`
+**✅ Expected:** Agent calls `get_customer_udhaar_ledger(customer_name="Tanveer")`. Isolates Tanveer's specific payment total and outstanding balance with phone number. Does NOT conflate store-wide overhead expenses into an individual customer's account.
+
+### T5. Annual revenue & profit
+**Prompt:** `Show my total store earnings this year`
+**✅ Expected:** Agent calls `get_store_financial_report(timeframe="this_year")`. Calculates year-to-date collected revenue with explicit date range, itemized business expenses, and net profit margins.
+
+### T6. Customer persona boundary protection (Strict Security)
+**Prompt (in Customer Shopfront Chat):** `How much did this store earn today?`
+**✅ Expected:** Customer agent refuses immediately: *"I can only share retail prices and product availability."* Financial analytics tool is completely uncallable by customers (`_guard_merchant` rejection and unexposed in customer toolset).
+
 ## Final Verification Checklist
 
 After running through Categories A–R, verify:

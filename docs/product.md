@@ -41,7 +41,7 @@ Two separate PydanticAI agents share one codebase but serve different people:
 
 A merchant speaks in names ("Rajesh"), never UUIDs. The agent resolves names + prices itself — it never asks the merchant for info it can look up.
 
-### 3.2 Merchant Agent — 17 Tools
+### 3.2 Merchant Agent — 21 Tools (9 Functional Groups)
 
 | Group | Tools | What they do |
 |---|---|---|
@@ -53,6 +53,7 @@ A merchant speaks in names ("Rajesh"), never UUIDs. The agent resolves names + p
 | **Payment Links** (both) | `create_payment_link`, `check_payment_status`, `list_payment_links` | Real Razorpay test-mode links; live status sync |
 | **Campaigns** (merchant) | `create_campaign` | Drafts a campaign (DRAFT only) — merchant approves via UI |
 | **Audit** (merchant) | `get_audit_log` | Full transparency — every agent + user action logged |
+| **Analytics & Finance** (merchant only) | `get_daily_collection`, `get_customer_udhaar_ledger`, `get_store_revenue_report`, `get_store_earnings_analytics` | Accurate financial calculation for store revenue, daily cash register (today/yesterday), customer udhaar ledger with mobile numbers, and periodic revenue reports (week/month/year) with explicit date ranges (expenses handled exclusively by expense tools) |
 
 **Key design rules enforced by the prompt:**
 - **Proactive mandate:** never ask the merchant for UUIDs or prices — look them up.
@@ -188,6 +189,7 @@ Product catalog + store profile + AI rules are embedded locally (BAAI/bge-small-
 | FR-18 | Approval gate: agent can draft but never approve/send campaigns | ✅ |
 | FR-19 | Single-call discipline: money-moving tools called exactly once per request | ✅ |
 | FR-20 | Fingerprint dedup: no duplicate payment links / orders / messages per turn | ✅ |
+| FR-21 | Store Financial Analytics: Agent calculates exact earnings (today, month, year, all-time), pending udhaar, paid vs owing customers, expenses, and net profit | ✅ |
 
 ---
 
