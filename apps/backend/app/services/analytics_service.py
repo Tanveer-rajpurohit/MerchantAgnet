@@ -632,13 +632,15 @@ async def get_daily_collection_service(
         )
 
     lines = [
-        "DAILY_COLLECTION_REPORT",
+        "DAILY_COLLECTION_AND_PROFIT_REPORT",
         f"STORE: {merchant.business_name}",
         f"PERIOD: {day_label}",
         "",
-        f"1. TOTAL CASH & UPI COLLECTED: ₹{total_collected:.2f} ({total_txns} paid transaction{'s' if total_txns != 1 else ''})",
+        f"1. STORE EARNINGS & PROFIT (TOTAL CASH & UPI COLLECTED): ₹{total_collected:.2f} ({total_txns} paid transaction{'s' if total_txns != 1 else ''})",
         f"- Paid Payment Links: ₹{link_revenue:.2f} ({len(paid_links)} links)",
         f"- Paid Store Orders: ₹{order_revenue:.2f} ({len(standalone_paid_orders)} orders)",
+        "",
+        "NOTE: In retail store operations, daily earnings/profit is the gross collection from sales. Fixed monthly overheads (rent, salaries) are NOT deducted on a daily basis.",
     ]
 
     if sorted_customers:
@@ -818,15 +820,17 @@ async def get_store_revenue_report_service(
     total_txns = len(paid_links) + len(standalone_orders)
 
     lines = [
-        "STORE_REVENUE_REPORT",
+        "STORE_REVENUE_AND_PROFIT_REPORT",
         f"STORE: {merchant.business_name}",
         f"TIMEFRAME: {timeframe_label}",
         f"DATE_RANGE: From {date_range_str}",
         "",
-        "1. REVENUE & COLLECTIONS (PURE CASH EARNED):",
+        "1. STORE PROFIT & REVENUE (TOTAL SALES COLLECTIONS):",
         f"- Total Gross Collections: ₹{gross_revenue:.2f} ({total_txns} paid transactions)",
         f"  * Paid Payment Links: ₹{link_rev:.2f} ({len(paid_links)} links)",
         f"  * Paid Store Orders: ₹{order_rev:.2f} ({len(standalone_orders)} orders)",
+        "",
+        "NOTE: This is the definitive store profit and revenue report. Operating expenses are managed separately via get_current_expenses and must NOT be deducted here.",
     ]
 
     return "\n".join(lines)

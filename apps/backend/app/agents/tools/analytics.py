@@ -14,16 +14,17 @@ logger = logging.getLogger(__name__)
 async def get_daily_collection(
     ctx: RunContext[MerchantAgentDeps],
     day: str = "today",
+    **kwargs,
 ) -> str:
-    """Fetch pure cash & UPI collections for a single day (today OR yesterday).
+    """Fetch pure cash & UPI collections and store profit for a single day (today OR yesterday).
 
-    MANDATORY TOOL: Call this tool ONLY when the merchant asks EXCLUSIVELY about a single day's collection:
-    - "How much did I earn today?", "Aaj kitna collection hua?", "Aaj ki kamai"
-    - "How much did I earn yesterday?", "Kal kitna aaya?"
+    MANDATORY TOOL: Call this tool when the merchant asks about a single day's collection, earnings, or profit:
+    - "How much did I earn today?", "Aaj kitna collection hua?", "Aaj ki kamai", "Today profit", "Give me today profit"
+    - "How much did I earn yesterday?", "Kal kitna aaya?", "Yesterday profit", "Give me yesterday profit"
     - "Who paid me today?", "Aaj kin customers ne payment kiya?"
 
+    STRICT: This tool represents the full day's earnings and profit (sales revenue). DO NOT call `get_current_expenses` when answering this.
     DO NOT call this tool if the user asks for multiple periods at once (e.g. today AND yesterday, or today AND this month, or earnings AND udhaar). For multi-period or combined queries, call `get_store_earnings_analytics(timeframe="summary")` instead.
-    This tool NEVER deducts monthly overhead expenses.
 
     Args:
         day: 'today' or 'yesterday'. Default is 'today'.
@@ -48,6 +49,7 @@ async def get_daily_collection(
 async def get_customer_udhaar_ledger(
     ctx: RunContext[MerchantAgentDeps],
     customer_name: str | None = None,
+    **kwargs,
 ) -> str:
     """Fetch outstanding customer debts (udhaar), credit balances, and customer phone numbers.
 
@@ -80,20 +82,23 @@ async def get_customer_udhaar_ledger(
 async def get_store_revenue_report(
     ctx: RunContext[MerchantAgentDeps],
     timeframe: str = "this_month",
+    include_expenses: bool = False,
+    **kwargs,
 ) -> str:
-    """Generate a periodic store revenue, sales collections, and order volume report with explicit date ranges.
+    """Generate a periodic store revenue, profit, and sales collections report with explicit date ranges.
 
-    MANDATORY TOOL: Call this tool whenever the merchant asks about revenue, collections, sales, or earnings for a period:
+    MANDATORY TOOL: Call this tool whenever the merchant asks about revenue, profit, collections, sales, or earnings for a period:
     - "What is my revenue this week?", "Show this month's earnings", "Annual collections"
-    - "Give me this month profit", "This week profit"
+    - "Give me this month profit", "This week profit", "What is my profit this week?"
 
     Returns:
         Gross Collections, paid payment links total, paid store orders total, and date range.
-        This tool strictly reflects revenue and sales. It does NOT deduct store expenses or show negative losses.
-        (For operating expenses or bills, call the dedicated tool `get_current_expenses`).
+        This tool strictly reflects revenue, sales, and retail profit. It does NOT deduct store expenses or show negative losses.
+        (Operating expenses are managed separately via `get_current_expenses`).
 
     Args:
         timeframe: One of 'this_week', 'this_month', 'this_year', or 'all_time'. Default is 'this_month'.
+        include_expenses: Ignored. Operating expenses are managed exclusively via `get_current_expenses`.
     """
     guard = _guard_merchant(ctx)
     if guard:
@@ -111,8 +116,15 @@ async def get_store_revenue_report(
         return f"Failed to compute store revenue report: {str(e)}"
 
 
-# Alias for backward compatibility
-get_store_financial_report = get_store_revenue_report
+@merchant_agent.tool
+async def get_store_financial_report(
+    ctx: RunContext[MerchantAgentDeps],
+    timeframe: str = "this_month",
+    include_expenses: bool = False,
+    **kwargs,
+) -> str:
+    """Periodic store revenue, profit, and sales collections report (alias for get_store_revenue_report)."""
+    return await get_store_revenue_report(ctx, timeframe=timeframe, include_expenses=include_expenses, **kwargs)
 
 
 @merchant_agent.tool
@@ -120,6 +132,7 @@ async def get_store_earnings_analytics(
     ctx: RunContext[MerchantAgentDeps],
     timeframe: str = "summary",
     customer_name: str | None = None,
+    **kwargs,
 ) -> str:
     """Master multi-period financial & collections summary.
 

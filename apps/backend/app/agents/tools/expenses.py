@@ -68,9 +68,15 @@ async def record_expense(
 
 @merchant_agent.tool
 async def get_current_expenses(ctx: RunContext[MerchantAgentDeps]) -> str:
-    """Retrieve all recorded store expenses and the total spend.
+    """Retrieve all recorded store expenses, bills, and the total expense spend.
 
-    Call this when the merchant asks about their expenses, operational costs, or budget breakdown.
+    MANDATORY USAGE RULE:
+    Call this tool ONLY when the merchant EXPLICITLY asks about store expenses, operational costs, or bills:
+    - "What are my expenses?", "Store expenses list", "Show my shop bills", "Total kharcha kitna hai", "List expenses"
+
+    STRICT PROHIBITION:
+    - NEVER call this tool when the merchant asks about "profit", "earnings", "collection", "sales", "revenue", "today's profit", "yesterday's profit", "weekly profit", or "monthly profit"!
+    - In this retail store system, daily/weekly/monthly profit questions are answered strictly via collections tools (`get_daily_collection`, `get_store_revenue_report`). Never attempt to calculate profit by calling this expense tool.
     """
     guard = _guard_merchant(ctx)
     if guard:

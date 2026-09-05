@@ -90,6 +90,33 @@ function parseErrorMessage(data: unknown, fallback: string): string {
   return fallback;
 }
 
+export async function refreshAccessToken(): Promise<string> {
+  const refreshToken = tokenStorage.getRefreshToken();
+  if (!refreshToken) {
+    tokenStorage.clearTokens();
+    throw new ApiError(401, "Session expired, please sign in again");
+  }
+
+  if (isRefreshing) {
+    return await new Promise<string>((resolve, reject) => {
+      failedQueue.push({ resolve, reject });
+    });
+  }
+
+  isRefreshing = true;
+
+  try {
+    const newToken = await executeRefresh();
+    processQueue(null, newToken);
+    return newToken;
+  } catch (refreshError) {
+    processQueue(refreshError, null);
+    throw refreshError;
+  } finally {
+    isRefreshing = false;
+  }
+}
+
 export async function fetchClient<T>(
   endpoint: string,
   options: RequestOptions = {}
@@ -144,39 +171,12 @@ export async function fetchClient<T>(
   }
 
   if (response.status === 401 && !skipAuth && !isAuthRouteWithoutRefresh(endpoint)) {
-    const refreshToken = tokenStorage.getRefreshToken();
-    if (!refreshToken) {
-      tokenStorage.clearTokens();
-      throw new ApiError(401, "Session expired, please sign in again");
-    }
-
-    if (isRefreshing) {
-      const newToken = await new Promise<string>((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      });
-      requestHeaders.set("Authorization", `Bearer ${newToken}`);
-      return await fetchClient<T>(endpoint, {
-        ...options,
-        headers: requestHeaders,
-      });
-    }
-
-    isRefreshing = true;
-
-    try {
-      const newToken = await executeRefresh();
-      processQueue(null, newToken);
-      requestHeaders.set("Authorization", `Bearer ${newToken}`);
-      return await fetchClient<T>(endpoint, {
-        ...options,
-        headers: requestHeaders,
-      });
-    } catch (refreshError) {
-      processQueue(refreshError, null);
-      throw refreshError;
-    } finally {
-      isRefreshing = false;
-    }
+    const newToken = await refreshAccessToken();
+    requestHeaders.set("Authorization", `Bearer ${newToken}`);
+    return await fetchClient<T>(endpoint, {
+      ...options,
+      headers: requestHeaders,
+    });
   }
 
   if (!response.ok) {

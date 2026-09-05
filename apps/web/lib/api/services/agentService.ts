@@ -1,4 +1,4 @@
-import { api } from "../utils/fetchClient";
+import { api, refreshAccessToken } from "../utils/fetchClient";
 import { tokenStorage } from "../utils/tokenStorage";
 import type {
   ChatSessionListResponse,
@@ -39,20 +39,44 @@ export const agentService = {
     callbacks: StreamChatCallbacks,
     signal?: AbortSignal
   ): Promise<void> {
-    const token = tokenStorage.getAccessToken();
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+    const sendStreamRequest = async (authToken: string | null): Promise<Response> => {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+
+      return await fetch(`${API_BASE_URL}/agent/chat/stream`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+        signal,
+      });
     };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
+
+    let token = tokenStorage.getAccessToken();
+    let response: Response;
+
+    try {
+      response = await sendStreamRequest(token);
+    } catch (fetchErr) {
+      if ((fetchErr as Error).name === "AbortError") throw fetchErr;
+      const netErr = new Error("Network connection error while connecting to chat stream");
+      callbacks.onError?.(netErr);
+      throw netErr;
     }
 
-    const response = await fetch(`${API_BASE_URL}/agent/chat/stream`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload),
-      signal,
-    });
+    if (response.status === 401) {
+      try {
+        const newToken = await refreshAccessToken();
+        response = await sendStreamRequest(newToken);
+      } catch (refreshErr) {
+        const sessionErr = new Error("Session expired. Please sign in again.");
+        callbacks.onError?.(sessionErr);
+        throw sessionErr;
+      }
+    }
 
     if (!response.ok) {
       const errorText = await response.text();

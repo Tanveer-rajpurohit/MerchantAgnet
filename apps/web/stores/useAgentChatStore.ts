@@ -79,9 +79,39 @@ export const useAgentChatStore = create<AgentChatState>((set) => ({
     }),
 
   setStreamingError: (error) =>
-    set({
-      isStreaming: false,
-      error,
+    set((state) => {
+      const userMsg = state.streamingUserMessage;
+      if (!userMsg) {
+        return {
+          isStreaming: false,
+          error,
+        };
+      }
+
+      const errorMsg = error.toLowerCase().includes("session expired")
+        ? "Your session has expired. Please sign in again to continue."
+        : `Unable to complete request: ${error}. Please try again.`;
+
+      const failedRun: AgentRunRecord = {
+        id: `failed-${Date.now()}`,
+        session_id: state.activeSessionId,
+        merchant_id: "",
+        persona: "merchant_admin",
+        user_message: userMsg,
+        agent_response: errorMsg,
+        tools_invoked: [],
+        status: "failed",
+        latency_ms: null,
+        created_at: new Date().toISOString(),
+      };
+
+      return {
+        isStreaming: false,
+        streamingUserMessage: null,
+        streamingAssistantResponse: "",
+        error,
+        runs: [...state.runs, failedRun],
+      };
     }),
 
   resetStream: () =>
