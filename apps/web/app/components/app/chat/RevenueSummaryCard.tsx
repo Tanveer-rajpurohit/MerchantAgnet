@@ -46,7 +46,7 @@ export function RevenueSummaryCard({
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3.5">
         <div className="p-3.5 rounded-xl bg-bg border border-border">
-          <span className="text-xs text-muted uppercase tracking-wide block mb-1">
+          <span className="text-xs text-muted block mb-1">
             This Week
           </span>
           <p className="text-xl sm:text-2xl font-instrument text-primary">
@@ -55,7 +55,7 @@ export function RevenueSummaryCard({
         </div>
 
         <div className="p-3.5 rounded-xl bg-bg border border-border">
-          <span className="text-xs text-muted uppercase tracking-wide block mb-1">
+          <span className="text-xs text-muted block mb-1">
             Last Week
           </span>
           <p className="text-xl sm:text-2xl font-instrument text-secondary">
@@ -64,7 +64,7 @@ export function RevenueSummaryCard({
         </div>
 
         <div className="p-3.5 rounded-xl bg-bg border border-border">
-          <span className="text-xs text-muted uppercase tracking-wide block mb-1">
+          <span className="text-xs text-muted block mb-1">
             Orders
           </span>
           <p className="text-xl sm:text-2xl font-instrument text-primary">
@@ -73,7 +73,7 @@ export function RevenueSummaryCard({
         </div>
 
         <div className="p-3.5 rounded-xl bg-bg border border-border">
-          <span className="text-xs text-muted uppercase tracking-wide block mb-1">
+          <span className="text-xs text-muted block mb-1">
             Avg Order
           </span>
           <p className="text-xl sm:text-2xl font-instrument text-primary">

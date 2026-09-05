@@ -164,9 +164,7 @@ def _build_merchant_prompt(
             f"\n<attached_customer>\n"
             f"CURRENTLY FOCUSED/ATTACHED CUSTOMER: {c_name} "
             f"(Phone: {c_phone}, Connection ID: {c_conn}{id_str})\n"
-            f"The merchant selected this customer in the UI chat dropdown. Any customer-related action "
-            f"(sending a message, payment link, bill, or creating an order) MUST automatically be directed "
-            f"to this customer. NEVER ask the merchant for this customer's name, phone, or ID!\n"
+            f"The merchant selected this customer in the UI. Default to this customer unless the merchant explicitly names a different customer in their request. NEVER ask the merchant for database IDs!\n"
             f"{payment_rule}"
             f"</attached_customer>"
         )
@@ -177,9 +175,7 @@ def _build_merchant_prompt(
             f"\n<attached_customer>\n"
             f"CURRENTLY FOCUSED/ATTACHED CUSTOMER: {target_customer_name} "
             f"(Phone: {target_customer_phone or 'Not provided'}, Connection ID: {target_customer_connection_id or 'Auto'}{id_str})\n"
-            f"The merchant selected this customer in the UI chat dropdown. Any customer-related action "
-            f"(sending a message, payment link, bill, or creating an order) MUST automatically be directed "
-            f"to this customer. NEVER ask the merchant for this customer's name, phone, or ID!\n"
+            f"The merchant selected this customer in the UI. Default to this customer unless the merchant explicitly names a different customer in their request. NEVER ask the merchant for database IDs!\n"
             f"{payment_rule}"
             f"</attached_customer>"
         )

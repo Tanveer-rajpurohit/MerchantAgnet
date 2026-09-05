@@ -20,7 +20,7 @@ customer_model = OpenAIChatModel(
 customer_agent = Agent(
     customer_model,
     deps_type=CustomerAgentDeps,
-    model_settings=ModelSettings(max_tokens=8192),
+    model_settings=ModelSettings(max_tokens=4096),
 )
 
 

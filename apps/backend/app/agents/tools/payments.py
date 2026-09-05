@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 @merchant_agent.tool
 async def create_payment_link(
     ctx: RunContext[MerchantAgentDeps],
-    customer_name: str,
     amount: float,
-    description: str,
+    customer_name: str = "Customer",
+    description: str = "Order payment",
     customer_phone: str | None = None,
     customer_email: str | None = None,
     customer_id: str | None = None,
@@ -188,7 +188,7 @@ async def create_payment_link(
                 "razorpay_link_id": razorpay_resp.get("id"),
                 "customer_name": customer_name,
                 "customer_id": str(resolved_customer_id) if resolved_customer_id else None,
-                "persona": ctx.deps.persona.value,
+                "persona": ctx.deps.persona.value if hasattr(ctx.deps.persona, "value") else str(ctx.deps.persona),
             },
         )
         await ctx.deps.db.commit()

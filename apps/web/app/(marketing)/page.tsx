@@ -14,10 +14,8 @@ export default function Page() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated && user) {
-      if (user.role === "merchant") {
-        router.replace(isOnboarded ? "/chat" : "/onboarding");
-      } else if (user.role === "customer") {
-        router.replace("/user");
+      if (!isOnboarded && user.role === "merchant") {
+        router.replace("/onboarding");
       }
     }
   }, [isAuthenticated, user, isOnboarded, isLoading, router]);

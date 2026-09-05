@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, ShoppingBag, ArrowRight } from "lucide-react";
-import ThemeToggle from "../components/ThemeToggle";
 import { AgentOrb } from "../components/app/utils";
 import { useAuth } from "../../context/AuthContext";
 import { useShops } from "../../hooks/useShops";
@@ -42,7 +41,7 @@ export default function PublicShopsPage() {
 
   if (selectedShop) {
     return (
-      <div className="w-full h-screen flex flex-col bg-bg font-intert">
+      <div className="w-full h-screen flex flex-col bg-bg font-intert animate-in fade-in-50 duration-150">
         <header className="flex items-center justify-between px-4 sm:px-8 py-3.5 border-b border-border bg-surface shrink-0">
           <Link
             href="/"
@@ -53,7 +52,6 @@ export default function PublicShopsPage() {
           </Link>
 
           <div className="flex items-center gap-2.5">
-            <ThemeToggle inline className="!h-8 !w-8 !rounded-xl shrink-0" />
             {!isAuthenticated ? (
               <div className="flex items-center gap-2">
                 <Link
@@ -97,7 +95,6 @@ export default function PublicShopsPage() {
         </Link>
 
         <div className="flex items-center gap-2.5">
-          <ThemeToggle inline className="!h-8 !w-8 !rounded-xl shrink-0" />
           {!isAuthenticated ? (
             <div className="flex items-center gap-2">
               <Link

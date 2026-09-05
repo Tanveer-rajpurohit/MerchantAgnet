@@ -17,7 +17,9 @@ export function useRealtimeChat({
     }
 
     return () => {
-      useSocketStore.getState().disconnect();
+      if (connectionId) {
+        useSocketStore.getState().disconnect();
+      }
     };
   }, [connectionId, role, enabled]);
 

@@ -93,7 +93,6 @@ export const useSocketStore = create<SocketState>((set, get) => ({
   },
 
   disconnect: () => {
-    pendingQueue = [];
     const ws = get().socket;
     if (ws) {
       ws.onopen = null;
@@ -110,11 +109,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     const trimmed = content.trim();
     if (!trimmed) return false;
 
-    if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
-      return false;
-    }
-
-    if (ws.readyState === WebSocket.CONNECTING) {
+    if (!ws || ws.readyState === WebSocket.CONNECTING) {
       pendingQueue.push({ content: trimmed, senderType });
       return true;
     }
@@ -124,6 +119,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       return true;
     }
 
-    return false;
+    pendingQueue.push({ content: trimmed, senderType });
+    return true;
   },
 }));

@@ -1,4 +1,4 @@
-# MerchantAgent — The Complete Picture
+# MerchantAgent - The Complete Picture
 
 ---
 
@@ -96,7 +96,7 @@ The whole thing runs on one database, doing double duty as both the regular rela
 
 ## 6. Complete Functionality
 
-### 6.1 Merchant Agent — 25 Tools (10 Functional Groups)
+### 6.1 Merchant Agent - 25 Tools (10 Functional Groups)
 
 | Group | Tools | What they do |
 |---|---|---|
@@ -106,12 +106,12 @@ The whole thing runs on one database, doing double duty as both the regular rela
 | **Customers** | `get_recent_customers`, `resolve_customer`, `send_message_to_customer` | Find customers by name; broadcast messages |
 | **Orders** | `create_order`, `update_order_status`, `list_orders` | Auto-resolves customer name + product price from catalog |
 | **Payment Links** | `create_payment_link`, `check_payment_status`, `list_payment_links` | Real Razorpay test-mode links; live status sync |
-| **Campaigns** | `create_campaign` | Drafts a campaign (DRAFT only) — merchant approves via UI |
-| **Audit** | `get_audit_log` | Full transparency — every agent + user action logged |
+| **Campaigns** | `create_campaign` | Drafts a campaign (DRAFT only) - merchant approves via UI |
+| **Audit** | `get_audit_log` | Full transparency - every agent + user action logged |
 | **Analytics** | `get_daily_collection`, `get_customer_udhaar_ledger`, `get_store_revenue_report`, `get_store_earnings_analytics` | Daily cash register, customer debt ledger, revenue reports |
 | **Financial Report** | `get_store_financial_report` | Full financial report with optional expense inclusion |
 
-### 6.2 Customer Agent — 3 Tools
+### 6.2 Customer Agent - 3 Tools
 
 | Tool | What it does |
 |---|---|
@@ -126,7 +126,7 @@ Boundaries enforced: the customer persona cannot see cost prices, supplier names
 1. Merchant describes an offer in plain language
 2. Agent pulls the customer list, drafts personalized messages, returns a **draft** summary
 3. Frontend renders a CampaignGateCard with Approve/Decline buttons
-4. Only the merchant can approve — the agent cannot
+4. Only the merchant can approve - the agent cannot
 
 ### 6.4 Real Razorpay Integration (Test Mode)
 
@@ -141,7 +141,7 @@ Three sender types in one room: customer, agent, merchant. If the merchant is of
 
 ### 6.6 Voice In + Voice Out
 
-- **Voice input:** Browser SpeechRecognition API — Hindi, English, Hinglish. Word-by-word streaming into the chat input.
+- **Voice input:** Browser SpeechRecognition API - Hindi, English, Hinglish. Word-by-word streaming into the chat input.
 - **Voice output:** 8 Indian language voices via node-edge-tts (Microsoft Edge neural voices). Free, no API key.
 
 ### 6.7 Structured Cards
@@ -151,7 +151,7 @@ Interactive cards instead of plain text for money-moving actions:
 
 ### 6.8 Dashboard (Live Data)
 
-Today's Collection, Pending Links, Low Stock Items, Active Orders, Recent Activity — all wired to live APIs, no mock data.
+Today's Collection, Pending Links, Low Stock Items, Active Orders, Recent Activity - all wired to live APIs, no mock data.
 
 ### 6.9 Knowledge Graph (pgvector + fastembed)
 
@@ -159,8 +159,8 @@ Product catalog + store profile + AI rules embedded locally (BAAI/bge-small-en-v
 
 ### 6.10 Onboarding (3 Steps)
 
-1. Business Profile — name, type, city, language, owner name
-2. Connect Razorpay Test Account — keys encrypted at rest
+1. Business Profile - name, type, city, language, owner name
+2. Connect Razorpay Test Account - keys encrypted at rest
 3. Products + Expenses + AI Goals
 
 ### 6.11 Customer Portal

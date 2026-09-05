@@ -105,15 +105,7 @@ export default function HeroSection() {
           </Link>
         </div>
 
-        <div className="w-full max-w-6xl mx-auto">
-          <div className="relative w-full aspect-video rounded-2xl border border-border bg-surface overflow-hidden group cursor-pointer">
-            <div className="absolute inset-0 bg-surface-muted flex flex-col items-center justify-center gap-4 transition-opacity group-hover:opacity-90">
-              <span className="text-sm sm:text-base font-medium font-intert text-muted">
-                Watch Demo
-              </span>
-            </div>
-          </div>
-        </div>
+
       </div>
     </section>
   );

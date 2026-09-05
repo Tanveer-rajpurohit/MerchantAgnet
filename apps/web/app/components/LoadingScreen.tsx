@@ -108,7 +108,7 @@ export default function LoadingScreen({ onLoadComplete }: LoadingScreenProps) {
   return (
     <div ref={containerRef} className="fixed inset-0 z-50 bg-bg">
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-        <h1 className="select-none text-4xl font-light text-primary font-satoshi">
+        <h1 className="select-none text-4xl font-light text-primary font-intert">
           {GREETINGS[wordIndex]}
         </h1>
         <div

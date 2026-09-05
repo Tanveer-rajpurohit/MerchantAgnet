@@ -162,7 +162,7 @@ export function UserSidebar({ children }: UserSidebarProps) {
           }`}
         >
           <div className="border-t border-border pt-3">
-            <p className="px-2.5 mb-1.5 text-[11px] font-medium text-muted uppercase tracking-wider">
+            <p className="px-2.5 mb-1.5 text-[11px] font-medium text-muted">
               Favorite Stores
             </p>
             {RECENT_STORES.map((store) => (

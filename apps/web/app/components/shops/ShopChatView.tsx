@@ -237,7 +237,7 @@ export function ShopChatView({ shop, onBack }: ShopChatViewProps) {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full min-h-0 bg-bg font-intert overflow-hidden">
+    <div className="flex-1 flex flex-col h-full min-h-0 bg-bg font-intert overflow-hidden animate-in fade-in-50 duration-150">
       <div className="flex items-center justify-between px-4 sm:px-8 py-3.5 border-b border-border bg-surface shrink-0">
         <div className="flex items-center gap-3">
           <button
@@ -300,14 +300,14 @@ export function ShopChatView({ shop, onBack }: ShopChatViewProps) {
             </div>
           )}
 
-          {(isDetailLoading || isMessagesLoading) && (
+          {isMessagesLoading && messages.length === 0 && (
             <div className="flex justify-center py-12">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
             </div>
           )}
 
-          {!isDetailLoading && !isMessagesLoading && messages.length === 0 && (
-            <div className="p-8 text-center rounded-2xl border border-dashed border-border bg-surface">
+          {!isMessagesLoading && messages.length === 0 && (
+            <div className="p-8 text-center rounded-2xl border border-dashed border-border bg-surface animate-in fade-in-50 duration-150">
               <Store size={28} className="mx-auto text-muted mb-2" />
               <p className="text-sm font-medium text-primary">
                 Chat with {shop.business_name}
@@ -319,9 +319,7 @@ export function ShopChatView({ shop, onBack }: ShopChatViewProps) {
             </div>
           )}
 
-          {!isDetailLoading &&
-            !isMessagesLoading &&
-            messages.length > 0 &&
+          {messages.length > 0 &&
             messages.map((m) => {
               const isCustomer = m.sender_type === "customer";
               const isAgent = m.sender_type === "agent";

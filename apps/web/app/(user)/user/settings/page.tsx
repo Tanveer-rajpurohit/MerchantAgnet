@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import {
-  AppearanceSection,
   VoiceSettingsSection,
   PrivacySection,
   SessionSection,
@@ -26,12 +25,11 @@ export default function UserSettingsPage() {
             Buyer Settings
           </h1>
           <p className="text-xs sm:text-sm text-muted mt-1">
-            Manage your buyer workspace appearance, speech voice, and notification preferences.
+            Manage your buyer workspace speech voice and notification preferences.
           </p>
         </div>
 
         <div className="space-y-6">
-          <AppearanceSection />
           <VoiceSettingsSection />
           <PrivacySection />
           <SessionSection onSignOut={handleSignOut} />

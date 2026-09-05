@@ -1,6 +1,6 @@
 # MerchantAgent
 
-One AI agent that runs day-to-day operations for small Indian merchants — payments, orders, campaigns, catalog, expenses, analytics — over a simple chat in English, Hindi, or Hinglish. And on the other side, a matching agent customers can talk to, to browse a shop's catalog and check out with real Razorpay links.
+One AI agent that runs day-to-day operations for small Indian merchants: payments, orders, campaigns, catalog, expenses, analytics, over simple voice or text chat in English, Hindi, or Hinglish. And on the customer side, a dedicated storefront agent that buyers can talk to, allowing them to browse local catalogs, check stock, and check out with real Razorpay payment links.
 
 Built for **Track 1 (AI Growth & Agentic Commerce)** of the Razorpay Buildathon.
 
@@ -8,40 +8,55 @@ Built for **Track 1 (AI Growth & Agentic Commerce)** of the Razorpay Buildathon.
 
 ## The Problem
 
-Roughly 60 million small merchants in India run their business on WhatsApp and memory. Not Shopify. Not Tally. Not QuickBooks.
+Roughly 60 million small retail and kirana merchants across India run their business on WhatsApp, physical paper notebooks, and memory. Not Shopify. Not Tally. Not QuickBooks.
 
-A regular customer wants to pay ₹500. The shopkeeper opens the Razorpay dashboard, fills in a form, copies a link, pastes it into WhatsApp. Five minutes gone, for one transaction. Diwali is coming and the shop wants to message twenty loyal customers? Open WhatsApp, type twenty separate messages, send each one. Someone asks if there's still milk in stock? Walk to the shelf and count. How much did I make today? Flip through a paper ledger.
+Existing platforms assume structured catalogs, cloud accounting software, and API integrations:
+- A regular customer wants to pay ₹500: the merchant has to open the Razorpay dashboard, fill out a web form, copy the link, and paste it into WhatsApp.
+- Festival season arrives: the merchant types twenty separate WhatsApp broadcast messages by hand.
+- Stock inquiry: the merchant walks to the shelf to physically count packets.
+- Daily earnings: flipping through pages of handwritten ledger notes.
 
-Razorpay's own Agent Studio is built for merchants already on Shopify or Tally — it doesn't reach the merchant with a notebook.
+**Razorpay's own Agent Studio is built for merchants already on Shopify or Tally: it doesn't reach the merchant with a notebook.**
+
+Local merchants who operate with pen and paper need an AI partner that handles their routine operational workflows conversationally, without requiring them to learn complex dashboard software.
 
 ---
 
 ## The Solution
 
-A merchant talks to an AI agent like a person. The agent takes bounded, audited actions on the merchant's behalf — creates real Razorpay payment links, drafts campaigns (merchant approves before anything sends), answers stock questions, logs expenses, creates orders, runs financial reports. Every action is logged to an audit trail. Every money-moving step is gated behind the merchant's own approval.
+MerchantAgent gives local merchants an operational AI copilot powered by Sarvam AI and PydanticAI. The merchant talks or types in English, Hindi, or Hinglish. The agent takes bounded, audited actions:
+- Creates verified Razorpay payment links instantly
+- Manages inventory and alerts on low stock
+- Drafts supplier purchase orders and restock notes
+- Logs operating expenses and tracks customer udhaar
+- Runs financial analytics and daily collections without manual math
+- Drafts targeted WhatsApp promotions with a mandatory human approval gate
 
-The merchant's catalog is also exposed in a structured form so an external AI agent (a buyer's shopping assistant) could query it — making this "agentic commerce," not just a chatbot.
+Simultaneously, MerchantAgent exposes the merchant's catalog as an interactive storefront. Any customer can discover local shops, chat with the shop's customer agent in their native language, and complete checkout with an active Razorpay payment link.
 
 ---
 
 ## What The Merchant Gets
 
-- **"Send Rahul a ₹500 link"** → real Razorpay payment link created and handed back
-- **"Run a Diwali offer for my last 20 customers"** → agent drafts the campaign, shows Approve/Decline buttons. Only the merchant can send it.
-- **"How much did I make this month"** → real number from actual payment records
-- **Log expenses, check stock, ask "what happened this week"** → all in the same chat
-- **Speak instead of type** → Hindi or English voice input, 8 Indian voice outputs
+- **"Send Rahul a ₹500 link"**: real Razorpay payment link created and returned in seconds.
+- **"Run a Diwali offer for my last 20 customers"**: agent drafts the campaign and displays Approve and Decline buttons. Nothing sends without merchant approval.
+- **"How much did I collect today"**: pure daily revenue calculation from real payment records.
+- **"Log an expense of ₹250 for snacks"**: recorded into the financial ledger with an audit trail.
+- **"Draft a restock note for low stock items"**: formatted supplier restock message ready for WhatsApp.
+- **Speak instead of type**: native speech recognition and Indian neural voice synthesis.
 
-25 tools across catalog, products, expenses, customers, orders, payments, campaigns, audit, and financial analytics.
+25 specialized tools spanning inventory, orders, customer ledger, expenses, payment links, campaigns, audit logs, and analytics.
+
+---
 
 ## What The Customer Gets
 
-- Browse a directory of local stores by category
-- Chat with any store's AI to check stock, prices, and place orders
-- Get a real Razorpay checkout link and pay right there
-- See all orders, receipts, and payment status across every shop in one place
+- Discover local neighborhood shops by category and location
+- Conversational product search with real-time stock and price inquiries
+- Direct order placement with an instant Razorpay checkout link
+- Centralized customer portal tracking orders, receipts, and payment status across all connected stores
 
-If the shop owner is online, they can jump into the same conversation and answer directly.
+If the store owner is available, they can step into the conversation and assist the customer directly.
 
 ---
 
@@ -49,22 +64,22 @@ If the shop owner is online, they can jump into the same conversation and answer
 
 | Layer | Choice |
 |---|---|
-| Backend | Python + FastAPI + PydanticAI |
-| AI Model | Sarvam AI `sarvam-m4` (105B) — native Hindi/Hinglish |
-| Database | PostgreSQL 16 + pgvector |
-| Embeddings | fastembed (BAAI/bge-small-en-v1.5, 384-dim, local) |
+| Backend | Python 3.13, FastAPI, PydanticAI |
+| AI Model | Sarvam AI `sarvam-m4` (105B parameters), native Indic multilingual |
+| Database | PostgreSQL 16 with `pgvector` extension |
+| Embeddings | fastembed (BAAI/bge-small-en-v1.5, 384-dim, local inference) |
 | Cache | Redis 7 |
-| Payments | Razorpay Python SDK (test mode) |
-| Frontend | Next.js 16 + React 19 + Tailwind 4 + shadcn/ui |
-| State | TanStack Query + Zustand |
-| Realtime | SSE (merchant) + WebSocket (customer) |
-| Voice | Web Speech API (input) + node-edge-tts (output) |
+| Payments | Razorpay Python SDK (Test Mode) |
+| Frontend | Next.js 16, React 19, Tailwind CSS, shadcn/ui |
+| State | TanStack Query, Zustand |
+| Realtime | Server-Sent Events (Merchant Copilot), WebSockets (Customer Storefront) |
+| Voice | Web Speech API (Input), Edge-TTS neural engine (Output) |
 
 ---
 
 ## Project Structure
 
-```
+```text
 merchant-agent/
 ├── apps/
 │   ├── backend/          # FastAPI + PydanticAI (port 8000)
@@ -127,32 +142,48 @@ pnpm start                     # http://localhost:3004
 
 ---
 
-## How It Works
+## Architecture Flow
 
+```text
+[Merchant] ──(Voice/Chat)──> SSE Stream ──> PydanticAI merchant_agent (25 tools)
+                                                  │
+                                                  ├── Razorpay: payment links, status sync
+                                                  ├── PostgreSQL: orders, catalog, expenses
+                                                  └── pgvector: semantic catalog search
+
+[Customer] ──(Chat/Order)──> WebSocket ──> PydanticAI customer_agent (3 tools)
+                                                  │
+                                                  ├── Browse catalog, place orders
+                                                  └── Real checkout link -> Razorpay payment
 ```
-[Merchant] ──(chat)──> SSE stream ──> PydanticAI merchant_agent (25 tools)
-                                            │
-                                            ├── Razorpay: payment links, status sync
-                                            ├── PostgreSQL: orders, catalog, expenses
-                                            └── pgvector: semantic catalog search
 
-[Customer] ──(chat)──> WebSocket ──> PydanticAI customer_agent (3 tools)
-                                            │
-                                            ├── Browse catalog, place orders
-                                            └── Real checkout link → Razorpay payment
-```
-
-Every money-moving tool is called exactly once per request. Fingerprint deduplication prevents duplicate payment links, orders, or messages in the same turn. The campaign approval gate is non-optional — the agent drafts, only the merchant can approve and send.
+Every money-moving tool is executed with deduplication guards to prevent duplicate payment links or orders. The campaign approval gate is strictly enforced: the agent drafts the broadcast, but only the merchant can approve and initiate sending.
 
 ---
 
 ## Documentation
 
-| Doc | What's in it |
+| Doc | What is in it |
 |---|---|
-| [idea_final.md](docs/idea_final.md) | Complete product vision — problem, solution, functionality |
+| [idea_final.md](docs/idea_final.md) | Complete product vision: problem, solution, functionality |
 | [architecture.md](docs/architecture.md) | Technical stack, system design, database models |
-| [functionality.md](docs/functionality.md) | All features, FR/NFR tables, tool inventory |
+| [functionality.md](docs/functionality.md) | All features, FR and NFR tables, tool inventory |
 | [merchantagent-pitch.md](docs/merchantagent-pitch.md) | Narrative pitch |
-| [test.md](docs/test.md) | End-to-end test plan (Categories A–T) |
+| [test.md](docs/test.md) | End-to-end test plan (Categories A through T) |
 | [Database Design.md](docs/Database%20Design.md) | PostgreSQL schema and relationships |
+
+---
+
+## Scaling to 100K+ Users
+
+The architecture includes a verified scaling path for high-volume production:
+
+| Bottleneck | Current State | Production Path |
+|---|---|---|
+| **Database** | Single PostgreSQL for transactions, vectors, and analytics | **Read replicas** for heavy analytics queries. Financial summaries hit the replica, while transactional writes stay on primary. At 100K+ products, move vector indexes to a dedicated vector store (Qdrant or Pinecone). |
+| **Agent Memory** | 2-turn memory cap (last 2 turns, 500 chars each) | **RAG over conversation history.** Store all past conversation turns in pgvector and semantically retrieve relevant turns per request instead of using a fixed turn window. |
+| **25 Tools on 1 Agent** | Single PydanticAI agent with all tools | **Tool-cluster sub-agents.** Partition tools into specialized agents (catalog agent, finance agent, campaign agent) behind a lightweight router. |
+| **LLM Provider** | Single Sarvam API endpoint | **Multi-provider fallback chain.** Sarvam -> GPT-4o -> Claude as backup providers with uniform prompt schemas. |
+| **Backend** | Single FastAPI instance | **Horizontal ASGI scaling** behind a reverse proxy or load balancer. Stateless JWT and Redis tokens enable horizontal container scaling. |
+| **WebSocket State** | In-memory connection manager | **Redis Pub/Sub backplane.** Publish customer storefront messages to Redis channels across all backend worker nodes. |
+| **Token Refresh** | Client-side mutex with 10s timeout | Production ready: serializes concurrent refresh requests and fails fast if network drops. |

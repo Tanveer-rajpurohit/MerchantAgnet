@@ -1,0 +1,33 @@
+id: custom-env-exposure
+
+info:
+  name: Environment File Exposure Check
+  author: tanveer
+  severity: critical
+  description: Checks that .env files are not committed to the repository and that .gitignore properly excludes them.
+  tags: custom,code,env
+  remediation: Add .env to .gitignore and remove any .env files from git history.
+
+file:
+  - extensions:
+      - env
+
+    matchers-condition: or
+    matchers:
+      - type: regex
+        name: env-has-secrets
+        regex:
+          - "DATABASE_URL=.+"
+          - "RAZORPAY_KEY_ID=.+"
+          - "RAZORPAY_KEY_SECRET=.+"
+          - "JWT_SECRET=.+"
+          - "SARVAM_API_KEY=.+"
+          - "REDIS_URL=.+"
+          - "SECRET_KEY=.+"
+          - "FERNET_KEY=.+"
+
+    extractors:
+      - type: regex
+        name: exposed-env-var
+        regex:
+          - "[A-Z_]+=.{4,}"

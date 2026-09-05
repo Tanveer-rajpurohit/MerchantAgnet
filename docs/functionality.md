@@ -1,4 +1,4 @@
-# MerchantAgent — Core Functionality
+# MerchantAgent - Core Functionality
 
 > Complete feature inventory of what the system does, how it behaves, and what tools power each capability.
 
@@ -10,37 +10,37 @@ Two separate PydanticAI agents share one codebase but serve different people:
 
 | Persona | Who | Powers | Where they chat |
 |---|---|---|---|
-| **merchant_admin** | The store owner | Full operational control — money, products, expenses, customers, campaigns | Merchant chat (SSE streaming) |
+| **merchant_admin** | The store owner | Full operational control - money, products, expenses, customers, campaigns | Merchant chat (SSE streaming) |
 | **customer_shopfront** | An end customer browsing a store | Read catalog + request a checkout link only | Customer chat (WebSocket) |
 
-A merchant speaks in names ("Rajesh"), never UUIDs. The agent resolves names + prices itself — it never asks the merchant for info it can look up.
+A merchant speaks in names ("Rajesh"), never UUIDs. The agent resolves names + prices itself - it never asks the merchant for info it can look up.
 
 ---
 
-## 2. Merchant Agent — 25 Tools (10 Functional Groups)
+## 2. Merchant Agent - 25 Tools (10 Functional Groups)
 
 | Group | Tools | What they do |
 |---|---|---|
 | **Catalog** (both personas) | `get_product_catalog`, `search_store_knowledge` | Exact stock + prices; semantic search over vendor agreements/policies |
-| **Products** (merchant) | `add_product`, `update_product`, `delete_product` | Full CRUD on the catalog — agent never says "I can't edit" |
+| **Products** (merchant) | `add_product`, `update_product`, `delete_product` | Full CRUD on the catalog - agent never says "I can't edit" |
 | **Expenses** (merchant) | `record_expense`, `get_current_expenses`, `update_expense`, `delete_expense` | Log + edit + delete business expenses |
 | **Customers** (merchant) | `get_recent_customers`, `resolve_customer`, `send_message_to_customer` | Find customers by name; broadcast messages to multiple customers at once |
 | **Orders** (merchant) | `create_order`, `update_order_status`, `list_orders` | Auto-resolves customer name + product price from catalog; single-call discipline |
 | **Payment Links** (both) | `create_payment_link`, `check_payment_status`, `list_payment_links` | Real Razorpay test-mode links; live status sync |
-| **Campaigns** (merchant) | `create_campaign` | Drafts a campaign (DRAFT only) — merchant approves via UI |
-| **Audit** (merchant) | `get_audit_log` | Full transparency — every agent + user action logged |
+| **Campaigns** (merchant) | `create_campaign` | Drafts a campaign (DRAFT only) - merchant approves via UI |
+| **Audit** (merchant) | `get_audit_log` | Full transparency - every agent + user action logged |
 | **Analytics & Finance** (merchant) | `get_daily_collection`, `get_customer_udhaar_ledger`, `get_store_revenue_report`, `get_store_earnings_analytics` | Daily cash register (today/yesterday), customer udhaar ledger with mobile numbers, periodic revenue reports (week/month/year) with explicit date ranges |
 | **Financial Report** (merchant) | `get_store_financial_report` | Full financial report with optional expense inclusion |
 
 **Key design rules enforced by the prompt:**
-- **Proactive mandate:** never ask the merchant for UUIDs or prices — look them up.
+- **Proactive mandate:** never ask the merchant for UUIDs or prices - look them up.
 - **Single-call discipline:** money-moving tools called exactly once per request.
-- **Fingerprint dedup:** if the agent tries to create the same payment link / order / message twice in one turn, it returns the existing one — no duplicates.
+- **Fingerprint dedup:** if the agent tries to create the same payment link / order / message twice in one turn, it returns the existing one - no duplicates.
 - **Multi-customer pin:** merchant can select multiple customers in the UI dropdown and broadcast to all in one tool call.
 
 ---
 
-## 3. Customer Agent — 3 Tools
+## 3. Customer Agent - 3 Tools
 
 | Tool | What it does |
 |---|---|
@@ -55,7 +55,7 @@ A merchant speaks in names ("Rajesh"), never UUIDs. The agent resolves names + p
 ## 4. Customer Portal & Storefront Experience (`/shops`, `/user`)
 
 1. **Public Storefront Directory (`/shops`):** Browse merchant stores categorized by sector (Grocery, D2C, Services, Restaurant) with live search by location or store name.
-2. **AI Storefront Chat (`/shops/{slug}`):** In-chat assistant handling stock inquiries and checkout orders. Enforces strict boundary protection — retail prices only, no cost/margins, no supplier leaks.
+2. **AI Storefront Chat (`/shops/{slug}`):** In-chat assistant handling stock inquiries and checkout orders. Enforces strict boundary protection - retail prices only, no cost/margins, no supplier leaks.
 3. **Unified Customer Payment Links (`/user/payment-links`):** Consolidated view of all payment links across every merchant, filtered by `All`, `Pending`, and `Paid`, with direct "Pay Now" actions.
 4. **Order History & Udhaar Transparency (`/user/orders`):** Expandable itemized purchase receipts with live payment states (`Paid` / `Unpaid`). Protected with a read-only policy: customers cannot mutate merchant orders, instead using a "Request Change" modal to contact the store directly.
 5. **Verified Checkout Receipt (`/payment-success`):** Automated Razorpay HMAC-SHA256 signature verification and printable/downloadable PDF tax invoices.
@@ -64,7 +64,7 @@ A merchant speaks in names ("Rajesh"), never UUIDs. The agent resolves names + p
 
 ## 5. Campaign Orchestrator with Approval Gate
 
-The **approval gate is non-optional** — every money-moving action is explainable, bounded, gated:
+The **approval gate is non-optional** - every money-moving action is explainable, bounded, gated:
 
 1. Merchant says "Run a Diwali 10% off campaign for my last 20 customers"
 2. Agent calls `get_recent_customers(20)` → calls `create_campaign` once → returns a **draft** summary
@@ -72,7 +72,7 @@ The **approval gate is non-optional** — every money-moving action is explainab
 4. Merchant taps **Approve** → `POST /api/v1/campaigns/{id}/approve` → backend creates per-customer shop links, personalizes messages, marks campaign `sent`
 5. Merchant taps **Decline** → campaign marked `cancelled`, nothing sent
 
-The agent **cannot** approve or send — only the merchant can, via HTTP.
+The agent **cannot** approve or send - only the merchant can, via HTTP.
 
 ---
 
@@ -104,12 +104,12 @@ A customer opens a store → starts a chat. The merchant can reply directly, OR 
 
 ## 9. Structured Cards (Not Plain Text)
 
-When the agent calls a money-moving tool, the frontend renders an **interactive card** — not just text:
-- **PaymentLinkCard** — Copy link, Open, Send on WhatsApp, Send in customer chat
-- **CampaignGateCard** — Approve / Decline buttons, view target customers
-- **CatalogStockCard** — Low-stock status pills
-- **MessageSnippetCard** — WhatsApp draft messages with copy button
-- **RevenueSummaryCard** — Week-over-week metrics
+When the agent calls a money-moving tool, the frontend renders an **interactive card** - not just text:
+- **PaymentLinkCard** - Copy link, Open, Send on WhatsApp, Send in customer chat
+- **CampaignGateCard** - Approve / Decline buttons, view target customers
+- **CatalogStockCard** - Low-stock status pills
+- **MessageSnippetCard** - WhatsApp draft messages with copy button
+- **RevenueSummaryCard** - Week-over-week metrics
 
 Detection is reliable: the backend's `done` SSE event includes `tools_invoked`, so the card parser matches by tool name (not flaky regex).
 
@@ -117,15 +117,15 @@ Detection is reliable: the backend's `done` SSE event includes `tools_invoked`, 
 
 ## 10. Audit Log (Full Transparency)
 
-Every agent + user action — payment link created, order placed, expense logged, campaign approved — is written to `audit_logs` with timestamp, action, entity, and JSON details. The merchant can ask "what did I do recently?" and the agent calls `get_audit_log`.
+Every agent + user action - payment link created, order placed, expense logged, campaign approved - is written to `audit_logs` with timestamp, action, entity, and JSON details. The merchant can ask "what did I do recently?" and the agent calls `get_audit_log`.
 
 ---
 
 ## 11. Onboarding (3 Steps)
 
-1. **Business Profile** — name, type, city, language, owner name
-2. **Connect Razorpay Test Account** — keys encrypted at rest
-3. **Products + Expenses + AI Goals** — catalog + recurring expenses + "what should the agent help with"
+1. **Business Profile** - name, type, city, language, owner name
+2. **Connect Razorpay Test Account** - keys encrypted at rest
+3. **Products + Expenses + AI Goals** - catalog + recurring expenses + "what should the agent help with"
 
 ---
 
@@ -137,14 +137,14 @@ Forgot password flow with a human-friendly 6-character alphanumeric code (e.g. `
 
 ## 13. Dashboard (Live Data)
 
-- **Today's Collection** — sum of paid payment links created today
-- **Pending Links** — count of unpaid payment links
-- **Low Stock Items** — products at/below their low-stock threshold
-- **Active Orders** — count of unpaid orders
-- **Recent Activity** — real audit log feed
-- **Low Stock** — real product scan
+- **Today's Collection** - sum of paid payment links created today
+- **Pending Links** - count of unpaid payment links
+- **Low Stock Items** - products at/below their low-stock threshold
+- **Active Orders** - count of unpaid orders
+- **Recent Activity** - real audit log feed
+- **Low Stock** - real product scan
 
-No mock data — all wired to live APIs.
+No mock data - all wired to live APIs.
 
 ---
 
@@ -156,7 +156,7 @@ The merchant can pin 1 or many customers in the chat UI dropdown. The prompt dyn
 
 ## 15. Knowledge Graph (pgvector + fastembed)
 
-Product catalog + store profile + AI rules are embedded locally (BAAI/bge-small-en-v1.5, 384-dim, runs on CPU via `fastembed`). `search_store_knowledge` does semantic search over vendor agreements, store policies, past invoices — not just exact catalog lookup.
+Product catalog + store profile + AI rules are embedded locally (BAAI/bge-small-en-v1.5, 384-dim, runs on CPU via `fastembed`). `search_store_knowledge` does semantic search over vendor agreements, store policies, past invoices - not just exact catalog lookup.
 
 ---
 
@@ -195,7 +195,7 @@ Product catalog + store profile + AI rules are embedded locally (BAAI/bge-small-
 | NFR-1 (Security) | JWT access + refresh token rotation (Redis-backed); Razorpay keys encrypted at rest with Fernet | Done |
 | NFR-2 (Security) | Merchant-only tools guarded by persona check; customer persona cannot access merchant data | Done |
 | NFR-3 (Auditability) | Every money-moving action logged with timestamp, actor, entity, JSON details | Done |
-| NFR-4 (Reliability) | Agent tools wrap in try/except — errors degrade to friendly strings, never crash the app | Done |
+| NFR-4 (Reliability) | Agent tools wrap in try/except - errors degrade to friendly strings, never crash the app | Done |
 | NFR-5 (Reliability) | Failed agent runs persisted with `status=failed` + `error_detail` (graceful failure) | Done |
 | NFR-6 (Performance) | SSE streaming for merchant chat; WebSocket for customer chat; cursor-based pagination everywhere | Done |
 | NFR-7 (Performance) | Multi-turn memory: last 2 turns loaded as PydanticAI message history (token budget) | Done |
@@ -212,9 +212,9 @@ Product catalog + store profile + AI rules are embedded locally (BAAI/bge-small-
 
 ## 18. Current Limitations
 
-1. **WhatsApp Business API not integrated** — the merchant copies drafted WhatsApp messages and forwards them manually. The draft-card format makes this one tap, but it's not auto-sent.
-2. **No MCP server yet** — the catalog is queryable by the merchant's own agent, but not yet exposed as an MCP tool for external agents. (Stretch goal; `mcp` is in requirements.)
-3. **No voice calls** — voice input + voice output, but not a live phone-call mode.
-4. **Campaign Feed (cross-merchant discovery) not built** — listed as stretch.
+1. **WhatsApp Business API not integrated** - the merchant copies drafted WhatsApp messages and forwards them manually. The draft-card format makes this one tap, but it's not auto-sent.
+2. **No MCP server yet** - the catalog is queryable by the merchant's own agent, but not yet exposed as an MCP tool for external agents. (Stretch goal; `mcp` is in requirements.)
+3. **No voice calls** - voice input + voice output, but not a live phone-call mode.
+4. **Campaign Feed (cross-merchant discovery) not built** - listed as stretch.
 5. **Settlement webhooks still not wired.**
-6. **Test mode only** — no real money ever moves. Production would need KYC + live keys.
+6. **Test mode only** - no real money ever moves. Production would need KYC + live keys.

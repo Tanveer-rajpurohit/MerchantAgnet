@@ -1,8 +1,8 @@
-# MerchantAgent — Why This, Why Now
+# MerchantAgent - Why This, Why Now
 
 *Built for Track 1 (AI Growth & Agentic Commerce), Razorpay Buildathon.*
 
----
+--- 
 
 ## 1. The Problem
 

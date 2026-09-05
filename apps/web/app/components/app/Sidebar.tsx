@@ -221,7 +221,7 @@ export function Sidebar({ children }: SidebarProps) {
           <div className="border-t border-border pt-3">
             {Object.entries(grouped).map(([date, items]) => (
               <div key={date} className="mb-3">
-                <p className="px-2.5 mb-1 text-[11px] font-medium font-intert text-muted uppercase tracking-wider">
+                <p className="px-2.5 mb-1 text-[11px] font-medium font-intert text-muted">
                   {date}
                 </p>
                 {items.map((item) => {

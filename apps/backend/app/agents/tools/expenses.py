@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 async def record_expense(
     ctx: RunContext[MerchantAgentDeps],
     amount: float,
-    category: str,
-    description: str,
+    category: str = "misc",
+    description: str = "",
 ) -> str:
     """Record a business expense for the merchant's store.
 

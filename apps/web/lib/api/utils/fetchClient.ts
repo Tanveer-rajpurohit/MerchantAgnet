@@ -99,7 +99,13 @@ export async function refreshAccessToken(): Promise<string> {
 
   if (isRefreshing) {
     return await new Promise<string>((resolve, reject) => {
-      failedQueue.push({ resolve, reject });
+      const timeout = setTimeout(() => {
+        reject(new ApiError(408, "Token refresh timed out, please reload"));
+      }, 10_000);
+      failedQueue.push({
+        resolve: (token: string) => { clearTimeout(timeout); resolve(token); },
+        reject: (err: unknown) => { clearTimeout(timeout); reject(err); },
+      });
     });
   }
 

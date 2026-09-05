@@ -98,7 +98,7 @@ export function PaymentLinkCard({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         <div>
-          <span className="text-[11px] text-muted uppercase tracking-wider block">
+          <span className="text-[11px] text-muted block">
             Customer
           </span>
           <p className="text-sm font-medium text-primary mt-0.5">
@@ -107,7 +107,7 @@ export function PaymentLinkCard({
         </div>
 
         <div>
-          <span className="text-[11px] text-muted uppercase tracking-wider block">
+          <span className="text-[11px] text-muted block">
             Amount Due
           </span>
           <p className="text-xl font-instrument text-primary mt-0.5">
@@ -116,7 +116,7 @@ export function PaymentLinkCard({
         </div>
 
         <div className="sm:col-span-2">
-          <span className="text-[11px] text-muted uppercase tracking-wider block">
+          <span className="text-[11px] text-muted block">
             Purpose
           </span>
           <p className="text-xs text-secondary mt-0.5">{description}</p>

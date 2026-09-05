@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import ThemeToggle from "./ThemeToggle";
 import { AgentOrb } from "./app/utils";
 import { useAuth } from "../../context/AuthContext";
 
@@ -94,7 +93,6 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-2.5">
-            <ThemeToggle inline />
             <Link
               href={appDestination}
               className="px-4 py-1.5 bg-brand text-white shadow-xs rounded-xl flex justify-center items-center text-xs md:text-[13px] font-medium font-intert hover:opacity-90 active:scale-95 transition-all"

@@ -1,6 +1,6 @@
 # MerchantAgent Backend (FastAPI + PydanticAI)
 
-Backend service for MerchantAgent — powering both the merchant management copilot and the customer shopfront AI.
+Backend service for MerchantAgent: powering both the merchant management copilot and the customer shopfront AI.
 
 ## Tech Stack
 

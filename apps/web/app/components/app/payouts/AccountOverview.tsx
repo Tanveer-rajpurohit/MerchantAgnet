@@ -71,7 +71,7 @@ export function AccountOverview({
             className="rounded-xl border border-border bg-surface p-4 flex flex-col justify-between"
           >
             <div>
-              <p className="text-xs text-muted uppercase tracking-wide mb-1.5">
+              <p className="text-xs text-muted mb-1.5">
                 {stat.label}
               </p>
               {isLoading ? (

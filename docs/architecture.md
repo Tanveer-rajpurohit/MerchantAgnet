@@ -1,4 +1,4 @@
-# MerchantAgent — Technical Architecture
+# MerchantAgent - Technical Architecture
 
 This document describes the technical implementation of MerchantAgent: stack choices, data strategy, agent execution lifecycle, and core database models.
 
@@ -18,7 +18,7 @@ This document describes the technical implementation of MerchantAgent: stack cho
 | **Speech** | **Web Speech API + Edge-TTS** | Browser-native speech recognition for Hinglish/English voice input; Microsoft Edge neural TTS fallback for voice responses. |
 | **TTS Service** | **node-edge-tts** (Microsoft Edge neural voices) | Free, no API key, 8 Indian languages. Default voice `hi-IN-Madhur`. |
 
-### Core AI Model — Sarvam AI
+### Core AI Model - Sarvam AI
 
 | Property | Value |
 | :--- | :--- |
@@ -26,13 +26,13 @@ This document describes the technical implementation of MerchantAgent: stack cho
 | **Model** | `sarvam-m4` (105B parameters) |
 | **API Endpoint** | `https://api.sarvam.ai/v1` (OpenAI-compatible) |
 | **Context Window** | 128K tokens |
-| **Agent Settings** | `max_tokens=8192` per response |
+| **Agent Settings** | `max_tokens=4096` per response |
 | **Languages** | English, Hindi, Hinglish (native multilingual) |
 
 Sarvam was chosen over GPT-4o / Claude because:
-1. **Indian language fluency** — native Hinglish understanding, not translation-layer quality. A kirana merchant typing "Rajesh ke liye 500 ka link bhej do" gets parsed correctly on the first try.
-2. **Cost** — significantly cheaper per token than frontier models for the same Hindi/Hinglish accuracy.
-3. **OpenAI-compatible API** — PydanticAI's `OpenAIModel` adapter connects directly via `base_url`, zero custom integration code.
+1. **Indian language fluency** - native Hinglish understanding, not translation-layer quality. A kirana merchant typing "Rajesh ke liye 500 ka link bhej do" gets parsed correctly on the first try.
+2. **Cost** - significantly cheaper per token than frontier models for the same Hindi/Hinglish accuracy.
+3. **OpenAI-compatible API** - PydanticAI's `OpenAIModel` adapter connects directly via `base_url`, zero custom integration code.
 
 The agent is configured in [`base_agent.py`](file:///D:/coding/project/ADVANCED/MerchantAgnet/merchant-agent/apps/backend/app/agents/base_agent.py) with `ModelSettings(max_tokens=8192)` to prevent stream truncation on detailed financial reports.
 
@@ -71,16 +71,16 @@ The agent is configured in [`base_agent.py`](file:///D:/coding/project/ADVANCED/
                     └─────────────────────────┘
 ```
 
-The whole thing runs on one database, doing double duty as both the regular relational store and the vector store for semantic catalog search. No separate vector database, no second service to keep alive. The merchant-facing chat streams over Server-Sent Events (one-way flow). The customer-facing chat runs over WebSocket (bidirectional — customer, shop owner, and agent may all be in the same thread).
+The whole thing runs on one database, doing double duty as both the regular relational store and the vector store for semantic catalog search. No separate vector database, no second service to keep alive. The merchant-facing chat streams over Server-Sent Events (one-way flow). The customer-facing chat runs over WebSocket (bidirectional - customer, shop owner, and agent may all be in the same thread).
 
 ---
 
-## 3. Data Strategy — Exact vs. Semantic
+## 3. Data Strategy - Exact vs. Semantic
 
 | Data Entity | Storage Mechanism | Architectural Decision |
 | :--- | :--- | :--- |
 | **Merchant Profiles** | PostgreSQL table | Exact relational lookups (business type, contact, UPI VPA, Razorpay credentials). |
-| **Products & Inventory** | PostgreSQL table | **Strictly exact** — prices, cost margins, and stock levels are never approximated via vector similarity. |
+| **Products & Inventory** | PostgreSQL table | **Strictly exact** - prices, cost margins, and stock levels are never approximated via vector similarity. |
 | **Payment Links & Orders** | PostgreSQL table | Strict ACID transactional records with status transitions (`unpaid` → `paid` → `cancelled`). |
 | **Campaigns & Targets** | PostgreSQL table | Transactional approval gates and per-customer delivery tracking. |
 | **Audit Logs** | PostgreSQL table | Immutable, append-only logs of every agent action and tool execution. |
@@ -185,7 +185,7 @@ expenses
 
 - **JWT Access + Refresh Token Rotation**: Access tokens expire every 15 minutes. Refresh tokens (Redis-backed, 7-day TTL) rotate on use. Concurrent 401s handled via module-level `isRefreshing` mutex + `failedQueue` pattern in `fetchClient.ts`.
 - **Razorpay Keys Encrypted at Rest**: Fernet symmetric encryption for `razorpay_key_secret_encrypted` column.
-- **Persona Role Guards**: `UserRole.customer` vs `UserRole.merchant` — customer persona cannot access merchant-only tools.
+- **Persona Role Guards**: `UserRole.customer` vs `UserRole.merchant` - customer persona cannot access merchant-only tools.
 - **HMAC-SHA256 Payment Verification**: Razorpay webhook signatures verified server-side before marking payments as paid.
 - **Rate Limiting**: Forgot-password endpoint limited to 5 attempts per 15 minutes.
 - **No Secrets in Code**: All credentials via `.env`, never committed.

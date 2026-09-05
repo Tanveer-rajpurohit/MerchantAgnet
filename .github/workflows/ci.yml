@@ -1,0 +1,93 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  frontend:
+    name: Frontend Type Check & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type Check
+        working-directory: apps/web
+        run: npx tsc --noEmit
+
+      - name: Build Frontend
+        run: pnpm turbo build --filter=web
+
+  backend:
+    name: Backend Syntax Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Syntax & Import Check
+        run: |
+          source venv/bin/activate
+          python -m py_compile app/main.py
+          python -m py_compile app/agents/base_agent.py
+          python -m py_compile app/agents/prompts.py
+          python -m py_compile app/services/agent_service.py
+          python -m py_compile app/services/analytics_service.py
+          python -c "from app.agents.pydanticai_tool import merchant_agent; print(f'Tools registered: {len(merchant_agent._function_toolset.tools)}')"
+
+  security:
+    name: Nuclei Secret Scanner
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Nuclei
+        run: |
+          NUCLEI_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/nuclei/releases/latest | grep tag_name | cut -d '"' -f 4)
+          curl -sL "https://github.com/projectdiscovery/nuclei/releases/download/${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION#v}_linux_amd64.zip" -o /tmp/nuclei.zip
+          unzip -o /tmp/nuclei.zip -d /tmp/nuclei_bin/
+          sudo mv /tmp/nuclei_bin/nuclei /usr/local/bin/
+          rm -rf /tmp/nuclei*
+          nuclei -version
+
+      - name: Scan for Hardcoded Secrets
+        run: |
+          nuclei -file -target apps/backend -t .nuclei/custom-code-hardcoded-secrets.yaml -o nuclei_findings.txt
+          nuclei -file -target apps/web -t .nuclei/custom-code-hardcoded-secrets.yaml -o nuclei_findings_fe.txt
+          if [ -s nuclei_findings.txt ] || [ -s nuclei_findings_fe.txt ]; then
+            echo "::error::CRITICAL: Hardcoded secrets detected in source code!"
+            cat nuclei_findings.txt nuclei_findings_fe.txt 2>/dev/null
+            exit 1
+          fi
+          echo "No hardcoded secrets found. Security gate passed."

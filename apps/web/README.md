@@ -1,4 +1,4 @@
-# MerchantAgent — Frontend (Next.js)
+# MerchantAgent: Frontend (Next.js)
 
 Next.js web application for MerchantAgent, providing interfaces for both merchant store owners and visiting customers.
 
@@ -17,7 +17,7 @@ Runs on [http://localhost:3001](http://localhost:3001).
 - **Framework:** Next.js 16.3.1 (App Router, Turbopack)
 - **State Management:** Zustand (ephemeral UI & agent streaming state) + TanStack React Query v5 (server cache)
 - **Styling:** Tailwind CSS with custom design system variables (`app/globals.css`)
-- **Typography:** Satoshi (display headings), Inter Tight (body & controls), JetBrains Mono (financial & identifiers)
+- **Typography:** Inter Tight (primary UI & headings), JetBrains Mono (financial figures & code)
 - **Icons:** lucide-react
 - **Audio & Speech:** Web Speech API for voice dictation; custom multi-engine TTS (browser speech synthesis + Microsoft Edge neural TTS fallback)
 

@@ -45,22 +45,39 @@ function UserShoppingContent() {
     }
   }, [shopIdFromUrl, shops, detailData, selectedShop]);
 
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const sId = params.get("shop");
+      if (sId) {
+        const match = shops.find((s) => s.id === sId);
+        if (match) setSelectedShop(match);
+      } else {
+        setSelectedShop(null);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [shops]);
+
   const handleSelectShop = (shop: ShopListItem) => {
     setSelectedShop(shop);
-    router.push(`/user?shop=${shop.id}`, { scroll: false });
+    window.history.pushState({ shopId: shop.id }, "", `/user?shop=${shop.id}`);
   };
 
   const handleBack = () => {
     setSelectedShop(null);
-    router.push("/user", { scroll: false });
+    window.history.pushState(null, "", "/user");
   };
 
   if (selectedShop) {
     return (
-      <ShopChatView
-        shop={selectedShop}
-        onBack={handleBack}
-      />
+      <div className="w-full h-full flex flex-col animate-in fade-in-50 duration-150">
+        <ShopChatView
+          shop={selectedShop}
+          onBack={handleBack}
+        />
+      </div>
     );
   }
 

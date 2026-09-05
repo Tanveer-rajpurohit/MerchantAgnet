@@ -220,6 +220,22 @@ async def stream_merchant_chat(
 
             if summary_lines:
                 fallback_text = "\n".join(summary_lines)
+            elif tools_invoked:
+                tool_outputs = []
+                for ti in tools_invoked:
+                    content = ti.get("content", "")
+                    if content and str(content).strip():
+                        tool_outputs.append(str(content))
+                if tool_outputs:
+                    fallback_text = "\n\n".join(tool_outputs)
+                else:
+                    logger.info("Executing non-streaming synthesis fallback after stream closed...")
+                    run_res = await merchant_agent.run(
+                        payload.message,
+                        deps=deps,
+                        message_history=message_history if message_history else None,
+                    )
+                    fallback_text = getattr(run_res, "output", getattr(run_res, "data", "")) or ""
             else:
                 logger.info("Executing non-streaming synthesis fallback after stream closed...")
                 run_res = await merchant_agent.run(

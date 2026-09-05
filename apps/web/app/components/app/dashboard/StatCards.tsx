@@ -87,7 +87,7 @@ function StatCard({
         : "text-primary";
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
-      <p className="text-xs text-muted uppercase tracking-wide mb-1.5">
+      <p className="text-xs text-muted mb-1.5">
         {label}
       </p>
       <p className={`text-2xl font-instrument ${valueColor}`}>{value}</p>

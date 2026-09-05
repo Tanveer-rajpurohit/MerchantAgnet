@@ -16,7 +16,7 @@ groq_model = OpenAIChatModel(model_name=settings.AGENT_MODEL, provider=custom_pr
 merchant_agent = Agent(
     groq_model,
     deps_type=MerchantAgentDeps,
-    model_settings=ModelSettings(max_tokens=8192),
+    model_settings=ModelSettings(max_tokens=4096),
 )
 
 from sqlalchemy import select
@@ -24,10 +24,10 @@ from app.models.address import Address
 
 @merchant_agent.system_prompt
 async def dynamic_system_prompt(ctx: RunContext[MerchantAgentDeps]) -> str:
-    target_name = ctx.deps.target_customer_name or (ctx.deps.user.full_name if ctx.deps.user else "") or ""
-    target_phone = ctx.deps.target_customer_phone or (ctx.deps.user.phone_number if ctx.deps.user else "") or ""
+    target_name = ctx.deps.target_customer_name or ""
+    target_phone = ctx.deps.target_customer_phone or ""
     target_conn_id = str(ctx.deps.target_customer_connection_id) if ctx.deps.target_customer_connection_id else ""
-    target_cust_id = str(ctx.deps.target_customer_id) if ctx.deps.target_customer_id else (str(ctx.deps.user.id) if ctx.deps.user else "")
+    target_cust_id = str(ctx.deps.target_customer_id) if ctx.deps.target_customer_id else ""
 
     sp = ctx.deps.store_profile
     if sp:

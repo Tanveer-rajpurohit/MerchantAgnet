@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  AppearanceSection,
   VoiceSettingsSection,
   StoreProfileSection,
   AIGoalsSection,
@@ -41,13 +40,12 @@ export default function SettingsPage() {
             Settings
           </h1>
           <p className="text-sm text-muted mt-1">
-            Manage your merchant workspace, theme preferences, and connected
+            Manage your merchant workspace, voice preferences, and connected
             integrations.
           </p>
         </div>
 
         <div className="space-y-6">
-          <AppearanceSection />
           <VoiceSettingsSection />
           <StoreProfileSection />
           <AIGoalsSection />
