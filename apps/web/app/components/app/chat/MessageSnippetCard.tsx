@@ -26,7 +26,9 @@ export function MessageSnippetCard({ children }: MessageSnippetCardProps) {
   const raw = extractSnippetText(children).trim();
   const isTip = /^Tip:?/i.test(raw);
   const isNote = /^Note:?/i.test(raw);
-  const isMessage = /^(?:Hi|Hello|Dear|Hey|To|Subject:|Please deliver)/i.test(raw);
+  const isMessage =
+    /^(?:Hi|Hello|Dear|Hey|Namaste|To:|Subject:|Please deliver|Please arrange|Please send|Please provide)/i.test(raw) ||
+    /(?:Thanks|Regards|Sincerely|Thank you)[\s\S]*$/i.test(raw);
 
   let label = "Draft Message";
   let Icon = MessageSquareText;

@@ -89,15 +89,17 @@ async def get_current_expenses(ctx: RunContext[MerchantAgentDeps]) -> str:
             if not expenses:
                 return "No expenses recorded yet."
 
-            lines = []
+            lines = [
+                "| Expense Category | Amount | Due Date | Description / Notes |",
+                "| :--- | :--- | :--- | :--- |",
+            ]
             total = Decimal("0.00")
             for e in expenses:
                 lines.append(
-                    f"- EXPENSE_ID={e.id} | {e.category} | ₹{e.amount:.2f} | "
-                    f"due: {e.due_on} | notes: {e.notes or '-'}"
+                    f"| {e.category} | ₹{e.amount:.2f} | {e.due_on or '-'} | {e.notes or '-'} |"
                 )
                 total += e.amount
-            lines.append(f"\nTOTAL: ₹{total:.2f}")
+            lines.append(f"\n**Total Recurring Overhead:** ₹{total:.2f}")
             return "\n".join(lines)
     except Exception as e:
         logger.error("Error in get_current_expenses: %s", e, exc_info=True)

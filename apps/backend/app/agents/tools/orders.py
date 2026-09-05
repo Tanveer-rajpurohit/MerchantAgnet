@@ -380,13 +380,17 @@ async def list_orders(
             if not orders:
                 return "No orders found matching the criteria."
 
-            lines = []
+            lines = [
+                "| Order ID | Customer | Items | Total | Status |",
+                "| :--- | :--- | :--- | :--- | :--- |",
+            ]
             for o in orders:
-                cname = o.customer.full_name if o.customer else "Unknown"
+                cname = o.customer.full_name if o.customer else "Walk-in"
                 items_str = ", ".join(f"{it.product_name_snapshot} x{it.quantity}" for it in (o.items or []))
+                short_id = str(o.id)[:8]
+                status_label = "Paid" if o.status == OrderStatus.paid else "Pending"
                 lines.append(
-                    f"- Order {o.id}: {cname} | Status: {o.status.value} | "
-                    f"Total: ₹{o.total_amount:.2f} (Paid: ₹{o.paid_amount:.2f}) | Items: {items_str}"
+                    f"| #{short_id} | {cname} | {items_str} | ₹{o.total_amount:.2f} | {status_label} |"
                 )
             return "\n".join(lines)
     except Exception as e:

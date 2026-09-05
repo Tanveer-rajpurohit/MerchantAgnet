@@ -168,9 +168,7 @@ async def search_catalog_chunks(
                 results.append(
                     f"- {prod.product_name}: Selling Price ₹{prod.selling_price:.2f} | "
                     f"Cost Price ₹{prod.cost_price:.2f} | "
-                    f"Current Stock: {prod.current_stock} units | "
-                    f"Low Stock Threshold: {prod.low_stock_alert or 5} | "
-                    f"PRODUCT_ID: {prod.id}"
+                    f"Current Stock: {prod.current_stock} units"
                 )
                 continue
         results.append(chunk.content)

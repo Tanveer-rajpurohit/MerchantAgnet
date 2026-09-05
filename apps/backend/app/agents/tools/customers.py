@@ -58,7 +58,29 @@ async def get_recent_customers(
         rows = (await ctx.deps.db.execute(stmt)).all()
 
         if not rows:
-            return "No connected customers with chat history yet."
+            stmt_fallback = (
+                select(CustomerConnection)
+                .where(
+                    CustomerConnection.merchant_id == merchant_id,
+                    CustomerConnection.status == ConnectionStatus.connected,
+                )
+                .order_by(CustomerConnection.total_spent.desc().nullslast())
+                .limit(cap)
+                .options(selectinload(CustomerConnection.customer))
+            )
+            fallback_conns = (await ctx.deps.db.execute(stmt_fallback)).scalars().all()
+            if not fallback_conns:
+                return "No connected customers found for this store."
+            lines = ["CONNECTION_ID | CUSTOMER_ID | NAME | PHONE | TOTAL_SPENT | LAST_ACTIVE"]
+            for conn in fallback_conns:
+                cust = conn.customer
+                name = cust.full_name if cust else "Unknown"
+                phone = cust.phone_number or "-" if cust else "-"
+                spent = f"₹{conn.total_spent:.2f}" if conn.total_spent else "₹0.00"
+                lines.append(
+                    f"{conn.id} | {conn.customer_id} | {name} | {phone} | {spent} | n/a"
+                )
+            return "\n".join(lines)
 
         lines = ["CONNECTION_ID | CUSTOMER_ID | NAME | PHONE | TOTAL_SPENT | LAST_ACTIVE"]
         for conn, last_at in rows:

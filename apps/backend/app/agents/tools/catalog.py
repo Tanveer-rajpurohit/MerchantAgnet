@@ -38,62 +38,65 @@ async def get_product_catalog(
                 Product.merchant_id == merchant_id,
                 Product.is_active.is_(True),
             )
-            if search_term and search_term.lower() not in ("all", "all products", "inventory", "catalog"):
+            if search_term and search_term.lower().strip() not in ("all", "all products", "inventory", "catalog", "everything"):
                 stmt = stmt.where(Product.product_name.ilike(f"%{search_term.strip()}%"))
-            stmt = stmt.limit(25)
+            stmt = stmt.order_by(Product.product_name.asc()).limit(30)
 
             products = (await ctx.deps.db.execute(stmt)).scalars().all()
             if not products and search_term:
                 all_stmt = select(Product).where(
                     Product.merchant_id == merchant_id,
                     Product.is_active.is_(True),
-                ).limit(25)
+                ).order_by(Product.product_name.asc()).limit(30)
                 products = (await ctx.deps.db.execute(all_stmt)).scalars().all()
 
             if products:
-                lines = []
+                lines = [
+                    "| Product | Price | Stock |",
+                    "| :--- | :--- | :--- |",
+                ]
                 for p in products:
                     stock_desc = f"{p.current_stock} available" if p.current_stock > 0 else "Out of stock"
-                    lines.append(f"- {p.product_name}: Price ₹{p.selling_price:.2f} | Stock: {stock_desc}")
+                    lines.append(f"| {p.product_name} | ₹{p.selling_price:.2f} | {stock_desc} |")
                 return "\n".join(lines)
 
             return "No products are currently available in the catalog."
 
-        # For merchants: Full operational visibility
-        query = search_term.strip() if search_term else "all products"
-
-        results = await search_catalog_chunks(
-            db=ctx.deps.db,
-            merchant_id=merchant_id,
-            query=query,
-            limit=20,
-        )
-        if results:
-            return "\n".join(results)
-
+        # For merchants: Full operational visibility with direct table query
         stmt = select(Product).where(Product.merchant_id == merchant_id)
-        if search_term and search_term.lower() not in ("all", "all products", "inventory", "catalog"):
-            stmt = stmt.where(Product.product_name.ilike(f"%{search_term}%"))
-        stmt = stmt.limit(25)
+        if search_term and search_term.lower().strip() not in (
+            "all", "all products", "inventory", "catalog", "everything",
+            "my product", "products", "list", "list of my product", "list of products",
+        ):
+            stmt = stmt.where(Product.product_name.ilike(f"%{search_term.strip()}%"))
+        stmt = stmt.order_by(Product.product_name.asc()).limit(50)
 
         products = (await ctx.deps.db.execute(stmt)).scalars().all()
         if not products and search_term:
             all_stmt = (
                 select(Product)
-                .where(Product.merchant_id == merchant_id, Product.is_active.is_(True))
-                .limit(25)
+                .where(Product.merchant_id == merchant_id)
+                .order_by(Product.product_name.asc())
+                .limit(50)
             )
             products = (await ctx.deps.db.execute(all_stmt)).scalars().all()
 
         if products:
-            lines = []
+            lines = [
+                "| Product | Selling Price | Cost Price | Margin | Stock | Status |",
+                "| :--- | :--- | :--- | :--- | :--- | :--- |",
+            ]
             for p in products:
+                margin = p.selling_price - p.cost_price
+                threshold = p.low_stock_alert or 5
+                if p.current_stock <= 0:
+                    status = "Out of Stock"
+                elif p.current_stock <= threshold:
+                    status = "Low Stock"
+                else:
+                    status = "Healthy Stock"
                 lines.append(
-                    f"- {p.product_name}: Selling Price ₹{p.selling_price:.2f} | "
-                    f"Cost Price ₹{p.cost_price:.2f} | "
-                    f"Current Stock: {p.current_stock} units | "
-                    f"Low Stock Threshold: {p.low_stock_alert or 5} | "
-                    f"PRODUCT_ID: {p.id}"
+                    f"| {p.product_name} | ₹{p.selling_price:.2f} | ₹{p.cost_price:.2f} | ₹{margin:.2f} | {p.current_stock} units | {status} |"
                 )
             return "\n".join(lines)
 

@@ -56,20 +56,32 @@ async def create_campaign(
                 continue
 
         if not unique_ids:
-            return "No valid customer connection ids supplied. Call get_recent_customers first."
-
-        stmt = (
-            select(CustomerConnection)
-            .where(
-                CustomerConnection.merchant_id == merchant_id,
-                CustomerConnection.id.in_(unique_ids),
-                CustomerConnection.status == ConnectionStatus.connected,
+            stmt_fallback = (
+                select(CustomerConnection)
+                .where(
+                    CustomerConnection.merchant_id == merchant_id,
+                    CustomerConnection.status == ConnectionStatus.connected,
+                )
+                .order_by(CustomerConnection.total_spent.desc().nullslast())
+                .limit(20)
+                .options(selectinload(CustomerConnection.customer))
             )
-            .options(selectinload(CustomerConnection.customer))
-        )
-        conns = (await ctx.deps.db.execute(stmt)).scalars().all()
-        if not conns:
-            return "None of the supplied customers are connected to this store."
+            conns = (await ctx.deps.db.execute(stmt_fallback)).scalars().all()
+            if not conns:
+                return "No connected customers found in store records to target for this campaign."
+        else:
+            stmt = (
+                select(CustomerConnection)
+                .where(
+                    CustomerConnection.merchant_id == merchant_id,
+                    CustomerConnection.id.in_(unique_ids),
+                    CustomerConnection.status == ConnectionStatus.connected,
+                )
+                .options(selectinload(CustomerConnection.customer))
+            )
+            conns = (await ctx.deps.db.execute(stmt)).scalars().all()
+            if not conns:
+                return "None of the supplied customers are connected to this store."
 
         campaign = Campaign(
             merchant_id=merchant_id,

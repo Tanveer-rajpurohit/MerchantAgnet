@@ -33,6 +33,8 @@ export function useMessages(connectionId?: string | null) {
       return await messageService.getMessages(connectionId);
     },
     enabled: Boolean(connectionId),
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   useEffect(() => {

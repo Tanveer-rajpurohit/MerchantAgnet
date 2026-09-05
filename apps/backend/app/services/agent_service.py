@@ -203,57 +203,44 @@ async def stream_merchant_chat(
 
         if needs_fallback:
             fallback_text = ""
-            summary_lines = []
-            if deps.created_payment_links:
-                for pl in deps.created_payment_links:
-                    cname = pl.get("customer_name") or deps.target_customer_name or "the customer"
-                    summary_lines.append(f"Payment link for \u20b9{pl['amount']:.2f} created for {cname}: {pl['url']}")
-            if deps.created_orders:
-                for ord_info in deps.created_orders:
-                    cname = ord_info.get("customer_name") or "Customer"
-                    summary_lines.append(f"Order created for {cname} (Total: \u20b9{ord_info.get('total', 0):.2f}).")
-            if deps.sent_messages:
-                for sm in deps.sent_messages:
-                    recs = sm.get("recipients", [])
-                    rec_str = f" to {', '.join(recs)}" if recs else ""
-                    summary_lines.append(f"Message successfully delivered{rec_str}.")
+            logger.info("Executing non-streaming synthesis fallback after stream closed...")
+            run_res = await merchant_agent.run(
+                payload.message,
+                deps=deps,
+                message_history=message_history if message_history else None,
+            )
+            fallback_text = getattr(run_res, "output", getattr(run_res, "data", "")) or ""
 
-            if summary_lines:
-                fallback_text = "\n".join(summary_lines)
-            elif tools_invoked:
-                tool_outputs = []
-                for ti in tools_invoked:
-                    content = ti.get("content", "")
-                    if content and str(content).strip():
-                        tool_outputs.append(str(content))
-                if tool_outputs:
-                    fallback_text = "\n\n".join(tool_outputs)
-                else:
-                    logger.info("Executing non-streaming synthesis fallback after stream closed...")
-                    run_res = await merchant_agent.run(
-                        payload.message,
-                        deps=deps,
-                        message_history=message_history if message_history else None,
-                    )
-                    fallback_text = getattr(run_res, "output", getattr(run_res, "data", "")) or ""
-            else:
-                logger.info("Executing non-streaming synthesis fallback after stream closed...")
-                run_res = await merchant_agent.run(
-                    payload.message,
-                    deps=deps,
-                    message_history=message_history if message_history else None,
-                )
-                fallback_text = getattr(run_res, "output", getattr(run_res, "data", "")) or ""
-                if not tools_invoked:
-                    for msg in run_res.all_messages():
-                        if hasattr(msg, "parts"):
-                            for part in msg.parts:
-                                if hasattr(part, "tool_name"):
-                                    tools_invoked.append({
-                                        "tool": getattr(part, "tool_name", ""),
-                                        "args": getattr(part, "args", {}),
-                                        "content": getattr(part, "content", ""),
-                                    })
+            run_tools: list[dict] = []
+            for msg in run_res.all_messages():
+                if hasattr(msg, "parts"):
+                    for part in msg.parts:
+                        if hasattr(part, "tool_name"):
+                            run_tools.append({
+                                "tool": getattr(part, "tool_name", ""),
+                                "args": getattr(part, "args", {}),
+                                "content": getattr(part, "content", ""),
+                            })
+            if run_tools:
+                tools_invoked = run_tools
+
+            if not fallback_text.strip():
+                summary_lines = []
+                if deps.created_payment_links:
+                    for pl in deps.created_payment_links:
+                        cname = pl.get("customer_name") or deps.target_customer_name or "the customer"
+                        summary_lines.append(f"Payment link for \u20b9{pl['amount']:.2f} created for {cname}: {pl['url']}")
+                if deps.created_orders:
+                    for ord_info in deps.created_orders:
+                        cname = ord_info.get("customer_name") or "Customer"
+                        summary_lines.append(f"Order created for {cname} (Total: \u20b9{ord_info.get('total', 0):.2f}).")
+                if deps.sent_messages:
+                    for sm in deps.sent_messages:
+                        recs = sm.get("recipients", [])
+                        rec_str = f" to {', '.join(recs)}" if recs else ""
+                        summary_lines.append(f"Message successfully delivered{rec_str}.")
+                if summary_lines:
+                    fallback_text = "\n".join(summary_lines)
 
             if fallback_text:
                 if full_response.strip():

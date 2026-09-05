@@ -80,8 +80,13 @@ export function ShopChatView({ shop, onBack }: ShopChatViewProps) {
 
   const { data: detail, isLoading: isDetailLoading } = useShopDetail(shop.id);
 
+  const existingConnId =
+    "customer_connection_id" in shop
+      ? ((shop as unknown as { customer_connection_id?: string | null }).customer_connection_id || null)
+      : null;
+
   const connectionId =
-    createdConnection?.id || detail?.customer_connection_id || null;
+    createdConnection?.id || existingConnId || detail?.customer_connection_id || null;
 
   const {
     messages,
@@ -300,13 +305,13 @@ export function ShopChatView({ shop, onBack }: ShopChatViewProps) {
             </div>
           )}
 
-          {isMessagesLoading && messages.length === 0 && (
+          {((isDetailLoading && !connectionId) || (Boolean(connectionId) && isMessagesLoading)) && messages.length === 0 && (
             <div className="flex justify-center py-12">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
             </div>
           )}
 
-          {!isMessagesLoading && messages.length === 0 && (
+          {!isDetailLoading && !isMessagesLoading && messages.length === 0 && (
             <div className="p-8 text-center rounded-2xl border border-dashed border-border bg-surface animate-in fade-in-50 duration-150">
               <Store size={28} className="mx-auto text-muted mb-2" />
               <p className="text-sm font-medium text-primary">

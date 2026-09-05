@@ -104,7 +104,7 @@ export function extractCardsFromData(
       targetCount = args.customer_connection_ids.length;
     }
   } else if (
-    /CAMPAIGN_DRAFT_CREATED|Campaign Draft (?:Created|Ready for Approval|Draft)|### (?:Marketing )?Campaign Draft/i.test(
+    /CAMPAIGN_DRAFT_CREATED|(?:Campaign Draft|Draft Campaign)(?:\s*\([^\)]*\))?|Approval Batch|### (?:Marketing )?Campaign/i.test(
       responseText
     )
   ) {
@@ -113,19 +113,19 @@ export function extractCardsFromData(
     if (idMatch && idMatch[1]) campaignId = idMatch[1];
 
     const offerMatch = responseText.match(
-      /(?:OFFER|Offer(?:\s+Description)?|Campaign(?:\s+Name)?):\s*([^\n]+)/i
+      /(?:Offer\s+Description|OFFER(?:\s+DESCRIPTION)?|Campaign\s+Name|Occasion|OFFER)\s*[:|]\s*([^\n|]+)/i
     );
     const segMatch = responseText.match(
-      /(?:SEGMENT|Target Segment|Segment(?:\s+Description)?):\s*([^\n]+)/i
+      /(?:SEGMENT|Target Segment|Segment(?:\s+Description)?)\s*[:|]\s*([^\n|]+)/i
     );
     const discMatch = responseText.match(
-      /(?:DISCOUNT|Discount(?:\s+Offer)?):\s*([^\n]+)/i
+      /(?:DISCOUNT|Discount(?:\s+Offer|\s+Percent)?)\s*[:|]\s*([^\n|]+)/i
     );
     const targetMatch = responseText.match(
-      /(?:TARGET_COUNT|Target Customers?|Targets?|Audience):\s*(\d+)/i
+      /(?:TARGET_COUNT|Target Customers?|Targets?|Audience|Customer\s+Count)\s*[:|]\s*(\d+)/i
     );
     const draftBlockMatch = responseText.match(/```(?:draft|whatsapp)?\s*([\s\S]*?)```/i);
-    const msgMatch = responseText.match(/(?:MESSAGE(?:\s*PREVIEW)?|Message Preview):\s*"?([^\n"]+)"?/i);
+    const msgMatch = responseText.match(/(?:MESSAGE(?:\s*TEMPLATE|\s*PREVIEW)?|Message Template|Message Preview)\s*[:|]\s*"?([^\n"|]+)"?/i);
 
     if (offerMatch && offerMatch[1]) campaignName = offerMatch[1].trim();
     if (segMatch && segMatch[1]) segmentDescription = segMatch[1].trim();

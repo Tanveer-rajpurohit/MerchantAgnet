@@ -91,5 +91,7 @@ export function useShopDetail(merchantId?: string) {
     queryKey: queryKeys.shops.detail(merchantId || ""),
     queryFn: () => shopService.getShopDetail(merchantId || ""),
     enabled: Boolean(merchantId),
+    staleTime: 1000 * 10,
+    refetchOnMount: "always",
   });
 }
