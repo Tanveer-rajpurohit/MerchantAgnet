@@ -28,6 +28,8 @@ class Settings(BaseSettings):
             return [str(origin).strip().rstrip("/") for origin in v if origin]
         return v
 
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/merchant_agent"
+
     @field_validator("DATABASE_URL", mode="after")
     @classmethod
     def normalize_database_url(cls, v: str) -> str:

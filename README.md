@@ -1,5 +1,9 @@
 # MerchantAgent
 
+[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-merchant--agnet--web.vercel.app-3B76E1?style=for-the-badge&logo=vercel&logoColor=white)](https://merchant-agnet-web.vercel.app/)
+
+> 🌐 **Live Website:** [**https://merchant-agnet-web.vercel.app/**](https://merchant-agnet-web.vercel.app/)
+
 One AI agent that runs day-to-day operations for small Indian merchants: payments, orders, campaigns, catalog, expenses, analytics, over simple voice or text chat in English, Hindi, or Hinglish. And on the customer side, a dedicated storefront agent that buyers can talk to, allowing them to browse local catalogs, check stock, and check out with real Razorpay payment links.
 
 Built for **Track 1 (AI Growth & Agentic Commerce)** of the Razorpay Buildathon.
