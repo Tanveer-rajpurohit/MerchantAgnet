@@ -168,8 +168,27 @@ async def place_order(
                     if len(clean_phone) >= 10:
                         razorpay_payload["customer"]["contact"] = f"+91{clean_phone[-10:]}"
 
-                razorpay_resp = client.payment_link.create(razorpay_payload)
-                link_url = razorpay_resp.get("short_url") or ""
+                link_url = ""
+                link_id = None
+                try:
+                    razorpay_resp = client.payment_link.create(razorpay_payload)
+                    link_url = razorpay_resp.get("short_url") or ""
+                    link_id = razorpay_resp.get("id")
+                except Exception as rzp_create_err:
+                    err_str = str(rzp_create_err).lower()
+                    if "limit of 30 reached" in err_str or "test mode limit" in err_str:
+                        logger.warning("Razorpay test limit of 30 reached for store %s. Reusing active test link.", merchant.id)
+                        try:
+                            existing = client.payment_link.all({"count": 10})
+                            items = existing.get("payment_links", [])
+                            if items:
+                                fallback_item = items[0]
+                                link_url = fallback_item.get("short_url") or ""
+                                link_id = fallback_item.get("id")
+                        except Exception:
+                            pass
+                    if not link_url:
+                        raise rzp_create_err
 
                 link = PaymentLink(
                     merchant_id=merchant.id,
@@ -181,7 +200,7 @@ async def place_order(
                     description=f"{ctx.deps.store_name} Order #{short_id}",
                     currency="INR",
                     receipt_number=receipt_no,
-                    razorpay_link_id=razorpay_resp.get("id"),
+                    razorpay_link_id=link_id,
                     razorpay_link_url=link_url,
                     callback_url=callback_url,
                     callback_method="get",

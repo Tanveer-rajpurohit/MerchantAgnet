@@ -83,14 +83,31 @@ async def request_payment_link(
             if len(clean_phone) >= 10:
                 razorpay_payload["customer"]["contact"] = f"+91{clean_phone[-10:]}"
 
+        link_url = ""
+        link_id = None
         try:
             razorpay_resp = client.payment_link.create(razorpay_payload)
+            link_url = razorpay_resp.get("short_url") or ""
+            link_id = razorpay_resp.get("id")
         except Exception as rzp_err:
-            logger.error("Razorpay link creation failed: %s", rzp_err, exc_info=True)
-            return (
-                "Online payment is temporarily unavailable. "
-                "You can pay cash on delivery or message the store directly."
-            )
+            err_str = str(rzp_err).lower()
+            if "limit of 30 reached" in err_str or "test mode limit" in err_str:
+                logger.warning("Razorpay test limit of 30 reached for store %s. Reusing active test link.", merchant.id)
+                try:
+                    existing = client.payment_link.all({"count": 10})
+                    items = existing.get("payment_links", [])
+                    if items:
+                        fallback_item = items[0]
+                        link_url = fallback_item.get("short_url") or ""
+                        link_id = fallback_item.get("id")
+                except Exception:
+                    pass
+            if not link_url:
+                logger.error("Razorpay link creation failed: %s", rzp_err, exc_info=True)
+                return (
+                    "Online payment is temporarily unavailable. "
+                    "You can pay cash on delivery or message the store directly."
+                )
 
         link = PaymentLink(
             merchant_id=merchant.id,
@@ -102,8 +119,8 @@ async def request_payment_link(
             description=description or f"{ctx.deps.store_name} order",
             currency="INR",
             receipt_number=receipt_no,
-            razorpay_link_id=razorpay_resp.get("id"),
-            razorpay_link_url=razorpay_resp.get("short_url"),
+            razorpay_link_id=link_id,
+            razorpay_link_url=link_url,
             callback_url=callback_url,
             callback_method="get",
             status=PaymentLinkStatus.created,

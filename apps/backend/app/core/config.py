@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     AWS_S3_BUCKET_NAME: str = Field(default="merchantagent-assets", validation_alias=AliasChoices("AWS_S3_BUCKET_NAME"))
     
     CREDENTIALS_ENCRYPTION_KEY: str = Field(
-        default="AXuZ9j12k91823ks09HH128931kSH88k12893k199PP=",
+        default="KHpQvGJWi4tNeMUcW8S_f36pGIRx2ti1po2yHlOuF3s=",
         validation_alias=AliasChoices("CREDENTIALS_ENCRYPTION_KEY"),
     )
     FRONTEND_URL: str = Field(
