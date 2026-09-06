@@ -8,8 +8,11 @@ from pydantic_ai import RunContext
 from app.agents.customer_deps import CustomerAgentDeps
 from app.models.order import OrderStatus, ActorType
 from app.models.product import Product
+from app.models.payment_link import PaymentLink, PaymentLinkStatus
 from app.repositories import audit_log_repository, order_repository, customer_connection_repository
 from app.schemas.order import OrderItemCreate
+from app.services.razorpay_client_factory import get_merchant_razorpay_client
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -126,9 +129,11 @@ async def place_order(
         )
         await ctx.deps.db.commit()
 
+        short_id = str(order.id)[:8]
         ctx.deps.created_orders.append({
             "fingerprint": order_fingerprint,
             "id": str(order.id),
+            "short_id": short_id,
             "total": float(total_amount),
         })
 
@@ -136,12 +141,96 @@ async def place_order(
             f"- {it.product_name_snapshot} x{it.quantity} @ ₹{it.unit_price_snapshot:.2f}"
             for it in order_items
         )
+
+        payment_link_str = ""
+        merchant = ctx.deps.merchant
+        if merchant and merchant.is_razorpay_active:
+            try:
+                client = get_merchant_razorpay_client(merchant)
+                amount_in_paise = int(round(float(total_amount) * 100))
+                receipt_no = f"rcpt_{uuid.uuid4().hex[:8]}"
+                callback_url = f"{settings.FRONTEND_URL}/payment-success"
+
+                customer_name = ctx.deps.customer_name or "Customer"
+                razorpay_payload: dict = {
+                    "amount": amount_in_paise,
+                    "currency": "INR",
+                    "accept_partial": False,
+                    "description": f"{ctx.deps.store_name} Order #{short_id}",
+                    "customer": {"name": customer_name},
+                    "notify": {"sms": False, "email": False},
+                    "reminder_enable": True,
+                    "callback_url": callback_url,
+                    "callback_method": "get",
+                }
+                if ctx.deps.customer_phone:
+                    clean_phone = "".join(filter(str.isdigit, ctx.deps.customer_phone))
+                    if len(clean_phone) >= 10:
+                        razorpay_payload["customer"]["contact"] = f"+91{clean_phone[-10:]}"
+
+                razorpay_resp = client.payment_link.create(razorpay_payload)
+                link_url = razorpay_resp.get("short_url") or ""
+
+                link = PaymentLink(
+                    merchant_id=merchant.id,
+                    amount=total_amount,
+                    customer_name=customer_name,
+                    customer_phone=ctx.deps.customer_phone or None,
+                    customer_id=ctx.deps.customer_id,
+                    order_id=order.id,
+                    description=f"{ctx.deps.store_name} Order #{short_id}",
+                    currency="INR",
+                    receipt_number=receipt_no,
+                    razorpay_link_id=razorpay_resp.get("id"),
+                    razorpay_link_url=link_url,
+                    callback_url=callback_url,
+                    callback_method="get",
+                    status=PaymentLinkStatus.created,
+                    notify_sms=False,
+                    notify_email=False,
+                )
+                ctx.deps.db.add(link)
+
+                await audit_log_repository.log_action(
+                    db=ctx.deps.db,
+                    action="payment_link.created",
+                    entity_type="payment_link",
+                    entity_id=str(link.id),
+                    merchant_id=merchant.id,
+                    user_id=ctx.deps.customer_id,
+                    details={
+                        "amount": str(total_amount),
+                        "razorpay_link_id": razorpay_resp.get("id"),
+                        "customer_name": customer_name,
+                        "order_id": str(order.id),
+                        "source": "customer_order_auto",
+                    },
+                )
+                await ctx.deps.db.commit()
+
+                ctx.deps.created_payment_links.append({
+                    "fingerprint": (str(order.id), float(total_amount)),
+                    "url": link_url,
+                    "amount": float(total_amount),
+                })
+                payment_link_str = (
+                    f"\nPAYMENT_LINK: {link_url}\n"
+                    f"CRITICAL: Share this EXACT payment link with the customer so they can pay."
+                )
+            except Exception as rzp_err:
+                logger.error("Auto payment link creation failed in place_order: %s", rzp_err, exc_info=True)
+                payment_link_str = "\nNOTE: Online payment creation failed. Customer can pay cash on delivery."
+        else:
+            payment_link_str = "\nNOTE: Online payment is not active for this store. Customer can pay cash on delivery."
+
         return (
-            f"Order created!\n"
-            f"ORDER_ID: {order.id}\n"
+            f"Order created successfully!\n"
+            f"Order #{short_id}\n"
             f"TOTAL: ₹{total_amount:.2f}\n"
-            f"ITEMS:\n{item_lines}\n"
-            f"Now generate the payment link so the customer can pay."
+            f"ITEMS:\n{item_lines}"
+            f"{payment_link_str}\n"
+            f"CRITICAL: Refer to the order ONLY as 'Order #{short_id}' (NEVER output raw 36-char database UUIDs). "
+            f"NEVER invent or fabricate URLs."
         )
     except Exception as e:
         logger.error("Error in place_order: %s", e, exc_info=True)

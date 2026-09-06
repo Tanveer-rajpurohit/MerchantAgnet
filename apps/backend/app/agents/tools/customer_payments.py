@@ -31,13 +31,26 @@ async def request_payment_link(
     customer_name = ctx.deps.customer_name or "Customer"
     customer_phone = ctx.deps.customer_phone or ""
     norm_amount = round(float(amount), 2)
-    link_fingerprint = (str(ctx.deps.customer_id or "").lower(), norm_amount)
+
+    recent_order_id = None
+    if ctx.deps.created_orders:
+        try:
+            recent_order_id = uuid.UUID(str(ctx.deps.created_orders[-1].get("id", "")))
+        except Exception:
+            recent_order_id = None
+
+    link_fingerprint = (
+        str(recent_order_id) if recent_order_id else str(ctx.deps.customer_id or "").lower(),
+        norm_amount,
+    )
 
     for prev in ctx.deps.created_payment_links:
         if prev.get("fingerprint") == link_fingerprint:
             return (
-                f"Payment link already created: {prev['url']}\n"
-                f"Amount: ₹{prev['amount']:.2f}"
+                f"PAYMENT_LINK_ALREADY_CREATED\n"
+                f"LINK_URL: {prev['url']}\n"
+                f"AMOUNT: ₹{prev['amount']:.2f}\n"
+                f"Share this existing LINK_URL with the customer."
             )
 
     try:
@@ -78,13 +91,6 @@ async def request_payment_link(
                 "Online payment is temporarily unavailable. "
                 "You can pay cash on delivery or message the store directly."
             )
-
-        recent_order_id = None
-        if ctx.deps.created_orders:
-            try:
-                recent_order_id = uuid.UUID(str(ctx.deps.created_orders[-1].get("id", "")))
-            except Exception:
-                recent_order_id = None
 
         link = PaymentLink(
             merchant_id=merchant.id,
@@ -134,7 +140,8 @@ async def request_payment_link(
             f"PAYMENT_LINK_CREATED\n"
             f"LINK_URL: {link_url}\n"
             f"AMOUNT: ₹{amount:.2f}\n"
-            f"Share this link with the customer so they can pay."
+            f"CRITICAL: Share this EXACT payment link with the customer so they can pay. "
+            f"NEVER output raw 36-character database UUIDs or invent URLs."
         )
     except Exception as e:
         logger.error("Error in request_payment_link: %s", e, exc_info=True)

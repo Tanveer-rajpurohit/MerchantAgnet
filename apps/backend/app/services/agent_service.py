@@ -437,6 +437,31 @@ async def run_customer_chat(
             tools_invoked = _extract_merged_tools(run_res.all_messages())
         run_status = AgentRunStatus.success
         error_detail = None
+
+        if full_response:
+            import re
+            full_response = re.sub(
+                r'(?i)\border\s*(?:id)?[:\s#-]*([0-9a-f]{8})-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b',
+                r'Order #\1',
+                full_response,
+            )
+            full_response = re.sub(
+                r'\b([0-9a-f]{8})-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b',
+                r'#\1',
+                full_response,
+            )
+            full_response = re.sub(r'#+', '#', full_response)
+
+            if deps.created_payment_links:
+                real_link = deps.created_payment_links[-1]["url"]
+                full_response = re.sub(
+                    r'https?://(?:www\.)?razorpay\.com/pay/\?[^\s)"\'<>]+',
+                    real_link,
+                    full_response,
+                    flags=re.IGNORECASE,
+                )
+                if real_link not in full_response:
+                    full_response = full_response.strip() + f"\n\n🔗 **Payment Link:** {real_link}"
     except Exception as agent_err:
         logger.exception("Customer agent run failed: %s", agent_err)
         err_str = str(agent_err).lower()
