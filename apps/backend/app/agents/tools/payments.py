@@ -218,13 +218,18 @@ async def create_payment_link(
 @merchant_agent.tool
 async def check_payment_status(
     ctx: RunContext[MerchantAgentDeps],
-    link_id: str,
+    link_id: str | None = None,
+    customer_name: str | None = None,
 ) -> str:
     """Check the real-time status of a payment link (synced directly with Razorpay).
 
     Call this to verify if a customer has paid a link, check settlement status, or troubleshoot.
-    - link_id: The Razorpay link ID (e.g. 'plink_xxx') or the internal link UUID.
-    Returns the current status ('paid', 'created', 'partially_paid', 'expired'), amount, and payment timestamp.
+    TWO ways to identify the link (never ask the merchant for a link_id):
+    - customer_name: "Rajesh" — finds the most recent link for that customer.
+    - link_id: Razorpay link ID (e.g. 'plink_xxx') or internal UUID — only if known.
+    If neither is given, checks the most recent link overall.
+    Returns the current status ('paid', 'created', 'partially_paid', 'expired'), amount, customer, and payment timestamp.
+    NEVER show INTERNAL_ID, LINK_ID, or RAZORPAY_PAYMENT_ID to the merchant — present only Customer, Amount, Status, Paid At.
     """
     guard = _guard_merchant(ctx)
     if guard:
@@ -235,18 +240,49 @@ async def check_payment_status(
         merchant = ctx.deps.merchant
 
         link: PaymentLink | None = None
-        try:
-            internal_id = uuid.UUID(str(link_id))
-            link = await payment_link_repository.get_by_id(ctx.deps.db, internal_id, merchant_id)
-        except (ValueError, TypeError):
-            pass
 
-        if link is None:
-            link = await payment_link_repository.get_by_razorpay_link_id(ctx.deps.db, str(link_id))
+        # 1. If customer_name is given, find the most recent link for that customer.
+        if customer_name and not link_id:
+            items, _, _ = await payment_link_repository.list_by_merchant_paginated(
+                db=ctx.deps.db,
+                merchant_id=merchant_id,
+                page=1,
+                count=50,
+                status=None,
+                search=customer_name,
+            )
+            if items:
+                link = items[0]  # most recent (repo orders by created_at DESC)
+            else:
+                return f"No payment link found for customer '{customer_name}'."
+
+        # 2. If link_id is given, resolve by internal UUID or razorpay link id.
+        if link is None and link_id:
+            try:
+                internal_id = uuid.UUID(str(link_id))
+                link = await payment_link_repository.get_by_id(ctx.deps.db, internal_id, merchant_id)
+            except (ValueError, TypeError):
+                pass
+            if link is None:
+                link = await payment_link_repository.get_by_razorpay_link_id(ctx.deps.db, str(link_id))
+
+        # 3. If neither given, get the most recent link overall.
+        if link is None and not customer_name and not link_id:
+            items, _, _ = await payment_link_repository.list_by_merchant_paginated(
+                db=ctx.deps.db,
+                merchant_id=merchant_id,
+                page=1,
+                count=1,
+                status=None,
+                search=None,
+            )
+            if items:
+                link = items[0]
 
         if link is None:
             return (
-                f"Payment link '{link_id}' not found. Call list_payment_links to see all links."
+                "No payment link found. Call list_payment_links to see all links, "
+                "or pass customer_name to check a specific customer's link."
             )
 
         if not merchant.is_razorpay_active or not link.razorpay_link_id:
@@ -300,10 +336,12 @@ async def check_payment_status(
 
 
 def _format_link_status(link: PaymentLink, synced: bool, error: str | None = None) -> str:
-    """Format a payment link's status for the agent response."""
+    """Format a payment link's status for the agent response.
+
+    NO UUIDs or internal IDs are exposed — the merchant sees only customer-facing fields.
+    The agent never needs to pass these IDs to another tool (check_payment_status accepts customer_name).
+    """
     lines = [
-        f"LINK_ID: {link.razorpay_link_id or '-'}",
-        f"INTERNAL_ID: {link.id}",
         f"CUSTOMER: {link.customer_name}",
         f"AMOUNT: ₹{link.amount:.2f}",
         f"DESCRIPTION: {link.description}",
@@ -311,11 +349,10 @@ def _format_link_status(link: PaymentLink, synced: bool, error: str | None = Non
     ]
     if link.status == PaymentLinkStatus.paid:
         lines.append(f"PAID_AT: {link.paid_at.isoformat() if link.paid_at else '-'}")
-        lines.append(f"RAZORPAY_PAYMENT_ID: {link.razorpay_payment_id or '-'}")
     if link.razorpay_link_url:
         lines.append(f"URL: {link.razorpay_link_url}")
     if not synced:
-        lines.append(f"SYNCED_WITH_RAZORPAY: no" + (f" ({error})" if error else " (showing local status only)"))
+        lines.append("SYNCED_WITH_RAZORPAY: no" + (f" ({error})" if error else " (showing local status only)"))
     else:
         lines.append("SYNCED_WITH_RAZORPAY: yes")
     return "\n".join(lines)
@@ -325,8 +362,14 @@ def _format_link_status(link: PaymentLink, synced: bool, error: str | None = Non
 async def list_payment_links(
     ctx: RunContext[MerchantAgentDeps],
     limit: int = 10,
+    customer_name: str | None = None,
 ) -> str:
-    """List the merchant's most recent payment links (default 10). Includes status + amount + customer."""
+    """List the merchant's most recent payment links (default 10). Includes status + amount + customer.
+
+    Pass customer_name to filter by customer (e.g. "did Rajesh pay?" → customer_name="Rajesh").
+    The response includes INTERNAL_ID (needed to call check_payment_status) but you MUST NEVER show
+    INTERNAL_ID, RAZORPAY_ID, or any UUID to the merchant. Present only Customer | Amount | Status | Created to the merchant.
+    """
     guard = _guard_merchant(ctx)
     if guard:
         return guard
@@ -339,18 +382,23 @@ async def list_payment_links(
             page=1,
             count=cap,
             status=None,
-            search=None,
+            search=customer_name,  # the repo's `search` filters by customer_name + phone + description
         )
         if not items:
-            return "No payment links created yet."
+            return f"No payment links found{f' for {customer_name}' if customer_name else ''}."
 
-        lines = ["INTERNAL_ID | RAZORPAY_ID | CUSTOMER | AMOUNT | STATUS | CREATED_AT"]
+        # Include INTERNAL_ID (agent needs it for check_payment_status) but the agent must NEVER echo it.
+        lines = ["INTERNAL_ID | CUSTOMER | AMOUNT | STATUS | CREATED_AT"]
         for l in items:
             lines.append(
-                f"{l.id} | {l.razorpay_link_id or '-'} | {l.customer_name} | "
+                f"{l.id} | {l.customer_name} | "
                 f"₹{l.amount:.2f} | {l.status.value} | {l.created_at.isoformat()}"
             )
-        lines.append(f"\nTotal: {total_count} link(s). Use check_payment_status with INTERNAL_ID to verify any of them.")
+        lines.append(
+            f"\nTotal: {total_count} link(s). "
+            f"To check a specific link's status, call check_payment_status with customer_name "
+            f"(preferred) or the INTERNAL_ID from this list — but NEVER show the INTERNAL_ID to the merchant."
+        )
         return "\n".join(lines)
     except Exception as e:
         logger.error("Error in list_payment_links: %s", e, exc_info=True)

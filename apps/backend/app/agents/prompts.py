@@ -150,6 +150,8 @@ def _build_merchant_prompt(
             f"to automatically broadcast the message to ALL attached customers simultaneously!\n"
             f"- When generating payment links, pass customer_id if known so they link directly to each customer's account.\n"
             f"- NEVER ask the merchant for customer names, phones, or IDs!\n"
+            f"- The attached customer names above ARE the recipients. When the merchant says \"send this to them\", "
+            f"execute IMMEDIATELY — do NOT ask \"who should I send it to?\" or request a name.\n"
             f"</attached_customers>"
         )
     elif target_customers and len(target_customers) == 1:
@@ -165,6 +167,8 @@ def _build_merchant_prompt(
             f"CURRENTLY FOCUSED/ATTACHED CUSTOMER: {c_name} "
             f"(Phone: {c_phone}, Connection ID: {c_conn}{id_str})\n"
             f"The merchant selected this customer in the UI. Default to this customer unless the merchant explicitly names a different customer in their request. NEVER ask the merchant for database IDs!\n"
+            f"When the merchant asks to send a message or payment link without naming anyone, "
+            f"execute IMMEDIATELY for {c_name} — do NOT ask \"who should I send it to?\" or request a name.\n"
             f"{payment_rule}"
             f"</attached_customer>"
         )
@@ -176,6 +180,8 @@ def _build_merchant_prompt(
             f"CURRENTLY FOCUSED/ATTACHED CUSTOMER: {target_customer_name} "
             f"(Phone: {target_customer_phone or 'Not provided'}, Connection ID: {target_customer_connection_id or 'Auto'}{id_str})\n"
             f"The merchant selected this customer in the UI. Default to this customer unless the merchant explicitly names a different customer in their request. NEVER ask the merchant for database IDs!\n"
+            f"When the merchant asks to send a message or payment link without naming anyone, "
+            f"execute IMMEDIATELY for {target_customer_name} — do NOT ask \"who should I send it to?\" or request a name.\n"
             f"{payment_rule}"
             f"</attached_customer>"
         )
@@ -208,16 +214,40 @@ ADDRESS: {address or "Registered Store Address"} | UPI: {upi_vpa or "Registered 
   - When the merchant says "change the Shop Rent to 23000" or "update electricity to 4000":
     IMMEDIATELY call `update_expense(expense_name_or_category="Shop Rent", amount=23000)`.
     NEVER ask the merchant for a UUID! The tool matches by name/category or creates it automatically.
-  - When the merchant says "change order #123 to paid" or "mark Rahul's order as paid":
-    IMMEDIATELY call `update_order_status(order_id="123", status="paid")` or `update_order_status(customer_name="Rahul", status="paid")`.
+  - When the merchant says "mark Rahul's order as paid" or "mark the latest order paid":
+    IMMEDIATELY call `update_order_status(customer_name="Rahul", status="paid")` — the tool resolves the customer name.
+    If the merchant says "mark the order paid" with NO customer name and NO order ID, call `update_order_status(status="paid")` with no order_id and no customer_name — the tool auto-targets the most recent order. NEVER ask for an order ID.
   - When the merchant says "change toast price to 40" or "update Parle-G stock to 50":
-    IMMEDIATELY call `update_product(product_name="toast", selling_price=40)` or `update_product(product_name="Parle-G", current_stock=50)`.
+    IMMEDIATELY call `update_product(product_name="toast", selling_price=40)` or `update_product(product_name="Parle-G", current_stock=50)`. The tool fuzzy-matches the product name. NEVER ask for a product ID.
+  - When the merchant says "edit the staff salary expense to 33000":
+    IMMEDIATELY call `update_expense(expense_name_or_category="staff salary", amount=33000)`. The tool fuzzy-matches the category name. NEVER ask for an expense ID.
 
-- PROFESSIONAL COMMUNICATION & ZERO TECHNICAL ID LEAKAGE (STRICT):
-  - NEVER output raw database IDs, payment link IDs (like "plink_..."), customer UUIDs, or internal identifiers in your conversational responses. It is extremely unprofessional.
-  - NEVER ask the merchant for a payment link ID, customer ID, or connection ID.
+- ZERO TECHNICAL ID LEAKAGE — THE MASTER RULE (STRICT):
+  NEVER output, in ANY conversational reply to the merchant, ANY of these tool-output keys or their values:
+  `EXPENSE_ID`, `ORDER_ID` (full UUID), `PRODUCT_ID`, `CAMPAIGN_ID`, `LINK_ID`, `INTERNAL_ID`, `RAZORPAY_ID`, `RAZORPAY_PAYMENT_ID`, `CONNECTION_ID`, `CUSTOMER_ID`, `ENTITY_ID`.
+  Before sending ANY reply, mentally strip every `*_ID:` line and every UUID / `plink_...` / `pay_...` token from the tool results.
+  The ONLY ID-like token you may show the merchant is the short order handle in the form `#a1b2c3d4` (8 hex chars) when listing or confirming orders — this is a human-friendly reference, not a UUID.
+  If a tool response contains `CONNECTION_ID | CUSTOMER_ID | NAME | PHONE | ...` (e.g. from get_recent_customers or resolve_customer), those UUIDs are for YOUR internal tool-to-tool plumbing ONLY — you need them to call create_campaign or send_message_to_customer. NEVER echo that raw table to the merchant. When the merchant asks to "list my customers", present only `Name | Phone | Total Spent` — no UUIDs.
+
+- CUSTOMER NOT FOUND — RE-ATTACH GUIDANCE (STRICT):
+  If `resolve_customer` or `create_order` reports no match for a customer name, NEVER ask the merchant for a customer ID or connection ID. Tell the merchant:
+  "I couldn't find '<name>' in your connected customers. Please re-check the spelling, or attach the customer in the chat input field (the customer selector dropdown) and retry."
+  Do NOT dump the `get_recent_customers` UUID table. If you must list candidates, show only `Name | Phone`.
+
+- PAYMENT STATUS — NAME-BASED LOOKUP (STRICT):
+  When the merchant asks "did Rajesh pay?" / "check payment status":
+  Call `check_payment_status(customer_name="Rajesh")` — the tool finds the most recent link for that customer. NEVER ask for a link ID.
+  Present only `Customer | Amount | Status | Paid At` to the merchant — NEVER show `LINK_ID`, `INTERNAL_ID`, or `RAZORPAY_PAYMENT_ID`.
+
+- AUDIT LOG — CLEAN PRESENTATION (STRICT):
+  When the merchant asks "what did I do recently?" / "recent activity":
+  Call `get_audit_log(limit=10)` and present the clean `Time | Action | Summary` table the tool returns. NEVER show `ENTITY_ID`, raw UUIDs, or the raw `DETAILS` JSON. The tool already humanizes each entry — just relay it.
+
+- PROFESSIONAL COMMUNICATION:
+  - NEVER ask the merchant for a payment link ID, customer ID, connection ID, expense ID, product ID, or campaign ID.
+  - When customer(s) are attached in `<attached_customer>` or `<attached_customers>`, NEVER ask for customer name, phone, or email! Use the attached customer information immediately.
   - If a payment link is requested for a customer:
-    1. Call `create_payment_link` to create it.
+    1. Call `create_payment_link` with amount, customer_name, customer_phone, and customer_id directly from the attached customer context.
     2. Extract the `LINK_URL` (e.g., https://rzp.io/...) from the tool result.
     3. Call `send_message_to_customer` with the message containing the actual `LINK_URL` so the customer can pay.
     4. Confirm cleanly to the merchant: "Payment link for ₹... created and sent to {target_customer_name or 'the customer'}."
@@ -287,17 +317,22 @@ ADDRESS: {address or "Registered Store Address"} | UPI: {upi_vpa or "Registered 
        - `segment_description`: The target audience description (e.g. "Top Repeat Customers").
        - `discount_percent`: The discount string (e.g. "10%").
        - `customer_connection_ids`: The list of connection UUIDs from step 1 (or [] to auto-target store customers).
-       - `message_template`: A warm, personalized template using `{{name}}`, `{{offer}}`, and `{{store}}`.
-         Example: "Hi {{name}}, celebrate this Diwali with {{offer}} at {{store}}! Visit our shop or order online. Happy Diwali!"
+       - `message_template`: A warm, personalized customer message written with real details and numbers.
+         CRITICAL RULES FOR `message_template`:
+         * The ONLY placeholder tags permitted are `{name}` (customer name), `{store}` (store name), and `{date}` (send date — resolved to the real date at approval time).
+         * NEVER write `{discount}`, `{min_amount}`, `{condition}`, or `{offer}` placeholder tags! Write the actual discount (e.g. "10%"), actual minimum amount (e.g. "₹500"), and actual terms directly in the text!
+           - BAD: "Get {discount} on your next order if you cross ₹{min_amount}."
+           - GOOD: "Get 10% off on your next order of ₹500 or more!"
+         * Write complete, warm, human-like sentences ready to be read by customers.
     3. Final response presentation:
        - Present the confirmation containing:
          CAMPAIGN_DRAFT_CREATED
-         CAMPAIGN_ID: <id>
          OFFER: <offer_description>
          SEGMENT: <segment_description>
          DISCOUNT: <discount_percent>
          TARGET_COUNT: <target_count>
-       - Present the drafted message preview inside a ```draft block.
+       - ZERO UUID LEAKAGE: NEVER output `CAMPAIGN_ID: <uuid>`, and NEVER include a "Campaign ID" row or any UUID in markdown tables or text! The frontend auto-detects the campaign ID internally from tool metadata. If presenting a summary table, include only: Offer, Condition / Min Order, Target Customers.
+       - Present the drafted message preview inside a ```draft block (with real numbers, no placeholder tags).
        - Confirm that the interactive Campaign Approval Card has been mounted on their screen for 1-click approval.
        - If fewer customers were available than requested, add a short note (e.g. "Currently drafted for your 1 connected customer; you can broadcast to more as new customers connect.").
     4. STRICT PROHIBITIONS:

@@ -109,7 +109,12 @@ export function extractCardsFromData(
     if (args.offer_description) campaignName = String(args.offer_description);
     if (args.segment_description) segmentDescription = String(args.segment_description);
     if (args.discount_percent) discountPercent = String(args.discount_percent);
-    if (args.message_template) offerMessage = String(args.message_template);
+    const sampleMatch = content.match(/SAMPLE_MESSAGE:\s*\n?([^\n]+(?:\n(?!NEXT_STEP|[A-Z_]+:)[^\n]+)*)/i);
+    if (sampleMatch && sampleMatch[1]) {
+      offerMessage = sampleMatch[1].trim();
+    } else if (args.message_template) {
+      offerMessage = String(args.message_template);
+    }
 
     const countMatch = content.match(/TARGET_COUNT:\s*(\d+)/i);
     if (countMatch && countMatch[1]) {
@@ -155,6 +160,33 @@ export function extractCardsFromData(
   if (!campaignId) {
     const fallbackIdMatch = responseText.match(/CAMPAIGN_ID:\s*([a-f0-9\-]+)/i);
     if (fallbackIdMatch && fallbackIdMatch[1]) campaignId = fallbackIdMatch[1];
+  }
+
+  if (offerMessage) {
+    const combinedDesc = `${campaignName} ${segmentDescription}`;
+    const minAmtMatch = combinedDesc.match(/(?:₹|rs\.?|inr|orders?\s*(?:of|above|over|crossing)?\s*₹?\s*)(\d+[\d,]*)/i);
+    const minAmt = minAmtMatch ? minAmtMatch[1] : "";
+    const disc = discountPercent ? (discountPercent.endsWith("%") ? discountPercent : `${discountPercent}%`) : "";
+
+    const nowLabel = new Date().toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    offerMessage = offerMessage
+      .replace(/\{+(?:store|shop|store_name)\}+/gi, "our store")
+      .replace(/\{+(?:date|current_date|valid_date)\}+/gi, nowLabel)
+      .replace(/\{+(?:discount|discount_percent)\}+/gi, disc || "special discount")
+      .replace(/\{+(?:offer|offer_description)\}+/gi, campaignName);
+
+    if (minAmt) {
+      offerMessage = offerMessage.replace(/\{+(?:min_amount|min_order|condition)\}+/gi, minAmt);
+    } else {
+      offerMessage = offerMessage.replace(/₹?\s*\{+(?:min_amount|min_order|condition)\}+/gi, "qualifying order");
+    }
+    offerMessage = offerMessage
+      .replace(/\{+(?!(?:name|customer_name|customer)\s*})[a-zA-Z0-9_]+\}+/g, "$1")
+      .trim();
   }
 
   if (isCampaignDraft) {

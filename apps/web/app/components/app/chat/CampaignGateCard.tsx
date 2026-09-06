@@ -16,7 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import { customerService } from "../../../../lib/api/services/customerService";
 import { queryKeys } from "../../../../lib/api/utils/queryKeys";
 import { api } from "../../../../lib/api/utils/fetchClient";
-import { useApproveCampaign, useDeclineCampaign } from "../../../../hooks";
+import { useApproveCampaign, useDeclineCampaign, useProfile } from "../../../../hooks";
 import type { CampaignListResponse } from "../../../../types";
 
 interface CampaignGateCardProps {
@@ -49,8 +49,10 @@ export function CampaignGateCard({
 
   const approveMutation = useApproveCampaign();
   const declineMutation = useDeclineCampaign();
+  const { profile } = useProfile();
+  const storeName = profile?.merchant_profile?.business_name || "our store";
 
-  const { data: draftCampaigns } = useQuery({
+  const { data: draftCampaigns, isLoading: isLoadingDrafts } = useQuery({
     queryKey: queryKeys.campaigns.list({ status: "draft" }),
     queryFn: () => api.get<CampaignListResponse>("/campaigns?status=draft"),
     enabled: !campaignId,
@@ -86,9 +88,22 @@ export function CampaignGateCard({
       c.phone.includes(customerSearch),
   );
 
+  const sampleCustomer = realCustomers[0]?.name;
+  const resolvedPreview = (offerMessage || "")
+    .replace(/\{+(?:store|shop|store_name)\}+/gi, storeName)
+    .replace(
+      /\{+(?:name|customer_name|customer)\}+/gi,
+      sampleCustomer || "{name}"
+    )
+    .replace(/\{+(?:discount|discount_percent)\}+/gi, discountPercent || "discount")
+    .replace(/\{+(?:offer|offer_description)\}+/gi, campaignName)
+    .replace(/\{+([a-zA-Z0-9_]+)\}+/g, "$1");
+
   const handleApprove = async () => {
     setActionError(null);
+    // If we're still resolving the draft-list fallback, wait — don't error.
     if (!effectiveCampaignId) {
+      if (isLoadingDrafts) return; // still loading — silently wait
       setActionError("Campaign draft ID not found. Please refresh or create a new campaign.");
       return;
     }
@@ -105,6 +120,7 @@ export function CampaignGateCard({
   const handleReject = async () => {
     setActionError(null);
     if (!effectiveCampaignId) {
+      if (isLoadingDrafts) return; // still loading — silently wait
       setActionError("Campaign draft ID not found. Please refresh or create a new campaign.");
       return;
     }
@@ -197,7 +213,7 @@ export function CampaignGateCard({
               Message Preview
             </span>
             <p className="text-xs text-secondary italic leading-relaxed">
-              &quot;{offerMessage}&quot;
+              &quot;{resolvedPreview}&quot;
             </p>
           </div>
         </div>

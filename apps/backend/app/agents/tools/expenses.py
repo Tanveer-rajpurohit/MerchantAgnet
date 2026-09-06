@@ -66,7 +66,6 @@ async def record_expense(
 
         return (
             f"Expense recorded.\n"
-            f"EXPENSE_ID: {expense.id}\n"
             f"Category: {expense.category}\n"
             f"Amount: ₹{expense.amount:.2f}\n"
             f"Description: {expense.notes or '-'}"
@@ -99,14 +98,16 @@ async def get_current_expenses(ctx: RunContext[MerchantAgentDeps]) -> str:
             if not expenses:
                 return "No expenses recorded yet."
 
+            # Present a clean merchant-facing table — NO UUID/ID column.
+            # The agent uses category names to edit/delete expenses, never IDs.
             lines = [
-                "| Expense Category | Amount | Due Date | Description / Notes | ID |",
-                "| :--- | :--- | :--- | :--- | :--- |",
+                "| Expense Category | Amount | Due Date | Notes |",
+                "| :--- | :--- | :--- | :--- |",
             ]
             total = Decimal("0.00")
             for e in expenses:
                 lines.append(
-                    f"| {e.category} | ₹{e.amount:.2f} | {e.due_on or '-'} | {e.notes or '-'} | {e.id} |"
+                    f"| {e.category} | ₹{e.amount:.2f} | {e.due_on or '-'} | {e.notes or '-'} |"
                 )
                 total += e.amount
             lines.append(f"\n**Total Recurring Overhead:** ₹{total:.2f}")
@@ -213,7 +214,6 @@ async def update_expense(
                     await ctx.deps.db.commit()
                     return (
                         f"Expense recorded.\n"
-                        f"EXPENSE_ID: {expense.id}\n"
                         f"Category: {expense.category}\n"
                         f"Amount: ₹{expense.amount:.2f}\n"
                         f"Description: {expense.notes or '-'}"
@@ -246,7 +246,6 @@ async def update_expense(
 
             return (
                 f"Expense updated.\n"
-                f"EXPENSE_ID: {expense.id}\n"
                 f"Category: {expense.category}\n"
                 f"Amount: ₹{expense.amount:.2f}\n"
                 f"Notes: {expense.notes or '-'}"

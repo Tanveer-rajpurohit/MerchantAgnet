@@ -170,7 +170,6 @@ async def add_product(
 
         return (
             f"Product added.\n"
-            f"PRODUCT_ID: {product.id}\n"
             f"Name: {product.product_name}\n"
             f"Cost Price: ₹{product.cost_price:.2f}\n"
             f"Selling Price: ₹{product.selling_price:.2f}\n"
@@ -266,7 +265,6 @@ async def update_product(
                 await ctx.deps.db.commit()
                 return (
                     f"Product added.\n"
-                    f"PRODUCT_ID: {new_p.id}\n"
                     f"Name: {new_p.product_name}\n"
                     f"Selling Price: ₹{new_p.selling_price:.2f}\n"
                     f"Stock: {new_p.current_stock} | Low Stock Alert: {new_p.low_stock_alert}"
@@ -321,7 +319,6 @@ async def update_product(
 
         return (
             f"Product updated.\n"
-            f"PRODUCT_ID: {product.id}\n"
             f"Name: {product.product_name}\n"
             f"Cost Price: ₹{product.cost_price:.2f}\n"
             f"Selling Price: ₹{product.selling_price:.2f}\n"
@@ -400,7 +397,7 @@ async def delete_product(
             details=snapshot,
         )
         await ctx.deps.db.commit()
-        return f"Product {snapshot['name']} (ID: {prod_id}) deleted."
+        return f"Product {snapshot['name']} deleted."
     except Exception as e:
         logger.error("Error in delete_product: %s", e, exc_info=True)
         return f"Failed to delete product: {str(e)}"

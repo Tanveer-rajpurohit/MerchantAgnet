@@ -137,9 +137,12 @@ async def resolve_customer(
 
         if not conns:
             return (
-                f"No customer matched '{term}'. Ask the merchant to confirm the spelling, "
-                f"or call get_recent_customers to list everyone the merchant has chatted with."
+                f"No customer matched '{term}'. "
+                f"Tell the merchant: \"I couldn't find '{term}' in your connected customers. "
+                f"Please re-check the spelling, or attach the customer in the chat input field "
+                f"(the customer selector dropdown) and retry. Do NOT ask for a UUID.\""
             )
+
 
         lines = ["CONNECTION_ID | CUSTOMER_ID | NAME | PHONE | EMAIL | STATUS"]
         for conn in conns:
@@ -187,16 +190,14 @@ async def send_message_to_customer(
     try:
         merchant_id = _merchant_id(ctx)
 
-        # Multi-target check: explicit list OR multiple customers attached in context
         target_cids: list[str] = []
-        if customer_connection_ids and len(customer_connection_ids) > 1:
+        if customer_connection_ids:
             target_cids = customer_connection_ids
         elif (
             not customer_name
             and not customer_id
             and not customer_connection_id
             and ctx.deps.target_customers
-            and len(ctx.deps.target_customers) > 1
         ):
             target_cids = [
                 str(c["customer_connection_id"])
@@ -204,10 +205,45 @@ async def send_message_to_customer(
                 if c.get("customer_connection_id")
             ]
 
-        # Smart deduplication: check if this EXACT message was already sent to this EXACT recipient in this turn
-        target_ident = tuple(sorted(target_cids)) if target_cids else (
-            customer_name or customer_id or customer_connection_id or ctx.deps.target_customer_name or "default"
-        )
+        canonical_conn_ids: list[str] = []
+        for cid in target_cids:
+            try:
+                canonical_conn_ids.append(str(uuid.UUID(str(cid).strip())))
+            except (ValueError, AttributeError):
+                continue
+
+        resolved_conn_from_explicit = ""
+        if not canonical_conn_ids:
+            for explicit_id in (customer_connection_id, customer_id):
+                if not explicit_id:
+                    continue
+                try:
+                    resolved_conn_from_explicit = str(uuid.UUID(str(explicit_id).strip()))
+                    break
+                except (ValueError, AttributeError):
+                    continue
+        if not canonical_conn_ids and not resolved_conn_from_explicit:
+            attached_conn = ctx.deps.target_customer_connection_id
+            if attached_conn:
+                canonical_conn_ids.append(str(attached_conn))
+
+        if not canonical_conn_ids and not resolved_conn_from_explicit and customer_name and ctx.deps.target_customers:
+            name_l = customer_name.strip().lower()
+            for tc in ctx.deps.target_customers:
+                tc_name = str(tc.get("customer_name") or "").strip().lower()
+                if tc_name and tc_name == name_l and tc.get("customer_connection_id"):
+                    try:
+                        canonical_conn_ids.append(str(uuid.UUID(str(tc["customer_connection_id"]).strip())))
+                        break
+                    except (ValueError, AttributeError):
+                        continue
+
+        if canonical_conn_ids:
+            target_ident = tuple(sorted(canonical_conn_ids))
+        elif resolved_conn_from_explicit:
+            target_ident = resolved_conn_from_explicit
+        else:
+            target_ident = customer_name or ctx.deps.target_customer_name or "default"
         msg_fingerprint = (str(target_ident).lower().strip(), msg_clean.lower().strip())
 
         for prev in ctx.deps.sent_messages:

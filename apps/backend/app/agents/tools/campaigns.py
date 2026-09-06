@@ -11,6 +11,7 @@ from app.models.customer_connection import CustomerConnection, ConnectionStatus
 from app.models.conversation import SendStatus
 from app.repositories import audit_log_repository
 from app.agents.tools.common import _merchant_id, _actor_user_id, _guard_merchant
+from app.services.campaign_service import resolve_campaign_message
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ async def create_campaign(
     - segment_description: Description of the targeted audience segment (e.g. 'Loyal customers with >₹1000 spend').
     - discount_percent: The discount percentage string (e.g. '10%', '15%').
     - customer_connection_ids: List of customer connection UUID strings to receive the campaign.
-    - message_template: Template text containing placeholders {name}, {offer}, {store}.
+    - message_template: Template text containing placeholders {name} (customer name), {store} (store name), {date} (send date). All other values (discount, amounts, terms) must be written literally.
     Creates a draft campaign with personalized messages for each customer awaiting merchant approval.
     """
     guard = _guard_merchant(ctx)
@@ -93,25 +94,30 @@ async def create_campaign(
         ctx.deps.db.add(campaign)
         await ctx.deps.db.flush()
 
+        template_clean = message_template.strip()
+        if not template_clean:
+            return "message_template cannot be empty. Provide a warm message using {name} and {store} placeholders."
+
         sample_message: str | None = None
         targets_created = 0
         for conn in conns:
             cust = conn.customer
             cust_name = (cust.full_name if cust else "there") or "there"
 
-            personalized = (
-                message_template
-                .replace("{name}", cust_name)
-                .replace("{offer}", offer_description.strip())
-                .replace("{store}", store_name)
-            )
             if sample_message is None:
-                sample_message = personalized
+                sample_message = resolve_campaign_message(
+                    template=template_clean,
+                    customer_name=cust_name,
+                    store_name=store_name,
+                    offer_description=offer_description,
+                    segment_description=segment_description,
+                    discount_percent=discount_percent,
+                )
 
             target = CampaignTarget(
                 campaign_id=campaign.id,
                 customer_connection_id=conn.id,
-                message_content=personalized,
+                message_content=template_clean,
                 send_status=SendStatus.pending,
             )
             ctx.deps.db.add(target)

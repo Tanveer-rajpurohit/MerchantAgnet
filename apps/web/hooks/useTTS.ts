@@ -41,6 +41,51 @@ export function stripMarkdownForSpeech(text: string): { cleanText: string; detec
   return { cleanText: clean, detectedLang };
 }
 
+/**
+ * Split text into chunks of ~maxChars by sentence boundaries.
+ * Keeps sentences intact when possible. Falls back to hard splits for very long sentences.
+ * This enables the TTS to start playing the first chunk while later chunks are still generating.
+ */
+export function splitTextIntoChunks(text: string, maxChars: number = 220): string[] {
+  if (!text || !text.trim()) return [];
+  if (text.length <= maxChars) return [text.trim()];
+
+  // Split by sentence boundaries (. ! ? । for Hindi danda)
+  const sentences = text.split(/(?<=[.!?।])\s+/);
+  const chunks: string[] = [];
+  let current = "";
+
+  for (const sentence of sentences) {
+    // If the sentence itself is longer than maxChars, hard-split it.
+    if (sentence.length > maxChars) {
+      if (current) {
+        chunks.push(current.trim());
+        current = "";
+      }
+      for (let i = 0; i < sentence.length; i += maxChars) {
+        chunks.push(sentence.slice(i, i + maxChars).trim());
+      }
+      continue;
+    }
+
+    // If adding this sentence would exceed the limit, flush the current chunk.
+    if (current.length + sentence.length + 1 > maxChars) {
+      if (current) {
+        chunks.push(current.trim());
+      }
+      current = sentence;
+    } else {
+      current = current ? current + " " + sentence : sentence;
+    }
+  }
+
+  if (current.trim()) {
+    chunks.push(current.trim());
+  }
+
+  return chunks;
+}
+
 let globalAudio: HTMLAudioElement | null = null;
 let globalController: AbortController | null = null;
 let globalActiveId: string | null = null;
@@ -115,41 +160,91 @@ export function useTTS(): UseTTSReturn {
       globalController = controller;
       notify("loading", targetId);
 
-      try {
-        const res = await fetch(
-          `/api/tts?text=${encodeURIComponent(cleanText)}&lang=${encodeURIComponent(langToUse)}&voice=${encodeURIComponent(voiceToUse)}`,
-          { signal: controller.signal }
-        );
+      // Split long text into sentence-sized chunks for faster playback start.
+      // The first chunk plays while subsequent chunks are being generated.
+      const CHUNK_MAX = 220; // chars per chunk — roughly one sentence
+      const chunks = splitTextIntoChunks(cleanText, CHUNK_MAX);
+      if (chunks.length === 0) return;
 
-        if (res.ok) {
-          const blob = await res.blob();
-          if (controller.signal.aborted) return;
+      const fetchChunk = async (chunkText?: string): Promise<Blob | null> => {
+        if (!chunkText) return null;
+        try {
+          const res = await fetch(
+            `/api/tts?text=${encodeURIComponent(chunkText)}&lang=${encodeURIComponent(langToUse)}&voice=${encodeURIComponent(voiceToUse)}`,
+            { signal: controller.signal }
+          );
+          if (res.ok) return await res.blob();
+        } catch (err: unknown) {
+          if ((err as Error)?.name === "AbortError") return null;
+        }
+        return null;
+      };
 
-          const audioUrl = URL.createObjectURL(blob);
-          const audio = new Audio(audioUrl);
+      // Helper: play a single blob, return a promise that resolves on ended.
+      const playBlob = (blob: Blob): Promise<void> => {
+        return new Promise((resolve, reject) => {
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
           globalAudio = audio;
-
-          audio.onplay = () => {
-            notify("speaking", targetId);
-          };
+          audio.onplay = () => notify("speaking", targetId);
           audio.onended = () => {
-            if (globalAudio === audio) {
-              globalAudio = null;
-              notify("idle", null);
-            }
-            URL.revokeObjectURL(audioUrl);
+            URL.revokeObjectURL(url);
+            if (globalAudio === audio) globalAudio = null;
+            resolve();
           };
           audio.onerror = () => {
-            if (globalAudio === audio) {
-              globalAudio = null;
-              notify("error", null);
-            }
-            URL.revokeObjectURL(audioUrl);
+            URL.revokeObjectURL(url);
+            if (globalAudio === audio) globalAudio = null;
+            reject(new Error("audio error"));
           };
+          audio.play().catch(reject);
+        });
+      };
 
-          await audio.play();
+      try {
+        // Fetch the first chunk — gives the user audio almost immediately.
+        const firstBlob = await fetchChunk(chunks[0]);
+        if (!firstBlob || controller.signal.aborted) {
+          notify("idle", null);
           return;
         }
+
+        // Start pre-fetching the second chunk while the first plays.
+        let prefetchPromise: Promise<Blob | null> =
+          chunks.length > 1 ? fetchChunk(chunks[1]) : Promise.resolve(null);
+
+        // Play chunks sequentially with 1-chunk lookahead.
+        let currentBlob: Blob | null = firstBlob;
+        for (let i = 0; i < chunks.length; i++) {
+          if (controller.signal.aborted) {
+            notify("idle", null);
+            return;
+          }
+          if (!currentBlob) break;
+
+          // Start playing the current chunk.
+          const playPromise = playBlob(currentBlob);
+
+          // While it plays, the prefetch for the NEXT chunk is already in flight.
+          // Wait for both: the current chunk to finish, and the next chunk to load.
+          await playPromise;
+
+          // Get the pre-fetched next blob.
+          currentBlob = await prefetchPromise;
+
+          // Start prefetching the chunk AFTER that (if any).
+          if (i + 2 < chunks.length) {
+            prefetchPromise = fetchChunk(chunks[i + 2]);
+          } else {
+            prefetchPromise = Promise.resolve(null);
+          }
+        }
+
+        // All chunks played — done.
+        if (!controller.signal.aborted) {
+          notify("idle", null);
+        }
+        return;
       } catch (err: unknown) {
         if ((err as Error)?.name === "AbortError") return;
       }

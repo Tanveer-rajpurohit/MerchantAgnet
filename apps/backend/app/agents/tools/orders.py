@@ -10,7 +10,7 @@ from app.agents.deps import MerchantAgentDeps
 from app.models.agent_run import AgentPersona
 from app.agents.base_agent import merchant_agent
 from app.models.customer_connection import CustomerConnection
-from app.models.order import OrderStatus, ActorType
+from app.models.order import Order, OrderStatus, ActorType
 from app.models.product import Product
 from app.models.user import User
 from app.repositories import (
@@ -89,8 +89,10 @@ async def create_order(
             if not conn:
                 return (
                     f"Could not find a connected customer named '{customer_name}'. "
-                    f"Ask the merchant to confirm the spelling, or call get_recent_customers "
-                    f"to list everyone. Do NOT ask for a UUID — the merchant does not know UUIDs."
+                    f"Tell the merchant: \"I couldn't find '{customer_name}' in your connected customers. "
+                    f"Please re-check the spelling, or attach the customer in the chat input field "
+                    f"(the customer selector dropdown) and retry. Do NOT ask for a UUID — the merchant "
+                    f"does not know UUIDs.\""
                 )
             cust_uuid = conn.customer_id
         else:
@@ -218,7 +220,7 @@ async def create_order(
         if is_customer:
             return (
                 f"Order created successfully for {target_name}.\n"
-                f"ORDER_ID: {order.id}\n"
+                f"Order #{str(order.id)[:8]}\n"
                 f"STATUS: {order.status.value}\n"
                 f"TOTAL: ₹{total_amount:.2f}\n"
                 f"ITEMS:\n{item_lines}\n"
@@ -226,7 +228,7 @@ async def create_order(
             )
         return (
             f"Order created.\n"
-            f"ORDER_ID: {order.id}\n"
+            f"Order #{str(order.id)[:8]}\n"
             f"STATUS: {order.status.value}\n"
             f"TOTAL: ₹{total_amount:.2f}\n"
             f"ITEMS:\n{item_lines}\n"
@@ -361,7 +363,7 @@ async def update_order_status(
         cust_name = updated_order.customer.full_name if updated_order.customer else "Customer"
         return (
             f"ORDER_UPDATED\n"
-            f"ORDER_ID: {updated_order.id}\n"
+            f"Order #{str(updated_order.id)[:8]}\n"
             f"CUSTOMER: {cust_name}\n"
             f"STATUS: {updated_order.status.value}\n"
             f"TOTAL: ₹{updated_order.total_amount:.2f}\n"

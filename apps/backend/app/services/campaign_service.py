@@ -1,5 +1,8 @@
 import logging
+import re
+import urllib.parse
 import uuid
+from datetime import datetime
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +24,61 @@ from app.schemas.campaign import (
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def resolve_campaign_message(
+    template: str,
+    customer_name: str,
+    store_name: str,
+    offer_description: str,
+    segment_description: str,
+    discount_percent: str,
+    current_date: str | None = None,
+) -> str:
+    """Resolve all placeholders (name, store, date, offer, discount, min_amount) into real text."""
+    msg = template or ""
+
+    disc = (discount_percent or "").strip()
+    if disc and not disc.endswith("%"):
+        disc = f"{disc}%"
+
+    combined = f"{offer_description} {segment_description} {template}"
+    min_match = re.search(
+        r'(?:₹|rs\.?|inr|orders?\s*(?:of|above|over|crossing)?\s*₹?\s*)(\d+[\d,]*)',
+        combined,
+        re.IGNORECASE,
+    )
+    min_amount = min_match.group(1).replace(",", "") if min_match else ""
+
+    date_str = (current_date or datetime.now().strftime("%B %d, %Y")).strip()
+
+    for tag in ("{name}", "{{name}}", "{customer_name}", "{{customer_name}}", "{customer}", "{{customer}}"):
+        msg = msg.replace(tag, customer_name)
+
+    for tag in ("{store}", "{{store}}", "{shop}", "{{shop}}", "{store_name}", "{{store_name}}"):
+        msg = msg.replace(tag, store_name)
+
+    for tag in ("{date}", "{{date}}", "{current_date}", "{{current_date}}", "{valid_date}", "{{valid_date}}"):
+        msg = msg.replace(tag, date_str)
+
+    for tag in ("{offer}", "{{offer}}", "{offer_description}", "{{offer_description}}"):
+        msg = msg.replace(tag, offer_description.strip())
+
+    for tag in ("{discount}", "{{discount}}", "{discount_percent}", "{{discount_percent}}"):
+        msg = msg.replace(tag, disc or offer_description.strip())
+
+    if min_amount:
+        for tag in ("{min_amount}", "{{min_amount}}", "{min_order}", "{{min_order}}", "{condition}", "{{condition}}"):
+            msg = msg.replace(tag, min_amount)
+    else:
+        msg = re.sub(r'₹?\s*\{+min_amount\}+', 'qualifying amount', msg)
+        msg = re.sub(r'\{+min_order\}+', 'qualifying order', msg)
+        msg = re.sub(r'\{+condition\}+', 'qualifying terms', msg)
+
+    # Clean up any leftover {tag} or {{tag}}
+    msg = re.sub(r'\{+([a-zA-Z0-9_]+)\}+', r'\1', msg)
+    msg = re.sub(r'[ \t]+', ' ', msg).strip()
+    return msg
 
 
 def _target_to_dto(target) -> CampaignTargetDTO:
@@ -110,15 +168,15 @@ async def approve_and_send(
             detail=f"Only draft campaigns can be approved. Current status: {campaign.status.value}",
         )
 
-    merchant = campaign.merchant if hasattr(campaign, "merchant") else None
-    if merchant is None:
-        merchant = await db.get(MerchantProfile, merchant_id)
+    merchant = await db.get(MerchantProfile, merchant_id)
 
     await campaign_repository.mark_status(db, campaign, CampaignStatus.approved, approved_by=approver_user_id)
     await campaign_repository.mark_status(db, campaign, CampaignStatus.sending)
 
     sent_count = 0
     failed_count = 0
+    approval_date = datetime.now().strftime("%B %d, %Y")
+    store_name = (merchant.business_name if merchant else "our store") or "our store"
 
     for target in campaign.targets:
         try:
@@ -126,12 +184,22 @@ async def approve_and_send(
 
             # Send campaign message directly into customer's chat connection
             if conn:
-                msg_content = target.message_content
-                
+                cust = conn.customer if hasattr(conn, "customer") else None
+                cust_name = (cust.full_name if cust else "there") or "there"
+
+                msg_content = resolve_campaign_message(
+                    template=target.message_content,
+                    customer_name=cust_name,
+                    store_name=store_name,
+                    offer_description=campaign.offer_description,
+                    segment_description=campaign.segment_description,
+                    discount_percent=campaign.discount_percent,
+                    current_date=approval_date,
+                )
+
                 if merchant:
-                    shop_id = getattr(merchant, "slug", getattr(merchant, "business_name", ""))
-                    if shop_id:
-                        msg_content += f"\\n\\nShop Link: {settings.FRONTEND_URL}/shops/{shop_id}"
+                    shop_url = f"{settings.FRONTEND_URL}/shops/{merchant.id}"
+                    msg_content += f"\n\nShop Link: {shop_url}"
 
                 saved_msg = await message_repository.save_message_to_connection(
                     db=db,
@@ -162,7 +230,10 @@ async def approve_and_send(
             await campaign_repository.set_target_send_status(db, target, SendStatus.failed)
             failed_count += 1
 
-    await campaign_repository.mark_status(db, campaign, CampaignStatus.sent)
+    final_status = CampaignStatus.sent if failed_count == 0 and sent_count > 0 else (
+        CampaignStatus.sending if sent_count > 0 else CampaignStatus.approved
+    )
+    await campaign_repository.mark_status(db, campaign, final_status)
 
     await audit_log_repository.log_action(
         db=db,
