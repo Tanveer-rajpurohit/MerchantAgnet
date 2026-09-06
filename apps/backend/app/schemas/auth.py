@@ -16,6 +16,7 @@ class LoginRequest(BaseModel):
 class GoogleAuthRequest(BaseModel):
     id_token: str
     role: UserRole = UserRole.customer
+    mode: str | None = None
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str

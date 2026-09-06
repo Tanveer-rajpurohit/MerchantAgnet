@@ -10,12 +10,14 @@ interface GoogleAuthButtonProps {
   role?: "merchant" | "customer";
   text?: string;
   onError?: (message: string) => void;
+  mode?: "login" | "register";
 }
 
 export function GoogleAuthButton({
   role = "merchant",
   text = "Continue with Google",
   onError,
+  mode,
 }: GoogleAuthButtonProps) {
   const { googleAuth, isGoogleAuthenticating } = useAuth();
   const router = useRouter();
@@ -31,7 +33,7 @@ export function GoogleAuthButton({
       clientId,
       async (idToken: string) => {
         try {
-          await googleAuth({ id_token: idToken, role });
+          await googleAuth({ id_token: idToken, role, mode });
           const me = await authService.getMe();
           if (me.role === "merchant") {
             router.push(me.onboarding_completed_at ? "/chat" : "/onboarding");

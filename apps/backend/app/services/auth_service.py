@@ -32,11 +32,17 @@ async def _create_session_tokens(redis: Redis, user: User) -> AuthTokensResponse
     refresh_token = generate_refresh_token()
     ttl_seconds = settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400
 
-    await redis.set(
-        f"refresh_token:{refresh_token}",
-        user_id_str,
-        ex=ttl_seconds,
-    )
+    try:
+        await redis.set(
+            f"refresh_token:{refresh_token}",
+            user_id_str,
+            ex=ttl_seconds,
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Session storage temporarily unavailable. Please try again.",
+        )
 
     return AuthTokensResponse(
         access_token=access_token,
@@ -131,6 +137,11 @@ async def google_login_user(
                 profile_picture=google_user.picture,
             )
         else:
+            if payload.mode == "login":
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Account not found. Please create an account first.",
+                )
             user = await user_repository.create_google_user(
                 db=db,
                 full_name=google_user.full_name,

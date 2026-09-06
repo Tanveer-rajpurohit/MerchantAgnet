@@ -153,6 +153,7 @@ function LoginForm() {
         </div>
 
         <GoogleAuthButton
+          mode="login"
           text="Google"
           onError={(msg) => setErrorMessage(msg)}
         />

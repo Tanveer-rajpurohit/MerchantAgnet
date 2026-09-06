@@ -1,4 +1,4 @@
-from pydantic import Field, AliasChoices, field_validator
+from pydantic import Field, AliasChoices, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -86,6 +86,18 @@ class Settings(BaseSettings):
         if not v:
             return v
         return v.strip().strip("'").strip('"').rstrip("/")
+
+    @model_validator(mode="after")
+    def resolve_frontend_url(self) -> "Settings":
+        if not self.FRONTEND_URL or "localhost" in self.FRONTEND_URL or "127.0.0.1" in self.FRONTEND_URL:
+            if len(self.ALLOWED_ORIGINS) >= 3 and self.ALLOWED_ORIGINS[2]:
+                self.FRONTEND_URL = self.ALLOWED_ORIGINS[2].rstrip("/")
+            else:
+                for origin in self.ALLOWED_ORIGINS:
+                    if origin and not origin.startswith("http://localhost") and not origin.startswith("http://127.0.0.1"):
+                        self.FRONTEND_URL = origin.rstrip("/")
+                        break
+        return self
 
     AGENT_BASE_URL: str = Field(
         default="https://api.sarvam.ai/v1",

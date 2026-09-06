@@ -42,6 +42,7 @@ export interface LoginPayload {
 export interface GoogleAuthPayload {
   id_token: string;
   role?: UserRole;
+  mode?: "login" | "register";
 }
 
 export interface RefreshTokenPayload {

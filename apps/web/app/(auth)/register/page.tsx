@@ -148,6 +148,7 @@ export default function RegisterPage() {
         </div>
 
         <GoogleAuthButton
+          mode="register"
           role={role}
           text="Continue with Google"
           onError={(msg) => setErrorMessage(msg)}
