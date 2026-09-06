@@ -76,8 +76,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Nuclei
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          NUCLEI_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/nuclei/releases/latest | grep tag_name | cut -d '"' -f 4)
+          NUCLEI_VERSION=$(curl -s -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/projectdiscovery/nuclei/releases/latest | grep '"tag_name":' | head -n 1 | cut -d '"' -f 4)
+          if [ -z "$NUCLEI_VERSION" ] || [ "$NUCLEI_VERSION" = "null" ]; then
+            NUCLEI_VERSION="v3.11.1"
+          fi
+          echo "Installing Nuclei ${NUCLEI_VERSION}"
           curl -sL "https://github.com/projectdiscovery/nuclei/releases/download/${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION#v}_linux_amd64.zip" -o /tmp/nuclei.zip
           unzip -o /tmp/nuclei.zip -d /tmp/nuclei_bin/
           sudo mv /tmp/nuclei_bin/nuclei /usr/local/bin/

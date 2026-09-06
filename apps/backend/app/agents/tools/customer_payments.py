@@ -65,7 +65,8 @@ async def request_payment_link(
 
         amount_in_paise = int(round(float(amount) * 100))
         receipt_no = f"rcpt_{uuid.uuid4().hex[:8]}"
-        callback_url = f"{settings.FRONTEND_URL}/payment-success"
+        effective_frontend = ctx.deps.frontend_url or settings.FRONTEND_URL
+        callback_url = f"{effective_frontend}/payment-success"
 
         razorpay_payload: dict = {
             "amount": amount_in_paise,
@@ -109,25 +110,42 @@ async def request_payment_link(
                     "You can pay cash on delivery or message the store directly."
                 )
 
-        link = PaymentLink(
-            merchant_id=merchant.id,
-            amount=Decimal(str(amount)),
-            customer_name=customer_name,
-            customer_phone=customer_phone or None,
-            customer_id=ctx.deps.customer_id,
-            order_id=recent_order_id,
-            description=description or f"{ctx.deps.store_name} order",
-            currency="INR",
-            receipt_number=receipt_no,
-            razorpay_link_id=link_id,
-            razorpay_link_url=link_url,
-            callback_url=callback_url,
-            callback_method="get",
-            status=PaymentLinkStatus.created,
-            notify_sms=False,
-            notify_email=False,
-        )
-        ctx.deps.db.add(link)
+        existing_link = None
+        if link_id:
+            existing_link_stmt = select(PaymentLink).where(PaymentLink.razorpay_link_id == link_id)
+            existing_link = (await ctx.deps.db.execute(existing_link_stmt)).scalars().first()
+
+        if existing_link:
+            existing_link.order_id = recent_order_id
+            existing_link.amount = Decimal(str(amount))
+            existing_link.customer_name = customer_name
+            existing_link.customer_phone = customer_phone or None
+            existing_link.customer_id = ctx.deps.customer_id
+            existing_link.description = description or f"{ctx.deps.store_name} order"
+            existing_link.receipt_number = receipt_no
+            existing_link.callback_url = callback_url
+            existing_link.status = PaymentLinkStatus.created
+            link = existing_link
+        else:
+            link = PaymentLink(
+                merchant_id=merchant.id,
+                amount=Decimal(str(amount)),
+                customer_name=customer_name,
+                customer_phone=customer_phone or None,
+                customer_id=ctx.deps.customer_id,
+                order_id=recent_order_id,
+                description=description or f"{ctx.deps.store_name} order",
+                currency="INR",
+                receipt_number=receipt_no,
+                razorpay_link_id=link_id,
+                razorpay_link_url=link_url,
+                callback_url=callback_url,
+                callback_method="get",
+                status=PaymentLinkStatus.created,
+                notify_sms=False,
+                notify_email=False,
+            )
+            ctx.deps.db.add(link)
 
         await audit_log_repository.log_action(
             db=ctx.deps.db,
@@ -138,7 +156,7 @@ async def request_payment_link(
             user_id=ctx.deps.customer_id,
             details={
                 "amount": str(amount),
-                "razorpay_link_id": razorpay_resp.get("id"),
+                "razorpay_link_id": link_id,
                 "customer_name": customer_name,
                 "customer_id": str(ctx.deps.customer_id) if ctx.deps.customer_id else None,
                 "source": "customer_agent",
@@ -146,7 +164,6 @@ async def request_payment_link(
         )
         await ctx.deps.db.commit()
 
-        link_url = razorpay_resp.get("short_url") or "(no url returned)"
         ctx.deps.created_payment_links.append({
             "fingerprint": link_fingerprint,
             "url": link_url,
@@ -162,4 +179,8 @@ async def request_payment_link(
         )
     except Exception as e:
         logger.error("Error in request_payment_link: %s", e, exc_info=True)
+        try:
+            await ctx.deps.db.rollback()
+        except Exception:
+            pass
         return f"Failed to create payment link: {e}"

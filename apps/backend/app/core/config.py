@@ -89,14 +89,29 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def resolve_frontend_url(self) -> "Settings":
-        if not self.FRONTEND_URL or "localhost" in self.FRONTEND_URL or "127.0.0.1" in self.FRONTEND_URL:
-            if len(self.ALLOWED_ORIGINS) >= 3 and self.ALLOWED_ORIGINS[2]:
-                self.FRONTEND_URL = self.ALLOWED_ORIGINS[2].rstrip("/")
-            else:
-                for origin in self.ALLOWED_ORIGINS:
-                    if origin and not origin.startswith("http://localhost") and not origin.startswith("http://127.0.0.1"):
-                        self.FRONTEND_URL = origin.rstrip("/")
-                        break
+        import os
+        is_prod = bool(
+            os.environ.get("RENDER")
+            or os.environ.get("RENDER_SERVICE_ID")
+            or os.environ.get("VERCEL")
+            or self.ENVIRONMENT.lower() == "production"
+            or (os.name != "nt" and len(self.ALLOWED_ORIGINS) >= 3)
+        )
+        if is_prod:
+            if not self.FRONTEND_URL or "localhost" in self.FRONTEND_URL or "127.0.0.1" in self.FRONTEND_URL:
+                if len(self.ALLOWED_ORIGINS) >= 3 and self.ALLOWED_ORIGINS[2]:
+                    self.FRONTEND_URL = self.ALLOWED_ORIGINS[2].rstrip("/")
+                else:
+                    for origin in self.ALLOWED_ORIGINS:
+                        if origin and not origin.startswith("http://localhost") and not origin.startswith("http://127.0.0.1"):
+                            self.FRONTEND_URL = origin.rstrip("/")
+                            break
+        else:
+            if not self.FRONTEND_URL or "vercel.app" in self.FRONTEND_URL:
+                if len(self.ALLOWED_ORIGINS) >= 2 and "3001" in self.ALLOWED_ORIGINS[1]:
+                    self.FRONTEND_URL = self.ALLOWED_ORIGINS[1].rstrip("/")
+                else:
+                    self.FRONTEND_URL = "http://localhost:3001"
         return self
 
     AGENT_BASE_URL: str = Field(

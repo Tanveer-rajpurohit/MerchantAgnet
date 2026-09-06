@@ -111,6 +111,14 @@ async def websocket_chat_endpoint(
                                 if conn.customer_id:
                                     customer_user = await db.get(User, conn.customer_id)
 
+                                detected_frontend = None
+                                raw_origin = websocket.headers.get("origin") or websocket.headers.get("referer") or ""
+                                if raw_origin:
+                                    from urllib.parse import urlparse
+                                    p = urlparse(raw_origin)
+                                    if p.scheme and p.netloc:
+                                        detected_frontend = f"{p.scheme}://{p.netloc}"
+
                                 ai_text, tools_used = await run_customer_chat(
                                     db=db,
                                     merchant_profile=merchant,
@@ -118,6 +126,7 @@ async def websocket_chat_endpoint(
                                     customer=customer_user,
                                     message=content,
                                     connection_id=connection_id,
+                                    frontend_url=detected_frontend,
                                 )
                 except Exception as agent_err:
                     logger.exception("Customer agent failed: %s", agent_err)

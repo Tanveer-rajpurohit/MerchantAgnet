@@ -383,9 +383,12 @@ async def run_customer_chat(
     customer: User | None,
     message: str,
     connection_id: uuid.UUID | None = None,
+    frontend_url: str | None = None,
 ) -> tuple[str, list[dict]]:
 
     start_time = time.time()
+
+    effective_frontend = frontend_url or settings.FRONTEND_URL
 
     deps = CustomerAgentDeps(
         db=db,
@@ -399,6 +402,7 @@ async def run_customer_chat(
         store_category=store_profile.category,
         store_address=store_profile.full_address,
         store_upi_vpa=store_profile.upi_vpa,
+        frontend_url=effective_frontend,
     )
 
     message_history: list[ModelRequest | ModelResponse] = []
@@ -485,18 +489,25 @@ async def run_customer_chat(
 
     latency_ms = int((time.time() - start_time) * 1000)
 
-    agent_run = AgentRun(
-        merchant_id=merchant_profile.id,
-        persona=AgentPersona.customer_shopfront,
-        user_message=message,
-        agent_response=full_response,
-        tools_invoked=tools_invoked,
-        status=run_status,
-        latency_ms=latency_ms,
-        error_detail=error_detail,
-    )
-    db.add(agent_run)
-    await db.commit()
+    try:
+        agent_run = AgentRun(
+            merchant_id=merchant_profile.id,
+            persona=AgentPersona.customer_shopfront,
+            user_message=message,
+            agent_response=full_response,
+            tools_invoked=tools_invoked,
+            status=run_status,
+            latency_ms=latency_ms,
+            error_detail=error_detail,
+        )
+        db.add(agent_run)
+        await db.commit()
+    except Exception as run_save_err:
+        logger.warning("Failed to record agent_run in customer chat: %s", run_save_err)
+        try:
+            await db.rollback()
+        except Exception:
+            pass
 
     return full_response, tools_invoked
 

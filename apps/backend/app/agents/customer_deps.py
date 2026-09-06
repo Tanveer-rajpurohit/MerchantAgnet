@@ -18,6 +18,7 @@ class CustomerAgentDeps:
     store_category: str = ""
     store_address: str = ""
     store_upi_vpa: str = ""
+    frontend_url: str = ""
     created_orders: list[dict] = field(default_factory=list)
     created_payment_links: list[dict] = field(default_factory=list)
     db_lock: asyncio.Lock = field(default_factory=asyncio.Lock)

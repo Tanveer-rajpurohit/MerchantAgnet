@@ -149,7 +149,8 @@ async def place_order(
                 client = get_merchant_razorpay_client(merchant)
                 amount_in_paise = int(round(float(total_amount) * 100))
                 receipt_no = f"rcpt_{uuid.uuid4().hex[:8]}"
-                callback_url = f"{settings.FRONTEND_URL}/payment-success"
+                effective_frontend = ctx.deps.frontend_url or settings.FRONTEND_URL
+                callback_url = f"{effective_frontend}/payment-success"
 
                 customer_name = ctx.deps.customer_name or "Customer"
                 razorpay_payload: dict = {
@@ -190,25 +191,42 @@ async def place_order(
                     if not link_url:
                         raise rzp_create_err
 
-                link = PaymentLink(
-                    merchant_id=merchant.id,
-                    amount=total_amount,
-                    customer_name=customer_name,
-                    customer_phone=ctx.deps.customer_phone or None,
-                    customer_id=ctx.deps.customer_id,
-                    order_id=order.id,
-                    description=f"{ctx.deps.store_name} Order #{short_id}",
-                    currency="INR",
-                    receipt_number=receipt_no,
-                    razorpay_link_id=link_id,
-                    razorpay_link_url=link_url,
-                    callback_url=callback_url,
-                    callback_method="get",
-                    status=PaymentLinkStatus.created,
-                    notify_sms=False,
-                    notify_email=False,
-                )
-                ctx.deps.db.add(link)
+                existing_link = None
+                if link_id:
+                    existing_link_stmt = select(PaymentLink).where(PaymentLink.razorpay_link_id == link_id)
+                    existing_link = (await ctx.deps.db.execute(existing_link_stmt)).scalars().first()
+
+                if existing_link:
+                    existing_link.order_id = order.id
+                    existing_link.amount = total_amount
+                    existing_link.customer_name = customer_name
+                    existing_link.customer_phone = ctx.deps.customer_phone or None
+                    existing_link.customer_id = ctx.deps.customer_id
+                    existing_link.description = f"{ctx.deps.store_name} Order #{short_id}"
+                    existing_link.receipt_number = receipt_no
+                    existing_link.callback_url = callback_url
+                    existing_link.status = PaymentLinkStatus.created
+                    link = existing_link
+                else:
+                    link = PaymentLink(
+                        merchant_id=merchant.id,
+                        amount=total_amount,
+                        customer_name=customer_name,
+                        customer_phone=ctx.deps.customer_phone or None,
+                        customer_id=ctx.deps.customer_id,
+                        order_id=order.id,
+                        description=f"{ctx.deps.store_name} Order #{short_id}",
+                        currency="INR",
+                        receipt_number=receipt_no,
+                        razorpay_link_id=link_id,
+                        razorpay_link_url=link_url,
+                        callback_url=callback_url,
+                        callback_method="get",
+                        status=PaymentLinkStatus.created,
+                        notify_sms=False,
+                        notify_email=False,
+                    )
+                    ctx.deps.db.add(link)
 
                 await audit_log_repository.log_action(
                     db=ctx.deps.db,
@@ -219,7 +237,7 @@ async def place_order(
                     user_id=ctx.deps.customer_id,
                     details={
                         "amount": str(total_amount),
-                        "razorpay_link_id": razorpay_resp.get("id"),
+                        "razorpay_link_id": link_id,
                         "customer_name": customer_name,
                         "order_id": str(order.id),
                         "source": "customer_order_auto",
@@ -238,6 +256,10 @@ async def place_order(
                 )
             except Exception as rzp_err:
                 logger.error("Auto payment link creation failed in place_order: %s", rzp_err, exc_info=True)
+                try:
+                    await ctx.deps.db.rollback()
+                except Exception:
+                    pass
                 payment_link_str = "\nNOTE: Online payment creation failed. Customer can pay cash on delivery."
         else:
             payment_link_str = "\nNOTE: Online payment is not active for this store. Customer can pay cash on delivery."
