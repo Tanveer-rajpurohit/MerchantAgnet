@@ -17,3 +17,19 @@ class PaginatedMessageResponse(BaseModel):
     next_cursor: datetime | None = None
     has_more: bool
     model_config = ConfigDict(from_attributes=True)
+
+
+class DirectMessageRequest(BaseModel):
+    content: str
+    customer_name: str | None = None
+    customer_phone: str | None = None
+    customer_connection_id: uuid.UUID | None = None
+
+
+class DirectMessageResponse(BaseModel):
+    success: bool
+    message_id: str
+    connection_id: str
+    customer_name: str
+    content: str
+

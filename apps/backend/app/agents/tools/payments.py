@@ -29,11 +29,12 @@ async def create_payment_link(
 ) -> str:
     """Create a Razorpay payment link for a customer purchase or invoice.
 
-    Call this when the merchant asks to create, send, or generate a payment link or bill for a customer.
+    Call this to generate a new Razorpay payment link URL for a customer purchase or invoice.
+    NOTE: This generates the link in Razorpay. To deliver/send the link to the customer, call send_message_to_customer with the generated LINK_URL.
     - customer_name: Name of the customer (e.g. 'Rajesh Kumar').
     - amount: Total amount in INR (e.g. 500.0).
     - description: Purpose or invoice summary (e.g. 'Order #123 payment' or '2x Wheat Flour').
-    - customer_phone: Optional phone number (will receive WhatsApp / SMS if valid).
+    - customer_phone: Optional phone number.
     - customer_email: Optional email address.
     Returns the generated payment link URL and details to share with the customer.
     """
@@ -208,7 +209,8 @@ async def create_payment_link(
             f"LINK_URL: {link_url}\n"
             f"AMOUNT: ₹{amount:.2f}\n"
             f"STATUS: created\n"
-            f"Embed this LINK_URL in your message to the customer."
+            f"IMPORTANT: Razorpay SMS/WhatsApp is NOT sent automatically (notify is disabled). "
+            f"To deliver this link to the customer, you MUST call send_message_to_customer with this LINK_URL."
         )
     except Exception as e:
         logger.error("Error in create_payment_link: %s", e, exc_info=True)
@@ -351,6 +353,7 @@ def _format_link_status(link: PaymentLink, synced: bool, error: str | None = Non
         lines.append(f"PAID_AT: {link.paid_at.isoformat() if link.paid_at else '-'}")
     if link.razorpay_link_url:
         lines.append(f"URL: {link.razorpay_link_url}")
+        lines.append(f"LINK_URL: {link.razorpay_link_url}")
     if not synced:
         lines.append("SYNCED_WITH_RAZORPAY: no" + (f" ({error})" if error else " (showing local status only)"))
     else:

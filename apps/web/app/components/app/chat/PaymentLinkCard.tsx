@@ -8,7 +8,11 @@ import {
   ExternalLink,
   ShieldCheck,
   MessageCircle,
+  Loader2,
+  AlertCircle,
+  X,
 } from "lucide-react";
+import { messageService } from "../../../../lib/api";
 
 interface PaymentLinkCardProps {
   customerName: string;
@@ -56,6 +60,10 @@ export function PaymentLinkCard({
   status = "active",
 }: PaymentLinkCardProps) {
   const [copied, setCopied] = useState(false);
+  const [whatsappNotice, setWhatsappNotice] = useState<string | null>(null);
+  const [isSendingChat, setIsSendingChat] = useState(false);
+  const [chatSent, setChatSent] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(linkUrl);
@@ -63,14 +71,30 @@ export function PaymentLinkCard({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSendWhatsApp = () => {
-    const text = `Namaste ${customerName} ji! Please complete your payment of ${amount} for: ${description}.\n\nSecure payment link:\n${linkUrl}\n\nThank you for shopping with Sharma Store!`;
-    const cleanPhone = (customerPhone || "").replace(/\D/g, "");
-    const encoded = encodeURIComponent(text);
-    const url = cleanPhone
-      ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encoded}`
-      : `https://api.whatsapp.com/send?text=${encoded}`;
-    window.open(url, "_blank");
+  const handleWhatsAppClick = () => {
+    setWhatsappNotice(
+      "WhatsApp direct sending is inactive in demo mode. Please use 'Send in Customer Chat' to deliver the payment link directly."
+    );
+  };
+
+  const handleSendCustomerChat = async () => {
+    if (isSendingChat || chatSent) return;
+    setIsSendingChat(true);
+    setChatError(null);
+    try {
+      const messageContent = `Here is your payment link of ${amount} for ${description}:\n${linkUrl}\n\nPlease click the link to complete your payment securely.`;
+      await messageService.sendDirectMessage({
+        content: messageContent,
+        customer_name: customerName,
+        customer_phone: customerPhone,
+      });
+      setChatSent(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to send to customer chat";
+      setChatError(msg);
+    } finally {
+      setIsSendingChat(false);
+    }
   };
 
   return (
@@ -162,21 +186,75 @@ export function PaymentLinkCard({
       <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border-subtle">
         <button
           type="button"
-          onClick={handleSendWhatsApp}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white text-xs font-medium transition-colors shadow-xs cursor-pointer"
+          onClick={handleWhatsAppClick}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#25D366]/40 text-white/70 text-xs font-medium transition-colors shadow-xs cursor-not-allowed opacity-70"
+          title="WhatsApp integration is inactive in demo mode"
         >
           <WhatsAppIcon size={14} />
           <span>Send on WhatsApp</span>
         </button>
 
+        {chatSent ? (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+            <Check size={13} />
+            <span>Sent in Customer Chat</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={handleSendCustomerChat}
+            disabled={isSendingChat}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface hover:bg-surface-muted text-xs font-medium text-primary hover:text-brand transition-colors cursor-pointer disabled:opacity-50"
+          >
+            {isSendingChat ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <MessageCircle size={13} />
+            )}
+            <span>{isSendingChat ? "Sending..." : "Send in Customer Chat"}</span>
+          </button>
+        )}
+
         <Link
           href="/customers"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface hover:bg-surface-muted text-xs font-medium text-secondary hover:text-primary transition-colors"
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border/60 bg-surface/50 hover:bg-surface-muted text-xs font-medium text-secondary hover:text-primary transition-colors ml-auto"
         >
-          <MessageCircle size={13} />
-          <span>Send in Customer Chat</span>
+          <span>Open Chat</span>
+          <ExternalLink size={11} />
         </Link>
       </div>
+
+      {whatsappNotice && (
+        <div className="w-full mt-2.5 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs flex items-center justify-between gap-2 animate-in fade-in duration-200">
+          <div className="flex items-center gap-1.5">
+            <AlertCircle size={13} className="shrink-0" />
+            <span>{whatsappNotice}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setWhatsappNotice(null)}
+            className="text-amber-600 dark:text-amber-400 hover:opacity-80 text-xs cursor-pointer shrink-0"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
+      {chatError && (
+        <div className="w-full mt-2.5 p-2 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center justify-between gap-2 animate-in fade-in duration-200">
+          <div className="flex items-center gap-1.5">
+            <AlertCircle size={13} className="shrink-0" />
+            <span>{chatError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setChatError(null)}
+            className="text-destructive hover:opacity-80 text-xs cursor-pointer shrink-0"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

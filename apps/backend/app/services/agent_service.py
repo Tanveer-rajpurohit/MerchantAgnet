@@ -228,9 +228,17 @@ async def stream_merchant_chat(
     error_detail: str | None = None
 
     # 2. Stream the agent
+    agent_prompt = payload.message
+    if target_cust_list and len(target_cust_list) > 1:
+        cnames = ", ".join(c.get("customer_name") or "Customer" for c in target_cust_list)
+        agent_prompt = f"[Attached Customers: {cnames}]\n{payload.message}"
+    elif t_name:
+        phone_hint = f" (Phone: {t_phone})" if t_phone else ""
+        agent_prompt = f"[Attached Customer: {t_name}{phone_hint}]\n{payload.message}"
+
     try:
         async with merchant_agent.run_stream(
-            payload.message,
+            agent_prompt,
             deps=deps,
             message_history=message_history if message_history else None,
         ) as stream:
@@ -258,7 +266,7 @@ async def stream_merchant_chat(
             fallback_text = ""
             logger.info("Executing non-streaming synthesis fallback after stream closed...")
             run_res = await merchant_agent.run(
-                payload.message,
+                agent_prompt,
                 deps=deps,
                 message_history=message_history if message_history else None,
             )
@@ -314,9 +322,23 @@ async def stream_merchant_chat(
             or "too many requests" in err_str
         )
 
+        is_cold_start = (
+            "timeout" in err_str
+            or "timed out" in err_str
+            or "connection" in err_str
+            or "embed" in err_str
+            or "onnx" in err_str
+            or "model" in err_str and "load" in err_str
+        )
+
         if is_rate_limit:
             friendly_text = (
                 "Current load is too high. Please wait a few seconds, or upgrade to Premium for dedicated AI capacity."
+            )
+        elif is_cold_start:
+            friendly_text = (
+                "Just warming up — the AI engine is loading for the first time. "
+                "Please send your message again; it will work from the second try onward."
             )
         else:
             friendly_text = (

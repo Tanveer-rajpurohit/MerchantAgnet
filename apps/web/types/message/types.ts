@@ -42,3 +42,19 @@ export interface SocketState {
   sendMessage: (content: string, senderType?: "customer" | "merchant") => boolean;
   setIsAiTyping: (isTyping: boolean) => void;
 }
+
+export interface DirectMessagePayload {
+  content: string;
+  customer_name?: string;
+  customer_phone?: string;
+  customer_connection_id?: string;
+}
+
+export interface DirectMessageResponse {
+  success: boolean;
+  message_id: string;
+  connection_id: string;
+  customer_name: string;
+  content: string;
+}
+

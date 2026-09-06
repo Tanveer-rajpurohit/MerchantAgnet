@@ -1,5 +1,6 @@
 import logging
 import uuid
+from datetime import datetime
 from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload
 from pydantic_ai import RunContext
@@ -9,11 +10,25 @@ from app.agents.base_agent import merchant_agent
 from app.models.customer_connection import CustomerConnection, ConnectionStatus
 from app.models.conversation import Conversation, Message, SenderType, SendStatus
 from app.models.user import User
-from app.repositories import message_repository, audit_log_repository
+from app.repositories import message_repository, audit_log_repository, customer_connection_repository
 from app.websockets.manager import manager
-from app.agents.tools.common import _merchant_id, _guard_merchant, _actor_user_id
+from app.agents.tools.common import _merchant_id, _guard_merchant, _actor_user_id, lock_db
 
 logger = logging.getLogger(__name__)
+
+
+def _personalize_message(template: str, customer_name: str, store_name: str) -> str:
+    msg = template
+    for tag in ("{name}", "{{name}}", "{customer_name}", "{{customer_name}}", "[name]", "[customer_name]"):
+        msg = msg.replace(tag, customer_name)
+    for tag in ("{store}", "{{store}}", "{shop}", "{{shop}}", "{store_name}", "{{store_name}}", "[store]", "[shop]"):
+        msg = msg.replace(tag, store_name)
+    for tag in ("{date}", "{{date}}", "{current_date}", "{{current_date}}", "[date]"):
+        msg = msg.replace(tag, datetime.now().strftime("%B %d, %Y"))
+    for tag in ("{time}", "{{time}}", "{current_time}", "{{current_time}}", "[time]"):
+        msg = msg.replace(tag, datetime.now().strftime("%I:%M %p"))
+    return msg
+
 
 
 @merchant_agent.tool
@@ -175,9 +190,10 @@ async def send_message_to_customer(
     """Send a direct message, checkout/payment link, or note to connected customer(s).
 
     The message is saved to the customer's chat conversation and broadcast in real-time over WebSockets.
-    - If sending to a specific customer, pass `customer_name` (e.g. "Rajesh", "Tanveer") or `customer_id` or `customer_connection_id`.
+    - If customer(s) are attached in the UI (or in context), you can call this tool with JUST `message="..."` — it automatically delivers to the attached customer(s)!
+    - If a specific customer is named in the user request (e.g. "Rajesh", "Tanveer"), pass `customer_name="Rajesh"`.
     - If multiple customers are attached or `customer_connection_ids` is provided, automatically broadcasts to all of them at once!
-    - Never ask the merchant for UUIDs — look up the customer by name or use attached customers.
+    - NEVER ask the merchant for customer names, numbers, or UUIDs when a customer is already attached!
     """
     guard = _guard_merchant(ctx)
     if guard:
@@ -187,247 +203,302 @@ async def send_message_to_customer(
     if not msg_clean:
         return "Message content cannot be empty."
 
-    try:
-        merchant_id = _merchant_id(ctx)
+    async with lock_db(ctx):
+        try:
+            merchant_id = _merchant_id(ctx)
+            store_name = ctx.deps.merchant.business_name if ctx.deps.merchant else "Store"
 
-        target_cids: list[str] = []
-        if customer_connection_ids:
-            target_cids = customer_connection_ids
-        elif (
-            not customer_name
-            and not customer_id
-            and not customer_connection_id
-            and ctx.deps.target_customers
-        ):
-            target_cids = [
-                str(c["customer_connection_id"])
-                for c in ctx.deps.target_customers
-                if c.get("customer_connection_id")
-            ]
+            is_broadcast_name = bool(customer_name and any(
+                w in customer_name.lower() for w in ["all", "both", "dono", "sab", "everyone", "attached", "customers"]
+            ))
 
-        canonical_conn_ids: list[str] = []
-        for cid in target_cids:
-            try:
-                canonical_conn_ids.append(str(uuid.UUID(str(cid).strip())))
-            except (ValueError, AttributeError):
-                continue
+            target_cids: list[str] = []
+            if customer_connection_ids:
+                target_cids = customer_connection_ids
+            elif (
+                (not customer_name or is_broadcast_name)
+                and not customer_id
+                and not customer_connection_id
+                and ctx.deps.target_customers
+                and len(ctx.deps.target_customers) > 1
+            ):
+                target_cids = [
+                    str(c["customer_connection_id"])
+                    for c in ctx.deps.target_customers
+                    if c.get("customer_connection_id")
+                ]
 
-        resolved_conn_from_explicit = ""
-        if not canonical_conn_ids:
-            for explicit_id in (customer_connection_id, customer_id):
-                if not explicit_id:
-                    continue
+            canonical_conn_ids: list[str] = []
+            for cid in target_cids:
                 try:
-                    resolved_conn_from_explicit = str(uuid.UUID(str(explicit_id).strip()))
-                    break
+                    canonical_conn_ids.append(str(uuid.UUID(str(cid).strip())))
                 except (ValueError, AttributeError):
                     continue
-        if not canonical_conn_ids and not resolved_conn_from_explicit:
-            attached_conn = ctx.deps.target_customer_connection_id
-            if attached_conn:
-                canonical_conn_ids.append(str(attached_conn))
 
-        if not canonical_conn_ids and not resolved_conn_from_explicit and customer_name and ctx.deps.target_customers:
-            name_l = customer_name.strip().lower()
-            for tc in ctx.deps.target_customers:
-                tc_name = str(tc.get("customer_name") or "").strip().lower()
-                if tc_name and tc_name == name_l and tc.get("customer_connection_id"):
+            resolved_conn_from_explicit = ""
+            if not canonical_conn_ids:
+                for explicit_id in (customer_connection_id, customer_id):
+                    if not explicit_id:
+                        continue
                     try:
-                        canonical_conn_ids.append(str(uuid.UUID(str(tc["customer_connection_id"]).strip())))
+                        resolved_conn_from_explicit = str(uuid.UUID(str(explicit_id).strip()))
                         break
                     except (ValueError, AttributeError):
                         continue
+            if not canonical_conn_ids and not resolved_conn_from_explicit:
+                attached_conn = ctx.deps.target_customer_connection_id
+                if attached_conn:
+                    canonical_conn_ids.append(str(attached_conn))
 
-        if canonical_conn_ids:
-            target_ident = tuple(sorted(canonical_conn_ids))
-        elif resolved_conn_from_explicit:
-            target_ident = resolved_conn_from_explicit
-        else:
-            target_ident = customer_name or ctx.deps.target_customer_name or "default"
-        msg_fingerprint = (str(target_ident).lower().strip(), msg_clean.lower().strip())
+            if not canonical_conn_ids and not resolved_conn_from_explicit and customer_name and ctx.deps.target_customers:
+                name_l = customer_name.strip().lower()
+                for tc in ctx.deps.target_customers:
+                    tc_name = str(tc.get("customer_name") or "").strip().lower()
+                    if tc_name and tc_name == name_l and tc.get("customer_connection_id"):
+                        try:
+                            canonical_conn_ids.append(str(uuid.UUID(str(tc["customer_connection_id"]).strip())))
+                            break
+                        except (ValueError, AttributeError):
+                            continue
 
-        for prev in ctx.deps.sent_messages:
-            if prev.get("fingerprint") == msg_fingerprint:
-                logger.info("send_message_to_customer duplicate message detected; skipping send")
-                return (
-                    f"MESSAGE_ALREADY_SENT\n"
-                    f"This exact message has already been delivered to the customer in this turn. "
-                    f"DO NOT send duplicate messages. Confirm the action to the merchant."
-                )
+            if canonical_conn_ids:
+                target_ident = tuple(sorted(canonical_conn_ids))
+            elif resolved_conn_from_explicit:
+                target_ident = resolved_conn_from_explicit
+            else:
+                target_ident = customer_name or ctx.deps.target_customer_name or "default"
+            msg_fingerprint = (str(target_ident).lower().strip(), msg_clean.lower().strip())
 
-        if target_cids:
-            parsed_ids = []
-            for cid in target_cids:
+            for prev in ctx.deps.sent_messages:
+                if prev.get("fingerprint") == msg_fingerprint:
+                    logger.info("send_message_to_customer duplicate message detected; skipping send")
+                    return (
+                        f"MESSAGE_ALREADY_SENT\n"
+                        f"This exact message has already been delivered to the customer in this turn. "
+                        f"DO NOT send duplicate messages. Confirm the action to the merchant."
+                    )
+                prev_conns = set(prev.get("conn_ids") or [])
+                target_conns = set(canonical_conn_ids)
+                if resolved_conn_from_explicit:
+                    target_conns.add(resolved_conn_from_explicit)
+                if (
+                    (prev_conns and target_conns and prev_conns.intersection(target_conns))
+                    or (customer_name and customer_name.lower().strip() in (r.lower() for r in prev.get("recipients", [])))
+                ) and prev.get("content", "").strip().lower() == msg_clean.lower():
+                    logger.info("send_message_to_customer duplicate detected (recipient overlap); skipping send")
+                    return (
+                        f"MESSAGE_ALREADY_SENT\n"
+                        f"This message has already been delivered to this customer in this turn. "
+                        f"DO NOT send duplicate messages. Confirm the action to the merchant."
+                    )
+
+            if target_cids:
+                parsed_ids = []
+                for cid in target_cids:
+                    try:
+                        parsed_ids.append(uuid.UUID(str(cid).strip()))
+                    except (ValueError, AttributeError):
+                        pass
+
+                if parsed_ids:
+                    stmt = (
+                        select(CustomerConnection)
+                        .where(
+                            CustomerConnection.id.in_(parsed_ids),
+                            CustomerConnection.merchant_id == merchant_id,
+                        )
+                        .options(selectinload(CustomerConnection.customer))
+                    )
+                    conns = (await ctx.deps.db.execute(stmt)).scalars().all()
+                    if conns:
+                        sent_names = []
+                        seen_cust_ids = set()
+                        for conn in conns:
+                            if conn.customer_id in seen_cust_ids:
+                                continue
+                            seen_cust_ids.add(conn.customer_id)
+                            cname = conn.customer.full_name if conn.customer else "Customer"
+                            msg_to_send = _personalize_message(msg_clean, cname, store_name)
+                            saved_msg = await message_repository.save_message_to_connection(
+                                db=ctx.deps.db,
+                                customer_connection_id=conn.id,
+                                sender_type=SenderType.merchant,
+                                content=msg_to_send,
+                                status=SendStatus.sent,
+                            )
+                            msg_payload = {
+                                "id": str(saved_msg.id),
+                                "conversation_id": str(saved_msg.conversation_id),
+                                "sender_type": saved_msg.sender_type.value,
+                                "content": saved_msg.content,
+                                "status": saved_msg.status.value,
+                                "created_at": saved_msg.created_at.isoformat(),
+                            }
+                            await manager.broadcast(
+                                connection_id=conn.id,
+                                message={"type": "new_message", "message": msg_payload},
+                            )
+                            sent_names.append(cname)
+                            await audit_log_repository.log_action(
+                                db=ctx.deps.db,
+                                action="customer.message_sent",
+                                entity_type="customer_connection",
+                                entity_id=str(conn.id),
+                                merchant_id=merchant_id,
+                                user_id=_actor_user_id(ctx),
+                                details={"customer_name": cname, "message_preview": msg_to_send[:100]},
+                            )
+                        await ctx.deps.db.commit()
+                        ctx.deps.sent_messages.append({
+                            "fingerprint": msg_fingerprint,
+                            "content": msg_clean,
+                            "recipient_count": len(sent_names),
+                            "recipients": sent_names,
+                            "conn_ids": [str(c.id) for c in conns],
+                            "customer_ids": [str(c.customer_id) for c in conns if c.customer_id],
+                        })
+                        return f"Successfully sent message to {len(sent_names)} customers ({', '.join(sent_names)}): \"{msg_clean}\""
+
+            # Single customer resolution
+            conn = None
+
+            # Fallback to context's attached customer ONLY if no customer was explicitly provided
+            if not customer_connection_id and not customer_id and not customer_name:
+                if ctx.deps.target_customer_connection_id:
+                    customer_connection_id = str(ctx.deps.target_customer_connection_id)
+                if ctx.deps.target_customer_id:
+                    customer_id = str(ctx.deps.target_customer_id)
+                if ctx.deps.target_customer_name:
+                    customer_name = ctx.deps.target_customer_name
+
+            # 1. Resolve by customer_connection_id if given
+            if customer_connection_id:
                 try:
-                    parsed_ids.append(uuid.UUID(str(cid).strip()))
+                    cid = uuid.UUID(str(customer_connection_id).strip())
+                    stmt = (
+                        select(CustomerConnection)
+                        .where(
+                            CustomerConnection.id == cid,
+                            CustomerConnection.merchant_id == merchant_id,
+                        )
+                        .options(selectinload(CustomerConnection.customer))
+                    )
+                    conn = (await ctx.deps.db.execute(stmt)).scalars().first()
                 except (ValueError, AttributeError):
                     pass
 
-            if parsed_ids:
+            # 2. Resolve by customer_id
+            if not conn and customer_id:
+                try:
+                    uid = uuid.UUID(str(customer_id).strip())
+                    stmt = (
+                        select(CustomerConnection)
+                        .where(
+                            CustomerConnection.customer_id == uid,
+                            CustomerConnection.merchant_id == merchant_id,
+                        )
+                        .options(selectinload(CustomerConnection.customer))
+                    )
+                    conn = (await ctx.deps.db.execute(stmt)).scalars().first()
+                except (ValueError, AttributeError):
+                    pass
+
+            # 3. Resolve by customer_name
+            if not conn and customer_name:
+                term = customer_name.strip()
+                like_term = f"%{term}%"
                 stmt = (
                     select(CustomerConnection)
+                    .join(User, User.id == CustomerConnection.customer_id)
                     .where(
-                        CustomerConnection.id.in_(parsed_ids),
                         CustomerConnection.merchant_id == merchant_id,
+                        or_(
+                            User.full_name.ilike(like_term),
+                            User.phone_number.ilike(like_term),
+                            User.email.ilike(like_term),
+                        ),
                     )
                     .options(selectinload(CustomerConnection.customer))
-                )
-                conns = (await ctx.deps.db.execute(stmt)).scalars().all()
-                if conns:
-                    sent_names = []
-                    for conn in conns:
-                        saved_msg = await message_repository.save_message_to_connection(
-                            db=ctx.deps.db,
-                            customer_connection_id=conn.id,
-                            sender_type=SenderType.merchant,
-                            content=msg_clean,
-                            status=SendStatus.sent,
-                        )
-                        msg_payload = {
-                            "id": str(saved_msg.id),
-                            "conversation_id": str(saved_msg.conversation_id),
-                            "sender_type": saved_msg.sender_type.value,
-                            "content": saved_msg.content,
-                            "status": saved_msg.status.value,
-                            "created_at": saved_msg.created_at.isoformat(),
-                        }
-                        await manager.broadcast(
-                            connection_id=conn.id,
-                            message={"type": "new_message", "message": msg_payload},
-                        )
-                        cname = conn.customer.full_name if conn.customer else "Customer"
-                        sent_names.append(cname)
-                        await audit_log_repository.log_action(
-                            db=ctx.deps.db,
-                            action="customer.message_sent",
-                            entity_type="customer_connection",
-                            entity_id=str(conn.id),
-                            merchant_id=merchant_id,
-                            user_id=_actor_user_id(ctx),
-                            details={"customer_name": cname, "message_preview": msg_clean[:100]},
-                        )
-                    await ctx.deps.db.commit()
-                    ctx.deps.sent_messages.append({
-                        "fingerprint": msg_fingerprint,
-                        "content": msg_clean,
-                        "recipient_count": len(sent_names),
-                        "recipients": sent_names,
-                    })
-                    return f"Successfully sent message to {len(sent_names)} customers ({', '.join(sent_names)}): \"{msg_clean}\""
-
-        # Single customer resolution
-        conn = None
-
-        # Fallback to context's attached customer if not explicitly provided
-        if not customer_connection_id and ctx.deps.target_customer_connection_id:
-            customer_connection_id = str(ctx.deps.target_customer_connection_id)
-        if not customer_id and ctx.deps.target_customer_id:
-            customer_id = str(ctx.deps.target_customer_id)
-        if not customer_name and ctx.deps.target_customer_name:
-            customer_name = ctx.deps.target_customer_name
-
-        # 1. Resolve by customer_connection_id if given
-        if customer_connection_id:
-            try:
-                cid = uuid.UUID(str(customer_connection_id).strip())
-                stmt = (
-                    select(CustomerConnection)
-                    .where(
-                        CustomerConnection.id == cid,
-                        CustomerConnection.merchant_id == merchant_id,
-                    )
-                    .options(selectinload(CustomerConnection.customer))
+                    .limit(1)
                 )
                 conn = (await ctx.deps.db.execute(stmt)).scalars().first()
-            except (ValueError, AttributeError):
-                pass
 
-        # 2. Resolve by customer_id
-        if not conn and customer_id:
-            try:
-                uid = uuid.UUID(str(customer_id).strip())
-                stmt = (
-                    select(CustomerConnection)
-                    .where(
-                        CustomerConnection.customer_id == uid,
-                        CustomerConnection.merchant_id == merchant_id,
-                    )
-                    .options(selectinload(CustomerConnection.customer))
+            if not conn and (customer_name or customer_id or customer_connection_id):
+                user_stmt = select(User)
+                u_conds = []
+                if customer_id:
+                    try:
+                        u_conds.append(User.id == uuid.UUID(str(customer_id).strip()))
+                    except (ValueError, TypeError):
+                        pass
+                if customer_name and customer_name.strip().lower() not in ("", "customer", "the customer"):
+                    clean_term = customer_name.strip()
+                    u_conds.append(User.full_name.ilike(f"%{clean_term}%"))
+                    clean_p = "".join(filter(str.isdigit, clean_term))[-10:]
+                    if len(clean_p) >= 10:
+                        u_conds.append(User.phone_number.contains(clean_p))
+                if u_conds:
+                    found_u = (await ctx.deps.db.execute(user_stmt.where(or_(*u_conds)).limit(1))).scalars().first()
+                    if found_u:
+                        conn = await customer_connection_repository.get_or_create_connection(
+                            ctx.deps.db,
+                            merchant_id,
+                            found_u.id,
+                        )
+
+            if not conn:
+                ident = customer_name or customer_id or customer_connection_id or "the customer"
+                return (
+                    f"Could not find a connected customer matching '{ident}'. "
+                    f"Call get_recent_customers to list connected customers."
                 )
-                conn = (await ctx.deps.db.execute(stmt)).scalars().first()
-            except (ValueError, AttributeError):
-                pass
 
-        # 3. Resolve by customer_name
-        if not conn and customer_name:
-            term = customer_name.strip()
-            like_term = f"%{term}%"
-            stmt = (
-                select(CustomerConnection)
-                .join(User, User.id == CustomerConnection.customer_id)
-                .where(
-                    CustomerConnection.merchant_id == merchant_id,
-                    or_(
-                        User.full_name.ilike(like_term),
-                        User.phone_number.ilike(like_term),
-                        User.email.ilike(like_term),
-                    ),
-                )
-                .options(selectinload(CustomerConnection.customer))
-                .limit(1)
-            )
-            conn = (await ctx.deps.db.execute(stmt)).scalars().first()
-
-        if not conn:
-            ident = customer_name or customer_id or customer_connection_id or "the customer"
-            return (
-                f"Could not find a connected customer matching '{ident}'. "
-                f"Call get_recent_customers to list connected customers."
+            # 4. Save message to connection
+            cust_name = conn.customer.full_name if conn.customer else "Customer"
+            msg_to_send = _personalize_message(msg_clean, cust_name, store_name)
+            saved_msg = await message_repository.save_message_to_connection(
+                db=ctx.deps.db,
+                customer_connection_id=conn.id,
+                sender_type=SenderType.merchant,
+                content=msg_to_send,
+                status=SendStatus.sent,
             )
 
-        # 4. Save message to connection
-        saved_msg = await message_repository.save_message_to_connection(
-            db=ctx.deps.db,
-            customer_connection_id=conn.id,
-            sender_type=SenderType.merchant,
-            content=msg_clean,
-            status=SendStatus.sent,
-        )
+            # 5. Broadcast to WebSockets
+            msg_payload = {
+                "id": str(saved_msg.id),
+                "conversation_id": str(saved_msg.conversation_id),
+                "sender_type": saved_msg.sender_type.value,
+                "content": saved_msg.content,
+                "status": saved_msg.status.value,
+                "created_at": saved_msg.created_at.isoformat(),
+            }
+            await manager.broadcast(
+                connection_id=conn.id,
+                message={"type": "new_message", "message": msg_payload},
+            )
 
-        # 5. Broadcast to WebSockets
-        msg_payload = {
-            "id": str(saved_msg.id),
-            "conversation_id": str(saved_msg.conversation_id),
-            "sender_type": saved_msg.sender_type.value,
-            "content": saved_msg.content,
-            "status": saved_msg.status.value,
-            "created_at": saved_msg.created_at.isoformat(),
-        }
-        await manager.broadcast(
-            connection_id=conn.id,
-            message={"type": "new_message", "message": msg_payload},
-        )
+            # 6. Audit log
+            await audit_log_repository.log_action(
+                db=ctx.deps.db,
+                action="customer.message_sent",
+                entity_type="customer_connection",
+                entity_id=str(conn.id),
+                merchant_id=merchant_id,
+                user_id=_actor_user_id(ctx),
+                details={"customer_name": cust_name, "message_preview": msg_to_send[:100]},
+            )
+            await ctx.deps.db.commit()
+            ctx.deps.sent_messages.append({
+                "fingerprint": msg_fingerprint,
+                "content": msg_clean,
+                "recipient_count": 1,
+                "recipients": [cust_name],
+                "conn_ids": [str(conn.id)],
+                "customer_ids": [str(conn.customer_id)] if conn.customer_id else [],
+            })
 
-        # 6. Audit log
-        cust_name = conn.customer.full_name if conn.customer else "Customer"
-        await audit_log_repository.log_action(
-            db=ctx.deps.db,
-            action="customer.message_sent",
-            entity_type="customer_connection",
-            entity_id=str(conn.id),
-            merchant_id=merchant_id,
-            user_id=_actor_user_id(ctx),
-            details={"customer_name": cust_name, "message_preview": msg_clean[:100]},
-        )
-        await ctx.deps.db.commit()
-        ctx.deps.sent_messages.append({
-            "fingerprint": msg_fingerprint,
-            "content": msg_clean,
-            "recipient_count": 1,
-            "recipients": [cust_name],
-        })
-
-        return f"Successfully sent message to {cust_name}: \"{msg_clean}\""
-    except Exception as e:
-        logger.error("Error in send_message_to_customer: %s", e, exc_info=True)
-        return f"Failed to send message: {str(e)}"
+            return f"Successfully sent message to {cust_name}: \"{msg_to_send}\""
+        except Exception as e:
+            logger.error("Error in send_message_to_customer: %s", e, exc_info=True)
+            return f"Failed to send message: {str(e)}"

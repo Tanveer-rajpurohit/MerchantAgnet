@@ -10,6 +10,7 @@ from app.models.campaign import Campaign, CampaignStatus
 from app.models.conversation import SendStatus, SenderType
 from app.models.payment_link import PaymentLink, PaymentLinkStatus
 from app.models.merchant_profile import MerchantProfile
+from app.models.user import User
 from app.repositories import campaign_repository, audit_log_repository, message_repository
 from app.websockets.manager import manager
 from app.services.razorpay_client_factory import get_merchant_razorpay_client
@@ -67,6 +68,21 @@ def resolve_campaign_message(
     for tag in ("{discount}", "{{discount}}", "{discount_percent}", "{{discount_percent}}"):
         msg = msg.replace(tag, disc or offer_description.strip())
 
+    for tag in ("[name]", "[customer_name]", "[customer]", "[buyer]"):
+        msg = msg.replace(tag, customer_name)
+
+    for tag in ("[store]", "[shop]", "[store_name]", "[shop_name]", "[business]"):
+        msg = msg.replace(tag, store_name)
+
+    for tag in ("[date]", "[current_date]", "[valid_date]", "[valid_till]", "[expiry]"):
+        msg = msg.replace(tag, date_str)
+
+    for tag in ("[offer]", "[offer_description]", "[discount_offer]"):
+        msg = msg.replace(tag, offer_description.strip())
+
+    for tag in ("[discount]", "[discount_percent]", "[discount_pct]"):
+        msg = msg.replace(tag, disc or offer_description.strip())
+
     if min_amount:
         for tag in ("{min_amount}", "{{min_amount}}", "{min_order}", "{{min_order}}", "{condition}", "{{condition}}"):
             msg = msg.replace(tag, min_amount)
@@ -75,8 +91,8 @@ def resolve_campaign_message(
         msg = re.sub(r'\{+min_order\}+', 'qualifying order', msg)
         msg = re.sub(r'\{+condition\}+', 'qualifying terms', msg)
 
-    # Clean up any leftover {tag} or {{tag}}
     msg = re.sub(r'\{+([a-zA-Z0-9_]+)\}+', r'\1', msg)
+    msg = re.sub(r'\[([a-zA-Z0-9_]+)\]', r'\1', msg)
     msg = re.sub(r'[ \t]+', ' ', msg).strip()
     return msg
 
@@ -184,7 +200,16 @@ async def approve_and_send(
 
             # Send campaign message directly into customer's chat connection
             if conn:
-                cust = conn.customer if hasattr(conn, "customer") else None
+                cust = None
+                try:
+                    cust = conn.customer
+                except Exception:
+                    pass
+                if not cust and hasattr(conn, "customer_id") and conn.customer_id:
+                    try:
+                        cust = await db.get(User, conn.customer_id)
+                    except Exception:
+                        pass
                 cust_name = (cust.full_name if cust else "there") or "there"
 
                 msg_content = resolve_campaign_message(
@@ -197,9 +222,6 @@ async def approve_and_send(
                     current_date=approval_date,
                 )
 
-                if merchant:
-                    shop_url = f"{settings.FRONTEND_URL}/shops/{merchant.id}"
-                    msg_content += f"\n\nShop Link: {shop_url}"
 
                 saved_msg = await message_repository.save_message_to_connection(
                     db=db,
