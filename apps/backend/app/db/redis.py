@@ -7,18 +7,23 @@ redis_client: Redis | None = None
 async def init_redis_pool() -> Redis:
     global redis_client
     if redis_client is None:
-        redis_client = from_url(
-            settings.REDIS_URL,
-            encoding="utf-8",
-            decode_responses=True,
-            max_connections=20,
-        )
+        kwargs: dict = {
+            "encoding": "utf-8",
+            "decode_responses": True,
+            "max_connections": 20,
+        }
+        if settings.REDIS_URL.startswith("rediss://"):
+            kwargs["ssl_cert_reqs"] = "none"
+        redis_client = from_url(settings.REDIS_URL, **kwargs)
     return redis_client
 
 async def close_redis_pool() -> None:
     global redis_client
     if redis_client is not None:
-        await redis_client.close()
+        try:
+            await redis_client.aclose()
+        except AttributeError:
+            await redis_client.close()
         redis_client = None
 
 async def get_redis() -> AsyncGenerator[Redis, None]:

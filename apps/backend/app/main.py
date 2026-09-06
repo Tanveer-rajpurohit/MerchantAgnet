@@ -33,18 +33,30 @@ async def _prewarm_embedding_model():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.execute(text("SELECT 1"))
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("SELECT 1"))
+        logger.info("Database connection established successfully")
+    except Exception as e:
+        logger.error("Database connection failed on startup: %s. Verify DATABASE_URL.", e)
+        raise
 
-    redis = await init_redis_pool()
-    await redis.ping()
+    try:
+        redis = await init_redis_pool()
+        await redis.ping()
+        logger.info("Redis connection established successfully")
+    except Exception as e:
+        logger.warning("Redis connection failed on startup: %s. Check REDIS_URL.", e)
 
     asyncio.create_task(_prewarm_embedding_model())
 
     yield
 
     await engine.dispose()
-    await close_redis_pool()
+    try:
+        await close_redis_pool()
+    except Exception:
+        pass
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -65,3 +77,8 @@ app.add_middleware(
 app.include_router(root_health_router)
 app.include_router(api_v1_router)
 app.include_router(websocket_router)
+
+
+@app.get("/", tags=["Health"])
+async def root():
+    return {"status": "ok", "app": settings.APP_NAME, "version": "1.0.0"}

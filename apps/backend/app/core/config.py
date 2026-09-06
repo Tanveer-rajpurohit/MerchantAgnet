@@ -1,4 +1,4 @@
-from pydantic import Field, AliasChoices
+from pydantic import Field, AliasChoices, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -6,7 +6,29 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     ALLOWED_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3001"]
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/merchant_agent"
+
+    @field_validator("DATABASE_URL", mode="after")
+    @classmethod
+    def normalize_database_url(cls, v: str) -> str:
+        if not v:
+            return v
+        url = v.strip().strip("'").strip('"')
+        if url.startswith("postgres://"):
+            url = "postgresql+asyncpg://" + url[len("postgres://"):]
+        elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+            url = "postgresql+asyncpg://" + url[len("postgresql://"):]
+        if "sslmode=" in url:
+            url = url.replace("sslmode=", "ssl=")
+        return url
+
     REDIS_URL: str = "redis://localhost:6379/0"
+
+    @field_validator("REDIS_URL", mode="after")
+    @classmethod
+    def normalize_redis_url(cls, v: str) -> str:
+        if not v:
+            return v
+        return v.strip().strip("'").strip('"')
     GOOGLE_CLIENT_ID: str = Field(default="", validation_alias=AliasChoices("GOOGLE_CLIENT_ID"))
     GOOGLE_CLIENT_SECRET: str = Field(default="", validation_alias=AliasChoices("GOOGLE_CLIENT_SECRET"))
 

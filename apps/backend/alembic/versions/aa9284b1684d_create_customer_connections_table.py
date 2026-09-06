@@ -16,6 +16,7 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
+    op.execute("DO $$ BEGIN CREATE TYPE connection_status AS ENUM ('pending', 'connected'); EXCEPTION WHEN duplicate_object THEN null; END $$;")
     connection_status = postgresql.ENUM('pending', 'connected', name='connection_status', create_type=False)
 
     op.create_table('customer_connections',

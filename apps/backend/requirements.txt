@@ -39,6 +39,7 @@ google-genai==2.22.0
 googleapis-common-protos==1.75.2
 greenlet==3.5.5
 griffelib==2.2.0
+gunicorn>=23.0.0
 h11==0.16.0
 hf-xet==1.6.0
 httpcore==1.0.9
