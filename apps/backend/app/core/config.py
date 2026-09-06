@@ -4,8 +4,29 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     APP_NAME: str = "MerchantAgent API"
     ENVIRONMENT: str = "development"
-    ALLOWED_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3001"]
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/merchant_agent"
+    ALLOWED_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "https://merchant-agnet-web.vercel.app",
+    ]
+
+    @field_validator("ALLOWED_ORIGINS", mode="before")
+    @classmethod
+    def parse_allowed_origins(cls, v: str | list[str]) -> list[str]:
+        if isinstance(v, str):
+            v = v.strip()
+            if v.startswith("[") and v.endswith("]"):
+                import json
+                try:
+                    parsed = json.loads(v)
+                    if isinstance(parsed, list):
+                        return [str(o).strip().rstrip("/") for o in parsed if o]
+                except Exception:
+                    pass
+            return [origin.strip().rstrip("/") for origin in v.split(",") if origin.strip()]
+        if isinstance(v, list):
+            return [str(origin).strip().rstrip("/") for origin in v if origin]
+        return v
 
     @field_validator("DATABASE_URL", mode="after")
     @classmethod
@@ -56,6 +77,13 @@ class Settings(BaseSettings):
         default="http://localhost:3001",
         validation_alias=AliasChoices("FRONTEND_URL"),
     )
+
+    @field_validator("FRONTEND_URL", mode="after")
+    @classmethod
+    def normalize_frontend_url(cls, v: str) -> str:
+        if not v:
+            return v
+        return v.strip().strip("'").strip('"').rstrip("/")
 
     AGENT_BASE_URL: str = Field(
         default="https://api.sarvam.ai/v1",
